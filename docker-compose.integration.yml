@@ -1,0 +1,117 @@
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.19.0
+    restart: "no"
+    environment:
+      QDRANT__SERVICE__API_KEY: integration-qdrant-key
+    volumes:
+      - qdrant-it-data:/qdrant/storage
+
+  embedding:
+    image: ollama/ollama:0.32.6
+    restart: "no"
+    volumes:
+      - ollama-it-data:/root/.ollama
+
+  embedding-init:
+    image: ollama/ollama:0.32.6
+    restart: "no"
+    environment:
+      OLLAMA_HOST: http://embedding:11434
+    entrypoint: ["/bin/sh", "-lc"]
+    command:
+      - |
+        until ollama list >/dev/null 2>&1; do sleep 1; done
+        ollama pull nomic-embed-text
+    depends_on:
+      - embedding
+
+  cyberbrain:
+    build:
+      context: .
+    restart: "no"
+    command: ["python", "-m", "cyberbrain.api.main"]
+    ports:
+      - "127.0.0.1:18767:8767"
+    environment:
+      CYBERBRAIN_HOST: 0.0.0.0
+      CYBERBRAIN_PORT: 8767
+      CYBERBRAIN_QDRANT_URL: http://qdrant:6333
+      CYBERBRAIN_QDRANT_API_KEY: integration-qdrant-key
+      CYBERBRAIN_KNOWLEDGE_COLLECTION: cyberbrain_knowledge
+      CYBERBRAIN_EPISODIC_COLLECTION: cyberbrain_episodic
+      CYBERBRAIN_EMBEDDING_URL: http://embedding:11434
+      CYBERBRAIN_EMBEDDING_MODEL: nomic-embed-text
+      CYBERBRAIN_EMBEDDING_DIMENSION: 768
+      CYBERBRAIN_EMBEDDING_VERSION: nomic-embed-text@v1
+      CYBERBRAIN_MCP_AUTH_TOKEN: integration-mcp-token
+      CYBERBRAIN_REQUIRE_AUTH: "true"
+      CYBERBRAIN_KNOWLEDGE_EVOLUTION_LOCK_FILE: /data/knowledge_evolution.lock
+    volumes:
+      - ./TOOL_GUIDE.md:/app/TOOL_GUIDE.md:ro
+      - cyberbrain-it-data:/data
+    depends_on:
+      qdrant:
+        condition: service_started
+      embedding-init:
+        condition: service_completed_successfully
+
+  reasoner:
+    build:
+      context: .
+    restart: "no"
+    command: ["python", "-m", "cyberbrain.reasoner_provider.main"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os; os.kill(1, 0)"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    environment:
+      REASONER_HOST: 0.0.0.0
+      REASONER_PORT: 8770
+      REASONER_REQUIRE_AUTH: "false"
+      REASONER_BACKEND: deterministic
+
+  dream-worker:
+    build:
+      context: .
+    restart: "no"
+    command: ["python", "-m", "cyberbrain.dreaming.main"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os; os.kill(1, 0)"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    environment:
+      CYBERBRAIN_QDRANT_URL: http://qdrant:6333
+      CYBERBRAIN_QDRANT_API_KEY: integration-qdrant-key
+      CYBERBRAIN_KNOWLEDGE_COLLECTION: cyberbrain_knowledge
+      CYBERBRAIN_EPISODIC_COLLECTION: cyberbrain_episodic
+      CYBERBRAIN_EMBEDDING_URL: http://embedding:11434
+      CYBERBRAIN_EMBEDDING_MODEL: nomic-embed-text
+      CYBERBRAIN_EMBEDDING_DIMENSION: 768
+      CYBERBRAIN_EMBEDDING_VERSION: nomic-embed-text@v1
+      CYBERBRAIN_REQUIRE_AUTH: "false"
+      CYBERBRAIN_KNOWLEDGE_EVOLUTION_LOCK_FILE: /data/knowledge_evolution.lock
+      CYBERBRAIN_DREAM_QUEUE_DB: /data/dream_queue.sqlite
+      CYBERBRAIN_DREAM_AUDIT_DB: /data/dream_audit.sqlite
+      CYBERBRAIN_DREAM_REASONER_URL: http://reasoner:8770/mcp
+      CYBERBRAIN_DREAM_REASONER_TOOL: reason_task
+      CYBERBRAIN_DREAM_WORKER_POLL_SECONDS: 0.5
+      CYBERBRAIN_DREAM_WORKER_MAX_ATTEMPTS: 2
+      CYBERBRAIN_DREAM_ASSOCIATION_DEPTH: 1
+      CYBERBRAIN_DREAM_PER_BUCKET_LIMIT: 8
+    volumes:
+      - cyberbrain-it-data:/data
+    depends_on:
+      qdrant:
+        condition: service_started
+      embedding-init:
+        condition: service_completed_successfully
+      reasoner:
+        condition: service_started
+
+volumes:
+  qdrant-it-data:
+  ollama-it-data:
+  cyberbrain-it-data:

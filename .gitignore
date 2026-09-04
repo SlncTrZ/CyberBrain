@@ -1,0 +1,65 @@
+# Secrets / local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node / tooling
+node_modules/
+
+# Runtime data
+*.sqlite
+*.sqlite3
+*.db
+qdrant-data/
+ollama-data/
+data/
+logs/
+backups/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Build / coverage
+dist/
+build/
+coverage/
+.coverage
+htmlcov/
+
+# Migration / production evidence (may contain real user data and large snapshots)
+migration_artifacts/
+*.snapshot
+
+# Deployment-local overlays
+/docker-compose.cutover-canary.yml
+
+# Local experimental scripts with environment-specific endpoints
+/scripts/dream_full_e2e_experiment.py
+/scripts/dream_group_benchmark.py
+/scripts/dream_group_benchmark_multipass.py
+/scripts/dream_local_benchmark.py
+
+# One-off production migration/export/experiment utilities
+/scripts/dream_qdrant_experiment.py
+/scripts/export_stage_payloads.py
+/scripts/export_topic_points.py
+/scripts/stage_cross_collection_episode_repair.py
+/scripts/stage_legacy_migration.py
+/scripts/stage_orphan_episode_repair.py
+/scripts/validate_staged_migration.py

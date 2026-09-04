@@ -1,0 +1,104 @@
+[
+  {
+    "id": "removed_dependency",
+    "topic": "video_stack",
+    "kind": "superseded_or_removed",
+    "instruction": "State what was removed and what replaced it.",
+    "evidence": [
+      {"id": "e1", "content": "OpenMontage was removed completely. The internal stack is now vmk MCP + Omnivoice/Dia + local ffmpeg."}
+    ],
+    "expect": {"min_claims": 1, "required_any": ["OpenMontage"], "required_all": ["removed"], "forbidden": ["still used", "recommend", "should"]}
+  },
+  {
+    "id": "preserve_negation",
+    "topic": "deployment",
+    "kind": "current_state",
+    "instruction": "State whether the old proxy is still active.",
+    "evidence": [
+      {"id": "e1", "content": "The old proxy is no longer active; traffic now goes directly through the gateway."}
+    ],
+    "expect": {"min_claims": 1, "required_any": ["no longer", "not active"], "forbidden": ["still active", "recommend", "should"]}
+  },
+  {
+    "id": "completed_fix_not_task",
+    "topic": "encoding",
+    "kind": "current_state",
+    "instruction": "State the historical result, not a next action.",
+    "evidence": [
+      {"id": "e1", "content": "The cp1252 UnicodeEncodeError was fixed by switching output to UTF-8. The regression test passed."}
+    ],
+    "expect": {"min_claims": 1, "required_any": ["fixed", "UTF-8"], "forbidden": ["need to fix", "should fix", "recommend"]}
+  },
+  {
+    "id": "failed_approach",
+    "topic": "architecture",
+    "kind": "superseded_or_removed",
+    "instruction": "Preserve useful negative knowledge about the rejected approach.",
+    "evidence": [
+      {"id": "e1", "content": "The monolithic renderer was rejected because channel-specific rules kept leaking into core execution. It was replaced by engine + styles + channels layers."}
+    ],
+    "expect": {"min_claims": 1, "required_any": ["rejected", "replaced"], "required_all": ["monolithic"], "forbidden": ["try monolithic", "recommend"]}
+  },
+  {
+    "id": "deterministic_execution_lesson",
+    "topic": "agent_design",
+    "kind": "durable_lesson",
+    "instruction": "Infer one established design lesson about model judgment versus deterministic execution.",
+    "evidence": [
+      {"id": "e1", "content": "The LLM chooses semantic parameters, while the script performs deterministic file and timeline operations."},
+      {"id": "e2", "content": "Later E2E validation retained the same boundary: model decisions are separated from deterministic execution."}
+    ],
+    "expect": {"min_claims": 1, "required_any": ["deterministic", "separated", "separation"], "forbidden": ["should", "recommend"]}
+  },
+  {
+    "id": "validation_before_generation",
+    "topic": "validation",
+    "kind": "durable_lesson",
+    "instruction": "Infer one established validation lesson.",
+    "evidence": [
+      {"id": "e1", "content": "Validation rules vary by production_mode."},
+      {"id": "e2", "content": "The pipeline validates scene inputs before generation so invalid assets fail early."}
+    ],
+    "expect": {"min_claims": 1, "required_any": ["before generation", "production_mode", "validation"], "forbidden": ["should", "recommend"]}
+  },
+  {
+    "id": "explicit_caveat",
+    "topic": "validation",
+    "kind": "caveat",
+    "instruction": "Extract only the unresolved caveat.",
+    "evidence": [
+      {"id": "e1", "content": "Caveat: validate --strict still fails three old test-run scene images; this is old test data, not a regression."}
+    ],
+    "expect": {"min_claims": 1, "required_all": ["validate --strict"], "required_any": ["three", "3", "old"], "forbidden": ["regression introduced", "should"]}
+  },
+  {
+    "id": "service_availability_caveat",
+    "topic": "render_services",
+    "kind": "caveat",
+    "instruction": "Extract only the service-availability caveat.",
+    "evidence": [
+      {"id": "e1", "content": "Omnivoice, Dia, and vmk services are currently off and are enabled only for real rendering."}
+    ],
+    "expect": {"min_claims": 1, "required_any": ["off", "enabled only"], "forbidden": ["currently running", "always running", "should"]}
+  },
+  {
+    "id": "context_specific_fact",
+    "topic": "platform_behavior",
+    "kind": "current_state",
+    "instruction": "Preserve the platform context; do not generalize across platforms.",
+    "evidence": [
+      {"id": "e1", "content": "On Windows, the pipeline uses path normalization before ffmpeg invocation. This record does not make a claim about Linux."}
+    ],
+    "expect": {"min_claims": 1, "required_all": ["Windows"], "forbidden": ["all platforms", "Linux also", "should"]}
+  },
+  {
+    "id": "insufficient_evidence",
+    "topic": "unknown_state",
+    "kind": "current_state",
+    "instruction": "Return no claim if the evidence does not support the requested current state.",
+    "evidence": [
+      {"id": "e1", "content": "A possible future renderer was discussed, but no implementation or decision was recorded."}
+    ],
+    "expect": {"max_claims": 0, "forbidden": ["implemented", "current renderer", "canonical"]}
+  }
+]

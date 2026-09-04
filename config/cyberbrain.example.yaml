@@ -1,0 +1,26 @@
+# Non-secret CyberBrain behavior configuration example.
+server:
+  host: 0.0.0.0
+  port: 8767
+
+storage:
+  provider: qdrant
+  knowledge_collection: cyberbrain_knowledge
+  episodic_collection: cyberbrain_episodic
+
+embedding:
+  provider: ollama
+  model: nomic-embed-text
+  dimension: 768
+
+dreaming:
+  enabled: true
+  session_driven: true
+  max_association_depth: 2
+
+mcp:
+  endpoint: /mcp
+  help_required: true
+
+# Credentials are intentionally excluded from this file.
+# Provide authentication and infrastructure secrets only through protected runtime configuration.
