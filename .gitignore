@@ -63,3 +63,6 @@ migration_artifacts/
 /scripts/stage_legacy_migration.py
 /scripts/stage_orphan_episode_repair.py
 /scripts/validate_staged_migration.py
+
+# Local CLI state
+.local/
