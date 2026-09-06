@@ -29,8 +29,8 @@ class NineRouterModelPool:
     """Discover and route Dream tasks across preferred 9router model tiers."""
 
     GEMINI_PRIORITY = (
-        "gem/gemini-pro",
-        "gem/gemini-flash",
+        "gemini-pro",
+        "gemini-flash",
     )
 
     def __init__(
@@ -106,10 +106,16 @@ class NineRouterModelPool:
         return f"{provider}/{model_id}" if provider and model_id else model_id
 
     @classmethod
+    def _gemini_identity(cls, model: dict[str, Any]) -> str:
+        for key in ("model", "alias"):
+            value = str(model.get(key) or "").strip().casefold()
+            if value in {name.casefold() for name in cls.GEMINI_PRIORITY}:
+                return value
+        return ""
+
+    @classmethod
     def _is_gemini(cls, model: dict[str, Any]) -> bool:
-        return cls._model_name(model).casefold() in {
-            value.casefold() for value in cls.GEMINI_PRIORITY
-        }
+        return bool(cls._gemini_identity(model))
 
     @staticmethod
     def _is_oc_free(model: dict[str, Any]) -> bool:
@@ -122,15 +128,15 @@ class NineRouterModelPool:
 
     @classmethod
     def _ordered_gemini(cls, models: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        by_name = {
-            cls._model_name(model).casefold(): model
+        by_identity = {
+            cls._gemini_identity(model): model
             for model in models
             if cls._is_gemini(model)
         }
         return [
-            by_name[name.casefold()]
+            by_identity[name.casefold()]
             for name in cls.GEMINI_PRIORITY
-            if name.casefold() in by_name
+            if name.casefold() in by_identity
         ]
 
     @staticmethod
@@ -292,36 +298,54 @@ class NineRouterModelPool:
         )
         headers = self._v1_headers()
 
-        with httpx.Client(timeout=self._timeout) as client:
-            response = client.post(
-                f"{self._base_url}/v1/responses",
-                headers=headers,
-                json={
+        variants = (
+            (
+                "/v1/responses",
+                {
                     "model": model,
                     "input": input_text,
                     "stream": False,
                     "max_output_tokens": self._max_tokens,
                 },
-            )
-            response.raise_for_status()
-            payload = response.json()
-            try:
-                text = self._extract_content(payload)
-            except RuntimeError:
-                response = client.post(
-                    f"{self._base_url}/v1/messages",
-                    headers=headers,
-                    json={
-                        "model": model,
-                        "max_tokens": self._max_tokens,
-                        "stream": False,
-                        "messages": [{"role": "user", "content": input_text}],
-                    },
-                )
-                response.raise_for_status()
-                text = self._extract_content(response.json())
+            ),
+            (
+                "/v1/messages",
+                {
+                    "model": model,
+                    "max_tokens": self._max_tokens,
+                    "stream": False,
+                    "messages": [{"role": "user", "content": input_text}],
+                },
+            ),
+            (
+                "/v1/chat/completions",
+                {
+                    "model": model,
+                    "max_tokens": self._max_tokens,
+                    "stream": False,
+                    "messages": [{"role": "user", "content": input_text}],
+                },
+            ),
+        )
+        errors: list[str] = []
+        with httpx.Client(timeout=self._timeout) as client:
+            for path, body in variants:
+                try:
+                    response = client.post(
+                        f"{self._base_url}{path}",
+                        headers=headers,
+                        json=body,
+                    )
+                    response.raise_for_status()
+                    text = self._extract_content(response.json())
+                    return self._parse_json(text)
+                except Exception as exc:
+                    errors.append(f"{path}:{type(exc).__name__}")
 
-        return self._parse_json(text)
+        raise RuntimeError(
+            f"9router model {model!r} failed all compatible protocols: "
+            + ",".join(errors)
+        )
 
     def reason_task(
         self,

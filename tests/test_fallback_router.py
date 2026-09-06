@@ -155,6 +155,30 @@ def test_model_tiers_filter_and_order_correctly() -> None:
     ]
 
 
+def test_gemini_matcher_accepts_openai_compatible_provider_shape() -> None:
+    catalog = [
+        {
+            "provider": "openai-compatible-chat-custom",
+            "model": "gemini-flash",
+            "alias": "gemini-flash",
+            "fullModel": "openai-compatible-chat-custom/gemini-flash",
+        },
+        {
+            "provider": "openai-compatible-chat-custom",
+            "model": "gemini-pro",
+            "alias": "gemini-pro",
+            "fullModel": "openai-compatible-chat-custom/gemini-pro",
+        },
+    ]
+
+    ordered = NineRouterModelPool._ordered_gemini(catalog)
+
+    assert [NineRouterModelPool._model_name(model) for model in ordered] == [
+        "openai-compatible-chat-custom/gemini-pro",
+        "openai-compatible-chat-custom/gemini-flash",
+    ]
+
+
 def test_pool_uses_gemini_before_opencode_free() -> None:
     pool = DeterministicPool()
 
