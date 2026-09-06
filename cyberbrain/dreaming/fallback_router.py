@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MPL-2.0
-"""Fallback-only Dream micro-reasoner: 9router OpenCode free pool, then Ollama."""
+"""Fallback-only Dream micro-reasoner: 9router Gemini, OpenCode free, then Ollama."""
 
 from __future__ import annotations
 
@@ -25,8 +25,13 @@ from cyberbrain.reasoner_provider.http import create_reasoner_app
 from cyberbrain.reasoner_provider.server import configure_micro_backend
 
 
-class NineRouterOCFreePool:
-    """Discover, probe, and use currently available OpenCode free models."""
+class NineRouterModelPool:
+    """Discover and route Dream tasks across preferred 9router model tiers."""
+
+    GEMINI_PRIORITY = (
+        "gem/gemini-pro",
+        "gem/gemini-flash",
+    )
 
     def __init__(
         self,
@@ -89,6 +94,24 @@ class NineRouterOCFreePool:
         }
 
     @staticmethod
+    def _model_name(model: dict[str, Any]) -> str:
+        full_model = str(model.get("fullModel") or "").strip()
+        if full_model:
+            return full_model
+        routed_model = str(model.get("routedModel") or "").strip()
+        if routed_model:
+            return routed_model
+        provider = str(model.get("provider") or "").strip()
+        model_id = str(model.get("model") or "").strip()
+        return f"{provider}/{model_id}" if provider and model_id else model_id
+
+    @classmethod
+    def _is_gemini(cls, model: dict[str, Any]) -> bool:
+        return cls._model_name(model).casefold() in {
+            value.casefold() for value in cls.GEMINI_PRIORITY
+        }
+
+    @staticmethod
     def _is_oc_free(model: dict[str, Any]) -> bool:
         provider = str(model.get("provider") or "").strip().casefold()
         model_id = str(model.get("model") or "").strip().casefold()
@@ -97,10 +120,25 @@ class NineRouterOCFreePool:
             return False
         return "free" in model_id
 
+    @classmethod
+    def _ordered_gemini(cls, models: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        by_name = {
+            cls._model_name(model).casefold(): model
+            for model in models
+            if cls._is_gemini(model)
+        }
+        return [
+            by_name[name.casefold()]
+            for name in cls.GEMINI_PRIORITY
+            if name.casefold() in by_name
+        ]
+
     @staticmethod
-    def _ordered(models: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    def _ordered_oc_free(models: list[dict[str, Any]]) -> list[dict[str, Any]]:
         groups: dict[int, list[dict[str, Any]]] = {0: [], 1: []}
         for model in models:
+            if not NineRouterModelPool._is_oc_free(model):
+                continue
             reasoning = bool((model.get("caps") or {}).get("reasoning"))
             groups[0 if reasoning else 1].append(model)
         ordered: list[dict[str, Any]] = []
@@ -108,7 +146,7 @@ class NineRouterOCFreePool:
             ordered.extend(
                 sorted(
                     groups[group],
-                    key=lambda item: str(item.get("fullModel") or ""),
+                    key=lambda item: NineRouterModelPool._model_name(item),
                     reverse=True,
                 )
             )
@@ -134,9 +172,9 @@ class NineRouterOCFreePool:
         models = [
             model
             for model in payload.get("models") or []
-            if isinstance(model, dict) and self._is_oc_free(model)
+            if isinstance(model, dict)
         ]
-        self._cached_models = self._ordered(models)
+        self._cached_models = models
         self._catalog_loaded_at = now
         return list(self._cached_models)
 
@@ -285,26 +323,36 @@ class NineRouterOCFreePool:
 
         return self._parse_json(text)
 
-    def reason_task(self, request: dict[str, Any]) -> tuple[dict[str, Any], str]:
-        models = self.discover()
-        if not models:
-            raise RuntimeError("9router catalog contains no OpenCode free models")
+    def reason_task(
+        self,
+        request: dict[str, Any],
+    ) -> tuple[dict[str, Any], str, str]:
+        catalog = self.discover()
+        tiers = (
+            ("gemini", self._ordered_gemini(catalog)),
+            ("opencode_free", self._ordered_oc_free(catalog)),
+        )
+        if not any(models for _tier, models in tiers):
+            raise RuntimeError(
+                "9router catalog contains no configured Gemini or OpenCode free models"
+            )
 
         errors: list[str] = []
-        for item in models:
-            model = str(item.get("fullModel") or item.get("routedModel") or "").strip()
-            if not model:
-                continue
-            if not self._probe(model):
-                errors.append(f"{model}:probe_failed")
-                continue
-            try:
-                return self._reason_with_model(model, request), model
-            except Exception as exc:
-                self._failed_until[model] = time.monotonic() + self._failure_cooldown
-                errors.append(f"{model}:{type(exc).__name__}")
+        for tier, models in tiers:
+            for item in models:
+                model = self._model_name(item)
+                if not model:
+                    continue
+                if not self._probe(model):
+                    errors.append(f"{tier}:{model}:probe_failed")
+                    continue
+                try:
+                    return self._reason_with_model(model, request), model, tier
+                except Exception as exc:
+                    self._failed_until[model] = time.monotonic() + self._failure_cooldown
+                    errors.append(f"{tier}:{model}:{type(exc).__name__}")
 
-        raise RuntimeError("all OpenCode free models failed: " + ",".join(errors[:8]))
+        raise RuntimeError("all 9router Dream models failed: " + ",".join(errors[:12]))
 
 
 class FallbackReasonerRouter:
@@ -313,7 +361,7 @@ class FallbackReasonerRouter:
     def __init__(
         self,
         *,
-        nine_router: NineRouterOCFreePool,
+        nine_router: NineRouterModelPool,
         ollama: OllamaMicroReasoningBackend,
     ) -> None:
         self._nine_router = nine_router
@@ -331,10 +379,10 @@ class FallbackReasonerRouter:
         task_id = str(normalized["task_id"])
 
         try:
-            raw, model = self._nine_router.reason_task(normalized)
+            raw, model, tier = self._nine_router.reason_task(normalized)
             result = self._validate(normalized, raw)
             print(
-                f"reasoner_route 9router_ok task={task_id} model={model}",
+                f"reasoner_route 9router_ok task={task_id} tier={tier} model={model}",
                 flush=True,
             )
             return result
@@ -360,7 +408,7 @@ class FallbackReasonerRouter:
 
 def build_backend() -> FallbackReasonerRouter:
     return FallbackReasonerRouter(
-        nine_router=NineRouterOCFreePool(
+        nine_router=NineRouterModelPool(
             base_url=os.environ.get("DREAM_9ROUTER_URL", "http://9router:20128"),
             data_dir=os.environ.get("DREAM_9ROUTER_DATA_DIR", "/nine-data"),
             timeout_seconds=float(os.environ.get("DREAM_9ROUTER_TIMEOUT_SECONDS", "180")),
