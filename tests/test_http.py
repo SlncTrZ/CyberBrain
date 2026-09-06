@@ -142,6 +142,8 @@ def test_tool_catalog_contains_canonical_and_legacy_compatibility_tools() -> Non
         "conversation_recall",
         "dream_enqueue",
         "dream_status",
+        "dream_reason_claim",
+        "dream_reason_submit",
         "dream_reviews",
         "dream_review_resolve",
     ]

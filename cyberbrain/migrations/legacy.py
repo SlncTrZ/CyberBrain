@@ -254,7 +254,7 @@ class LegacyMapper:
 
     @staticmethod
     def _timestamp(value: Any) -> datetime | None:
-        if isinstance(value, (int, float)):
+        if isinstance(value, int | float):
             numeric = float(value)
             if numeric > 10_000_000_000:
                 numeric /= 1000.0

@@ -50,11 +50,11 @@ def classify_error(exc: Exception) -> ErrorEnvelope:
         return ErrorEnvelope(ErrorType.CONFLICT, str(exc), False)
     if isinstance(exc, ConfigurationError):
         return ErrorEnvelope(ErrorType.CONFIGURATION, str(exc), False)
-    if isinstance(exc, (EmbeddingError, StorageError, ProviderUnavailableError)):
+    if isinstance(exc, EmbeddingError | StorageError | ProviderUnavailableError):
         return ErrorEnvelope(ErrorType.UNAVAILABLE, str(exc), True)
     if isinstance(exc, ProviderResponseError):
         return ErrorEnvelope(ErrorType.INTERNAL, str(exc), False)
-    if isinstance(exc, (ValueError, TypeError, KeyError)):
+    if isinstance(exc, ValueError | TypeError | KeyError):
         return ErrorEnvelope(ErrorType.VALIDATION, str(exc), False)
     return ErrorEnvelope(ErrorType.INTERNAL, "internal CyberBrain error", False)
 

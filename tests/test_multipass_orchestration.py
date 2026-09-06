@@ -101,6 +101,37 @@ def test_multipass_reasoner_rejects_fabricated_evidence() -> None:
         MultipassDreamReasoner(micro_reasoner=FabricatingMicroReasoner()).reason(_request())
 
 
+def test_assemble_rejects_missing_and_unexpected_results() -> None:
+    reasoner = MultipassDreamReasoner(micro_reasoner=FakeMicroReasoner())
+    request = _request()
+    tasks = reasoner.build_tasks(request)
+    valid = [FakeMicroReasoner().reason_task(task) for task in tasks]
+
+    with pytest.raises(ValueError, match="task set mismatch"):
+        reasoner.assemble(request, tasks=tasks, results=valid[:-1])
+
+    unexpected = ReasoningTaskResult(
+        task_id="unexpected-task",
+        claims=[],
+    )
+    with pytest.raises(ValueError, match="task set mismatch"):
+        reasoner.assemble(request, tasks=tasks, results=[*valid, unexpected])
+
+
+def test_assemble_rejects_duplicate_results() -> None:
+    reasoner = MultipassDreamReasoner(micro_reasoner=FakeMicroReasoner())
+    request = _request()
+    tasks = reasoner.build_tasks(request)
+    first = FakeMicroReasoner().reason_task(tasks[0])
+
+    with pytest.raises(ValueError, match="duplicate micro reasoner result"):
+        reasoner.assemble(
+            request,
+            tasks=tasks[:1],
+            results=[first, first],
+        )
+
+
 def test_single_evidence_does_not_duplicate_current_or_infer_lesson() -> None:
     now = datetime(2026, 9, 4, 2, 0, tzinfo=UTC)
     request = DreamReasoningRequest(

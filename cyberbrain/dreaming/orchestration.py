@@ -16,6 +16,7 @@ from cyberbrain.dreaming.reasoner import (
     ReasoningClaim,
     ReasoningTask,
     ReasoningTaskKind,
+    ReasoningTaskResult,
 )
 
 _REPLACEMENT = ("removed", "replaced", "deprecated", "loại bỏ", "thay bằng", "không dùng nữa")
@@ -45,12 +46,49 @@ class MultipassDreamReasoner(DreamReasoner):
         self._policy = policy or MultipassPolicy()
 
     def reason(self, request: DreamReasoningRequest) -> DreamReasoningResult:
-        tasks = self._build_tasks(request)
+        tasks = self.build_tasks(request)
+        results = [self._micro_reasoner.reason_task(task) for task in tasks]
+        return self.assemble(request, tasks=tasks, results=results)
+
+    def build_tasks(self, request: DreamReasoningRequest) -> list[ReasoningTask]:
+        return self._build_tasks(request)
+
+    def assemble(
+        self,
+        request: DreamReasoningRequest,
+        *,
+        tasks: list[ReasoningTask],
+        results: list[ReasoningTaskResult],
+    ) -> DreamReasoningResult:
+        task_ids = [task.task_id for task in tasks]
+        duplicate_tasks = sorted(
+            task_id for task_id in set(task_ids) if task_ids.count(task_id) > 1
+        )
+        if duplicate_tasks:
+            raise ValueError(f"duplicate reasoning task IDs: {duplicate_tasks}")
+
+        result_ids = [result.task_id for result in results]
+        duplicate_results = sorted(
+            task_id for task_id in set(result_ids) if result_ids.count(task_id) > 1
+        )
+        if duplicate_results:
+            raise ValueError(f"duplicate micro reasoner result task IDs: {duplicate_results}")
+
+        expected = set(task_ids)
+        actual = set(result_ids)
+        missing = sorted(expected - actual)
+        unexpected = sorted(actual - expected)
+        if missing or unexpected:
+            raise ValueError(
+                "micro reasoner result task set mismatch: "
+                f"missing={missing}, unexpected={unexpected}"
+            )
+
+        result_by_id = {result.task_id: result for result in results}
         candidates: list[DreamCandidate] = []
-        notes: list[str] = []
 
         for task in tasks:
-            result = self._micro_reasoner.reason_task(task)
+            result = result_by_id[task.task_id]
             if result.task_id != task.task_id:
                 raise ValueError("micro reasoner response task_id does not match task")
             allowed = {item.id for item in task.evidence}
@@ -58,11 +96,10 @@ class MultipassDreamReasoner(DreamReasoner):
                 self._validate_claim(task, claim, allowed)
                 candidates.append(self._candidate_from_claim(task, claim, index))
 
-        notes.append(f"multipass_tasks={len(tasks)}")
         return DreamReasoningResult(
             request_id=request.request_id,
             candidates=candidates,
-            notes=notes,
+            notes=[f"multipass_tasks={len(tasks)}"],
         )
 
     def _build_tasks(self, request: DreamReasoningRequest) -> list[ReasoningTask]:

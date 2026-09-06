@@ -30,6 +30,9 @@ class Settings(BaseSettings):
 
     dream_queue_db: str = "/data/dream_queue.sqlite"
     dream_audit_db: str = "/data/dream_audit.sqlite"
+    dream_reason_task_db: str = "/data/dream_reason_tasks.sqlite"
+    dream_mcp_wait_seconds: float = 30.0
+    dream_mcp_poll_seconds: float = 0.5
     dream_worker_poll_seconds: float = 2.0
     dream_worker_max_attempts: int = 3
     dream_reasoner_url: str | None = None
@@ -53,6 +56,10 @@ class Settings(BaseSettings):
         ):
             if value is not None and not 0 <= value <= 1:
                 raise ConfigurationError(f"{name} must be between 0 and 1 or null")
+        if self.dream_mcp_wait_seconds < 0:
+            raise ConfigurationError("dream_mcp_wait_seconds must be >= 0")
+        if self.dream_mcp_poll_seconds <= 0:
+            raise ConfigurationError("dream_mcp_poll_seconds must be > 0")
         if self.dream_worker_poll_seconds <= 0:
             raise ConfigurationError("dream_worker_poll_seconds must be > 0")
         if self.dream_worker_max_attempts < 1:

@@ -15,6 +15,7 @@ from cyberbrain.core.error_model import classify_error, not_found
 from cyberbrain.core.errors import ConfigurationError
 from cyberbrain.core.runtime import RuntimeServices
 from cyberbrain.dreaming.operations import DreamOperations
+from cyberbrain.dreaming.reason_task_inbox import DreamReasonTaskInbox
 from cyberbrain.schemas.models import EpisodeRole, Origin, Verification
 
 PROVIDER_NAME = "cyberbrain"
@@ -24,6 +25,7 @@ SCHEMA_VERSION = "1"
 server = Server(PROVIDER_NAME)
 _runtime: RuntimeServices | None = None
 _dream_operations: DreamOperations | None = None
+_reason_task_inbox: DreamReasonTaskInbox | None = None
 
 
 def configure_runtime(runtime: RuntimeServices) -> None:
@@ -36,6 +38,11 @@ def configure_dream_operations(operations: DreamOperations) -> None:
     _dream_operations = operations
 
 
+def configure_reason_task_inbox(inbox: DreamReasonTaskInbox) -> None:
+    global _reason_task_inbox
+    _reason_task_inbox = inbox
+
+
 def _require_runtime() -> RuntimeServices:
     if _runtime is None:
         raise ConfigurationError("CyberBrain runtime services are not configured")
@@ -46,6 +53,12 @@ def _require_dream_operations() -> DreamOperations:
     if _dream_operations is None:
         raise ConfigurationError("CyberBrain Dreaming operations are not configured")
     return _dream_operations
+
+
+def _require_reason_task_inbox() -> DreamReasonTaskInbox:
+    if _reason_task_inbox is None:
+        raise ConfigurationError("CyberBrain Dream Reason task inbox is not configured")
+    return _reason_task_inbox
 
 
 def _guide_path() -> Path:
@@ -308,6 +321,62 @@ async def list_tools() -> list[types.Tool]:
             },
         ),
         types.Tool(
+            name="dream_reason_claim",
+            description=(
+                "Claim the next pending Dream micro-reasoning task for an external MCP reasoner. "
+                "Return null when no task is waiting."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "claimed_by": {"type": "string"},
+                    "lease_seconds": {
+                        "type": "integer",
+                        "minimum": 30,
+                        "maximum": 3600,
+                    },
+                },
+                "required": ["claimed_by"],
+                "additionalProperties": False,
+            },
+        ),
+        types.Tool(
+            name="dream_reason_submit",
+            description=(
+                "Submit evidence-grounded claims for one claimed Dream micro-reasoning task. "
+                "The task_id and claim token must match the active lease."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "task_id": {"type": "string"},
+                    "claim_token": {"type": "string"},
+                    "claims": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "claim": {"type": "string"},
+                                "evidence_ids": {
+                                    "type": "array",
+                                    "items": {"type": "string"},
+                                },
+                                "confidence": {
+                                    "type": "number",
+                                    "minimum": 0,
+                                    "maximum": 1,
+                                },
+                            },
+                            "required": ["claim", "evidence_ids", "confidence"],
+                            "additionalProperties": False,
+                        },
+                    },
+                },
+                "required": ["task_id", "claim_token", "claims"],
+                "additionalProperties": False,
+            },
+        ),
+        types.Tool(
             name="dream_reviews",
             description="List unresolved Dreaming candidates requiring manual review.",
             inputSchema={
@@ -507,6 +576,34 @@ def _dispatch_tool(name: str, args: dict) -> list[types.TextContent]:
     if name == "dream_status":
         operations = _require_dream_operations()
         return _json_text(operations.status(session_id=str(args.pop("session_id"))))
+
+    if name == "dream_reason_claim":
+        inbox = _require_reason_task_inbox()
+        lease = inbox.claim_next(
+            claimed_by=str(args.pop("claimed_by")),
+            lease_seconds=int(args.pop("lease_seconds", 300)),
+        )
+        if lease is None:
+            return _json_text({"task": None})
+        return _json_text(
+            {
+                "task": lease.task,
+                "claim_token": lease.claim_token,
+                "claimed_by": lease.claimed_by,
+                "lease_until": lease.lease_until,
+                "deadline_at": lease.deadline_at,
+            }
+        )
+
+    if name == "dream_reason_submit":
+        inbox = _require_reason_task_inbox()
+        return _json_text(
+            inbox.submit(
+                task_id=str(args.pop("task_id")),
+                claim_token=str(args.pop("claim_token")),
+                claims=list(args.pop("claims")),
+            )
+        )
 
     if name == "dream_reviews":
         operations = _require_dream_operations()

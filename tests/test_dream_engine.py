@@ -66,3 +66,27 @@ def test_dry_run_collects_deduplicated_evidence_and_candidates() -> None:
     assert len(result.request.evidence_by_topic["CyberBrain"]) == 1
     assert result.result.candidates[0].classification == "evolution"
     assert result.result.candidates[0].confidence == 0.95
+
+
+def test_prepare_request_then_reason_matches_dry_run_contract() -> None:
+    episodes = [
+        EpisodeSnippet(
+            content="CyberBrain Dreaming consolidates experience.",
+            event_time=datetime(2026, 9, 4, 2, 0, tzinfo=UTC),
+        )
+    ]
+    engine = DreamingEngine(
+        retriever=FakeRetriever(),
+        reasoner=FakeReasoner(),
+    )
+
+    request = engine.prepare_request(
+        episodes,
+        session_id="session-prepare",
+        topic_limit=1,
+    )
+    prepared = engine.reason_prepared(request)
+
+    assert prepared.request is request
+    assert prepared.result.request_id == request.request_id
+    assert prepared.result.candidates[0].classification == "evolution"

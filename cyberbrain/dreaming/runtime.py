@@ -17,7 +17,9 @@ from cyberbrain.dreaming.operations import DreamOperations
 from cyberbrain.dreaming.orchestration import MultipassDreamReasoner
 from cyberbrain.dreaming.promotion import DreamPromotionCoordinator
 from cyberbrain.dreaming.queue import DreamQueue
+from cyberbrain.dreaming.reason_task_inbox import DreamReasonTaskInbox
 from cyberbrain.dreaming.retriever import QdrantEvidenceRetriever
+from cyberbrain.dreaming.run_reasoner import MCPFirstDreamReasoner
 from cyberbrain.dreaming.session import QdrantSessionEpisodeLoader
 from cyberbrain.dreaming.worker import DreamWorker
 from cyberbrain.dreaming.writeback import DreamKnowledgeWriter, DreamWritebackCoordinator
@@ -54,6 +56,7 @@ def build_dream_worker_runtime(settings: Settings) -> DreamWorkerRuntime:
     settings.validate_dream_worker()
     _ensure_parent(settings.dream_queue_db)
     _ensure_parent(settings.dream_audit_db)
+    _ensure_parent(settings.dream_reason_task_db)
 
     services = build_runtime(settings)
     queue = DreamQueue(settings.dream_queue_db)
@@ -78,11 +81,18 @@ def build_dream_worker_runtime(settings: Settings) -> DreamWorkerRuntime:
         timeout_seconds=settings.dream_reasoner_timeout_seconds,
         metrics=services.metrics,
     )
-    micro_reasoner = MCPMicroReasoner(
+    fallback_micro_reasoner = MCPMicroReasoner(
         invoker=invoker,
         tool=settings.dream_reasoner_tool,
     )
-    reasoner = MultipassDreamReasoner(micro_reasoner=micro_reasoner)
+    multipass = MultipassDreamReasoner(micro_reasoner=fallback_micro_reasoner)
+    reasoner = MCPFirstDreamReasoner(
+        multipass=multipass,
+        inbox=DreamReasonTaskInbox(settings.dream_reason_task_db),
+        fallback_micro_reasoner=fallback_micro_reasoner,
+        wait_seconds=settings.dream_mcp_wait_seconds,
+        poll_seconds=settings.dream_mcp_poll_seconds,
+    )
     engine = DreamingEngine(
         retriever=retriever,
         reasoner=reasoner,

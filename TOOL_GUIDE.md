@@ -35,6 +35,8 @@ memory_search
 memory_store
 dream_enqueue
 dream_status
+dream_reason_claim
+dream_reason_submit
 dream_reviews
 dream_review_resolve
 tech_store
@@ -44,7 +46,7 @@ conversation_save
 conversation_recall
 ```
 
-The first ten tools are the canonical CyberBrain V1 surface. The final five are temporary MeiLin compatibility aliases used during migration/cutover. Gateway canonical names are owned by the gateway; the provider exposes local MCP tool names.
+CyberBrain keeps the original V1 Knowledge/Memory/Dreaming surface and adds two canonical operational tools for an external MCP Dream Reasoner inbox. The final five tools remain temporary MeiLin compatibility aliases used during migration/cutover. Gateway canonical names are owned by the gateway; the provider exposes local MCP tool names.
 
 ### `help`
 
@@ -75,7 +77,11 @@ These aliases are compatibility adapters only. They do not create a second busin
 
 - `dream_enqueue` queues a completed session for the Dream worker. Optional focal topics may be supplied.
 - `dream_status` returns queue status for one session.
+- `dream_reason_claim` leases the next pending bounded micro-reasoning task to an external MCP consumer such as a dedicated ChatGPT Reasoner session.
+- `dream_reason_submit` submits structured evidence-grounded claims for the active lease; task ID, claim token, confidence, and evidence references are validated before acceptance.
 - `dream_reviews` lists unresolved evidence-gated candidates that require human review.
 - `dream_review_resolve` approves or rejects one existing review candidate and records reviewer provenance.
 
 Dreaming operations do not expose a direct write path. A candidate can reach Knowledge only through Reasoner provenance validation, the promotion gate, optional review resolution, and Knowledge Evolution writeback.
+
+For v0.1.2 Dream worker routing, CyberBrain prepares the full Dream request and bounded micro-task set first, registers the whole run atomically in the Reason Task inbox, then gives external MCP consumers one common claim/submit window (`CYBERBRAIN_DREAM_MCP_WAIT_SECONDS`, default 30 seconds). MCP-completed tasks are preserved as the winning results. After the common deadline, only unfinished tasks are sent to the fallback Reasoner endpoint. The fallback router policy is 9router OpenCode free-model discovery/probing first, then local Ollama as the final fallback. The MCP wait is run-level, not a serial per-task delay.

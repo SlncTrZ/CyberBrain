@@ -56,14 +56,14 @@ class DreamingEngine:
         self._associative_expander = associative_expander
         self._per_bucket_limit = per_bucket_limit
 
-    def dry_run(
+    def prepare_request(
         self,
         episodes: list[EpisodeSnippet],
         *,
         session_id: str,
         topic_limit: int = 3,
         focal_topics: list[str] | None = None,
-    ) -> DreamDryRunResult:
+    ) -> DreamReasoningRequest:
         plan = self._planner.plan(episodes, topic_limit=topic_limit)
         topics = self._normalize_topics(focal_topics) if focal_topics else plan.focal_topics
         evidence: dict[str, list[EvidenceItem]] = {}
@@ -86,7 +86,7 @@ class DreamingEngine:
                     )
             evidence[topic] = self._deduplicate(topic_evidence)
 
-        request = DreamReasoningRequest(
+        return DreamReasoningRequest(
             request_id=str(uuid4()),
             session_id=session_id,
             focal_topics=topics,
@@ -94,11 +94,28 @@ class DreamingEngine:
             session_end=plan.session_end,
             evidence_by_topic=evidence,
         )
+
+    def reason_prepared(self, request: DreamReasoningRequest) -> DreamDryRunResult:
         result = self._reasoner.reason(request)
         if result.request_id != request.request_id:
             raise ValueError("reasoner response request_id does not match request")
-
         return DreamDryRunResult(request=request, result=result)
+
+    def dry_run(
+        self,
+        episodes: list[EpisodeSnippet],
+        *,
+        session_id: str,
+        topic_limit: int = 3,
+        focal_topics: list[str] | None = None,
+    ) -> DreamDryRunResult:
+        request = self.prepare_request(
+            episodes,
+            session_id=session_id,
+            topic_limit=topic_limit,
+            focal_topics=focal_topics,
+        )
+        return self.reason_prepared(request)
 
     @staticmethod
     def _normalize_topics(topics: list[str]) -> list[str]:

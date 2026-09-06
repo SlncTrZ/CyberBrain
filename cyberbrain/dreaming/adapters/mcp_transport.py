@@ -109,7 +109,7 @@ class MCPStreamableHTTPInvoker:
                 value = json.loads(text)
             except json.JSONDecodeError:
                 continue
-            if isinstance(value, (dict, list)):
+            if isinstance(value, dict | list):
                 parsed = value
                 break
         if parsed is None:
