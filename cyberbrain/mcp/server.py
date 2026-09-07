@@ -22,6 +22,8 @@ from cyberbrain.schemas.models import EpisodeRole, Origin, Verification
 PROVIDER_NAME = "cyberbrain"
 CONTRACT_VERSION = "1"
 SCHEMA_VERSION = "1"
+COMPACT_RECALL_MAX_CHARS = 1_200
+_RECALL_VIEWS = {"compact", "full"}
 
 server = Server(PROVIDER_NAME)
 _runtime: RuntimeServices | None = None
@@ -90,6 +92,41 @@ def _json_text(value) -> list[types.TextContent]:  # noqa: ANN001
     return [types.TextContent(type="text", text=json.dumps(value, ensure_ascii=False, default=str))]
 
 
+def _recall_view(args: dict) -> str:
+    view = str(args.pop("view", "compact")).strip().casefold()
+    if view not in _RECALL_VIEWS:
+        raise ValueError("view must be one of: compact, full")
+    return view
+
+
+def _project_recall_rows(rows: list[dict], *, view: str) -> list[dict]:
+    if view == "full":
+        return rows
+
+    projected_rows: list[dict] = []
+    for row in rows:
+        projected = dict(row)
+        content = str(projected.pop("content", "") or "")
+        summary = str(projected.pop("summary", "") or "").strip()
+        if summary:
+            recall_text = summary
+            recall_text_source = "summary"
+        else:
+            recall_text = content[:COMPACT_RECALL_MAX_CHARS]
+            recall_text_source = "content_excerpt"
+
+        projected.update(
+            {
+                "recall_text": recall_text,
+                "recall_text_source": recall_text_source,
+                "content_chars": len(content),
+                "content_omitted": True,
+            }
+        )
+        projected_rows.append(projected)
+    return projected_rows
+
+
 def _error_text(exc: Exception) -> list[types.TextContent]:
     return _json_text(classify_error(exc).as_dict())
 
@@ -119,6 +156,7 @@ async def list_tools() -> list[types.Tool]:
                     "verification": {"type": "string"},
                     "origin": {"type": "string"},
                     "negative_knowledge": {"type": "boolean"},
+                    "view": {"type": "string", "enum": ["compact", "full"]},
                     "limit": {"type": "integer", "minimum": 1, "maximum": 50},
                 },
                 "required": ["query"],
@@ -192,6 +230,7 @@ async def list_tools() -> list[types.Tool]:
                     "project": {"type": "string"},
                     "topic": {"type": "string"},
                     "dream_status": {"type": "string"},
+                    "view": {"type": "string", "enum": ["compact", "full"]},
                     "limit": {"type": "integer", "minimum": 1, "maximum": 50},
                 },
                 "required": ["query"],
@@ -535,18 +574,19 @@ def _dispatch_tool(name: str, args: dict) -> list[types.TextContent]:
     if name == "knowledge_search":
         limit = int(args.pop("limit", 5))
         query = str(args.pop("query"))
+        view = _recall_view(args)
         wing = args.pop("wing", None)
         if wing is not None:
             if str(wing).strip().casefold() == "conversation":
-                return _json_text(
-                    runtime.memory.search(
-                        query=query,
-                        limit=limit,
-                        topic=args.pop("topic", None),
-                    )
+                rows = runtime.memory.search(
+                    query=query,
+                    limit=limit,
+                    topic=args.pop("topic", None),
                 )
+                return _json_text(_project_recall_rows(rows, view=view))
             args.setdefault("domain", _legacy_domain(str(wing)))
-        return _json_text(runtime.knowledge_search.search(query=query, limit=limit, **args))
+        rows = runtime.knowledge_search.search(query=query, limit=limit, **args)
+        return _json_text(_project_recall_rows(rows, view=view))
 
     if name == "knowledge_store":
         verification = Verification(args.pop("verification", Verification.UNVERIFIED.value))
@@ -595,7 +635,9 @@ def _dispatch_tool(name: str, args: dict) -> list[types.TextContent]:
     if name == "memory_search":
         limit = int(args.pop("limit", 5))
         query = str(args.pop("query"))
-        return _json_text(runtime.memory.search(query=query, limit=limit, **args))
+        view = _recall_view(args)
+        rows = runtime.memory.search(query=query, limit=limit, **args)
+        return _json_text(_project_recall_rows(rows, view=view))
 
     if name == "memory_store":
         event_time = datetime.fromisoformat(str(args.pop("event_time")).replace("Z", "+00:00"))

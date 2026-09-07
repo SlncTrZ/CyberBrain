@@ -66,14 +66,26 @@ Read-only. Returns the running provider contract, version metadata, contract has
 
 ### Knowledge tools
 
-- `knowledge_search` searches canonical knowledge and applies advertised filters.
+- `knowledge_search` searches canonical knowledge and applies advertised filters. Canonical recall defaults to `view=compact`; use `view=full` only when the complete stored content is required.
 - `knowledge_store` inserts or evolves canonical knowledge with explicit evolution outcomes.
 - `knowledge_timeline` returns version history for one canonical entity identity.
 
 ### Memory tools
 
-- `memory_search` searches episodic memory and applies session/channel/role/agent/project/topic filters.
+- `memory_search` searches episodic memory and applies session/channel/role/agent/project/topic filters. Canonical recall defaults to `view=compact`; use `view=full` only when the complete stored content is required.
 - `memory_store` stores one canonical episodic record with required `session_id` and `event_time`.
+
+### Compact recall
+
+Canonical `knowledge_search` and `memory_search` use compact-first retrieval so broad recall does not automatically return large stored payloads.
+
+- `view=compact` is the default.
+- When a stored `summary` exists, compact recall returns it as `recall_text` with `recall_text_source=summary`.
+- Without a summary, compact recall returns a bounded content excerpt of at most 1,200 characters with `recall_text_source=content_excerpt`.
+- Compact rows report the original `content_chars` and `content_omitted=true`; the full stored `content` and `summary` fields are omitted from that response.
+- `view=full` preserves the complete canonical search row for focused follow-up when detail is actually needed.
+
+Search ranking still uses the stored record embedding. Compact recall changes only the MCP response projection; it does not mutate Knowledge, Episodic Memory, vectors, provenance, or Dreaming evidence.
 
 ### Compatibility aliases
 
@@ -83,7 +95,7 @@ Read-only. Returns the running provider contract, version metadata, contract has
 - `conversation_save` maps legacy conversation writes into canonical episodic storage.
 - `conversation_recall` maps legacy conversation recall into canonical episodic search.
 
-These aliases may be retired after dependent clients have migrated to canonical CyberBrain tools. New integrations should use the canonical tools above.
+These aliases may be retired after dependent clients have migrated to canonical CyberBrain tools. New integrations should use the canonical tools above. Compatibility recall aliases retain their legacy full-payload behavior; compact-first projection applies only to canonical `knowledge_search` and `memory_search`.
 
 ### Prediction learning
 

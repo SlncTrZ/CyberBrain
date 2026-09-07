@@ -13,7 +13,15 @@ from cyberbrain.schemas.models import EpisodeRecord, KnowledgeRecord
 
 class FakeKnowledgeSearch:
     def search(self, **kwargs):
-        return [{"id": "k1", "score": 0.9, "content": "ok", **kwargs}]
+        return [
+            {
+                "id": "k1",
+                "score": 0.9,
+                "content": "full knowledge content",
+                "summary": "knowledge summary",
+                **kwargs,
+            }
+        ]
 
     def timeline(self, **kwargs):
         return [{"id": "k1", "version": 1, **kwargs}]
@@ -48,7 +56,15 @@ class FakeDreamOperations:
 
 class FakeMemory:
     def search(self, **kwargs):
-        return [{"id": "e1", "score": 0.8, **kwargs}]
+        return [
+            {
+                "id": "e1",
+                "score": 0.8,
+                "content": "memory full content " * 100,
+                "summary": None,
+                **kwargs,
+            }
+        ]
 
     def store(self, **kwargs):
         return EpisodeRecord(
@@ -242,6 +258,20 @@ def test_knowledge_search_handler() -> None:
     assert result[0]["query"] == "x"
     assert result[0]["domain"] == "ops"
     assert result[0]["limit"] == 3
+    assert result[0]["recall_text"] == "knowledge summary"
+    assert result[0]["recall_text_source"] == "summary"
+    assert result[0]["content_chars"] == len("full knowledge content")
+    assert result[0]["content_omitted"] is True
+    assert "content" not in result[0]
+    assert "summary" not in result[0]
+
+
+def test_knowledge_search_full_view_preserves_canonical_payload() -> None:
+    result = _call("knowledge_search", {"query": "x", "view": "full"})
+    assert result[0]["content"] == "full knowledge content"
+    assert result[0]["summary"] == "knowledge summary"
+    assert "recall_text" not in result[0]
+    assert "view" not in result[0]
 
 
 def test_knowledge_store_handler() -> None:
@@ -275,6 +305,20 @@ def test_memory_search_handler_applies_filters() -> None:
     result = _call("memory_search", {"query": "x", "channel": "chatgpt", "limit": 2})
     assert result[0]["channel"] == "chatgpt"
     assert result[0]["limit"] == 2
+    assert result[0]["recall_text_source"] == "content_excerpt"
+    assert len(result[0]["recall_text"]) == 1200
+    assert result[0]["content_chars"] == len("memory full content " * 100)
+    assert result[0]["content_omitted"] is True
+    assert "content" not in result[0]
+    assert "summary" not in result[0]
+
+
+def test_memory_search_full_view_preserves_canonical_payload() -> None:
+    result = _call("memory_search", {"query": "x", "view": "full"})
+    assert result[0]["content"] == "memory full content " * 100
+    assert result[0]["summary"] is None
+    assert "recall_text" not in result[0]
+    assert "view" not in result[0]
 
 
 def test_prediction_record_handler_parses_datetime_and_confidence() -> None:
@@ -447,6 +491,12 @@ def test_unknown_tool_returns_stable_not_found_error() -> None:
             "retryable": False,
         }
     }
+
+
+def test_invalid_recall_view_returns_validation_error() -> None:
+    result = _call("knowledge_search", {"query": "x", "view": "verbose"})
+    assert result["error"]["type"] == "validation_error"
+    assert result["error"]["retryable"] is False
 
 
 def test_invalid_tool_arguments_return_validation_error() -> None:
