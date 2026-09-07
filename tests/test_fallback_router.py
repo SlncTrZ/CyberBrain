@@ -86,6 +86,25 @@ class DeterministicPool(ConfiguredLLMRoutePool):
         return _result(f"result from {route.name}/{model}")
 
 
+class ContractAwarePool(ConfiguredLLMRoutePool):
+    def __init__(self) -> None:
+        super().__init__(_config(), environ={})
+        self.attempts: list[tuple[str, str]] = []
+
+    def _reason_with_model(self, route, model, request):  # noqa: ANN001
+        key = (route.name, model)
+        self.attempts.append(key)
+        if key == ("provider-1", "model-1A"):
+            raw = {
+                "type": "object",
+                "properties": {"task_id": {"type": "string"}},
+                "required": ["task_id", "claims"],
+            }
+        else:
+            raw = _result(f"validated result from {route.name}/{model}")
+        return self._validate_result(request, raw)
+
+
 class FakeRoutePool:
     def __init__(self, *, invalid: bool = False) -> None:
         self.invalid = invalid
@@ -137,6 +156,20 @@ def test_pool_uses_next_model_before_next_provider() -> None:
     result, route_name, model = pool.reason_task(_request())
 
     assert result["claims"][0]["claim"] == "result from provider-1/model-1B"
+    assert route_name == "provider-1"
+    assert model == "model-1B"
+    assert pool.attempts == [
+        ("provider-1", "model-1A"),
+        ("provider-1", "model-1B"),
+    ]
+
+
+def test_pool_falls_through_when_model_returns_json_that_fails_reason_contract() -> None:
+    pool = ContractAwarePool()
+
+    result, route_name, model = pool.reason_task(_request())
+
+    assert result["claims"][0]["claim"] == "validated result from provider-1/model-1B"
     assert route_name == "provider-1"
     assert model == "model-1B"
     assert pool.attempts == [

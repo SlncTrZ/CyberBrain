@@ -257,6 +257,16 @@ class ConfiguredLLMRoutePool:
         return parsed
 
     @staticmethod
+    def _validate_result(
+        request: dict[str, Any],
+        raw: dict[str, Any],
+    ) -> dict[str, Any]:
+        request_model = ReasonTaskRequest.model_validate(request)
+        result_model = ReasonTaskResult.model_validate(raw)
+        validate_task_result(request_model, result_model)
+        return result_model.model_dump(mode="json")
+
+    @staticmethod
     def _prompt(request: dict[str, Any]) -> str:
         task_id = str(request["task_id"])
         topic = str(request.get("topic") or "")
@@ -392,7 +402,8 @@ class ConfiguredLLMRoutePool:
                     )
                     response.raise_for_status()
                     text = self._extract_content(response.json())
-                    return self._parse_json(text)
+                    raw = self._parse_json(text)
+                    return self._validate_result(request, raw)
                 except Exception as exc:
                     errors.append(f"{protocol}:{type(exc).__name__}")
 
@@ -434,10 +445,7 @@ class FallbackReasonerRouter:
 
     @staticmethod
     def _validate(request: dict[str, Any], raw: dict[str, Any]) -> dict[str, Any]:
-        request_model = ReasonTaskRequest.model_validate(request)
-        result_model = ReasonTaskResult.model_validate(raw)
-        validate_task_result(request_model, result_model)
-        return result_model.model_dump(mode="json")
+        return ConfiguredLLMRoutePool._validate_result(request, raw)
 
     def reason_task(self, request: dict[str, Any]) -> dict[str, Any]:
         normalized = ReasonTaskRequest.model_validate(request).model_dump(mode="json")
