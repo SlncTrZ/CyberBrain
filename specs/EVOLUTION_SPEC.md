@@ -117,7 +117,7 @@ The storage adapter must implement one of these tested strategies:
 1. transactional/atomic update where supported; or
 2. idempotent two-phase mutation with explicit recovery state.
 
-Do not copy the current MeiLin pattern of inserting and then best-effort deprecating without a recoverable consistency mechanism.
+Do not use a legacy insert-then-best-effort-deprecate pattern without a recoverable consistency mechanism.
 
 ## Concurrency
 

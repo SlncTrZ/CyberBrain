@@ -1,6 +1,6 @@
 # CyberBrain V1 Staged Migration Report — 2026-09-04
 
-> Historical document. Historical staged-migration report retained for provenance. The final V1 runtime is now using the validated staged collections during the rollback window.
+> Historical document. Staged-migration report retained for provenance. References to validated staged collections and rollback windows describe the deployment state at the time of this snapshot.
 
 This report covers a staged migration only. No legacy production collection was modified or cut over.
 

@@ -24,7 +24,7 @@ X-API-Key: <token>
 
 The provider fails closed when authentication is required but not configured.
 
-## Current tools
+## Canonical tools
 
 ```text
 help
@@ -39,6 +39,13 @@ dream_reason_claim
 dream_reason_submit
 dream_reviews
 dream_review_resolve
+```
+
+These are the current canonical CyberBrain tool names exposed by the provider. Gateway-level namespacing, when used, is owned by the integration layer rather than by CyberBrain.
+
+## Compatibility aliases
+
+```text
 tech_store
 tech_find
 ai_memory_read
@@ -46,7 +53,7 @@ conversation_save
 conversation_recall
 ```
 
-CyberBrain keeps the original V1 Knowledge/Memory/Dreaming surface and adds two canonical operational tools for an external MCP Dream Reasoner inbox. The final five tools remain temporary MeiLin compatibility aliases used during migration/cutover. Gateway canonical names are owned by the gateway; the provider exposes local MCP tool names.
+These aliases are retained only for legacy client compatibility. They adapt into the canonical Knowledge/Memory services and do not define a second business-logic or persistence path.
 
 ### `help`
 
@@ -63,7 +70,7 @@ Read-only. Returns the running provider contract, version metadata, contract has
 - `memory_search` searches episodic memory and applies session/channel/role/agent/project/topic filters.
 - `memory_store` stores one canonical episodic record with required `session_id` and `event_time`.
 
-### MeiLin compatibility aliases
+### Compatibility aliases
 
 - `tech_store` maps legacy technical notes into canonical Knowledge Evolution writes.
 - `tech_find` maps legacy technical recall into canonical Knowledge search.
@@ -71,7 +78,7 @@ Read-only. Returns the running provider contract, version metadata, contract has
 - `conversation_save` maps legacy conversation writes into canonical episodic storage.
 - `conversation_recall` maps legacy conversation recall into canonical episodic search.
 
-These aliases are compatibility adapters only. They do not create a second business-logic path and may be retired after all clients use canonical CyberBrain tools.
+These aliases may be retired after dependent clients have migrated to canonical CyberBrain tools. New integrations should use the canonical tools above.
 
 ### Dreaming operations
 

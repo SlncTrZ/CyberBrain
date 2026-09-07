@@ -2,7 +2,7 @@
 
 ## Provider security
 
-CyberBrain follows `MCP_PROVIDER_STANDARD.md`.
+CyberBrain follows the repository integration standard in `../MCP_PROVIDER_STANDARD.md`.
 
 Network MCP deployment requires authenticated access.
 
@@ -89,6 +89,6 @@ Embedding/storage failure must fail explicitly. CyberBrain must not silently gen
 
 ## Configuration
 
-Behavioral non-secret configuration may live in tracked YAML examples/defaults.
+Behavioral non-secret configuration may be source-controlled when the current runtime contract explicitly defines how it is consumed. Tracked examples that are not runtime-loaded must say so clearly.
 
-Real credentials remain runtime-only and are never checked into Git.
+The current CyberBrain runtime primarily consumes `CYBERBRAIN_*` environment variables plus explicit Dream route JSON. Real credentials remain runtime-only and are never checked into Git.

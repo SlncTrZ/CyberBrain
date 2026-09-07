@@ -1,7 +1,7 @@
 # Historical Architecture Audit — Legacy MeiLin Runtime
 
 > Status: Historical Phase 0 evidence snapshot. This file describes the pre-CyberBrain legacy runtime and is retained for migration provenance.
-> Current CyberBrain runtime: see `docs/CURRENT_RUNTIME_2026-09-04.md`.
+> Current CyberBrain runtime: see `../CURRENT_RUNTIME.md`.
 > Historical source audited: `<legacy-deployment-root>/meilin-mcp`
 > Historical container slot: `meilin-mcp`
 > Compose project audited: `<legacy-deployment-root>/docker-compose.yml`

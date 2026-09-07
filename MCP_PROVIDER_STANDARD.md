@@ -515,6 +515,6 @@ A provider is ready for integration when:
 
 CyberBrain should implement this standard first and act as the practical validation target.
 
-The current MeiLin MCP deployment is the behavioral starting point because its Streamable HTTP + authenticated MCP integration has already proven compatible with SlncTrZ-MCP.
+Existing authenticated Streamable HTTP provider deployments serve as behavioral evidence for this standard; the standard must remain independent from any one client or deployment.
 
-The goal is not to preserve MeiLin-specific naming. The goal is to preserve the good provider mechanics and generalize them into a reusable standard for every future MCP provider in the system.
+The goal is to preserve proven provider mechanics and generalize them into a reusable standard for future MCP providers without carrying forward client-specific naming.

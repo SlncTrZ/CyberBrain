@@ -3,11 +3,11 @@
 ## Working rules
 
 1. Read existing code, specs, and runtime evidence before writing.
-2. Reuse proven MeiLin/CyberBrain logic before introducing new abstractions.
+2. Reuse proven CyberBrain or legacy-compatible logic before introducing new abstractions.
 3. Make surgical changes; do not refactor unrelated code.
-4. Treat `PLAN.md` and `MCP_PROVIDER_STANDARD.md` as current architectural constraints unless explicitly superseded.
+4. Treat `PLAN.md`, current `docs/`, `specs/`, and `MCP_PROVIDER_STANDARD.md` as current constraints. Files under `docs/history/` are non-normative evidence unless a current document explicitly references them.
 5. Keep CyberBrain independent from any single persona or client.
-6. Preserve backward compatibility with active MeiLin data/contracts during migration unless a breaking change is explicitly approved.
+6. Preserve only compatibility behavior that is explicitly part of the current tool/runtime contract; do not let legacy client behavior become a second business-logic path.
 7. CyberBrain V1 uses exactly two Qdrant collections: `cyberbrain_knowledge` and `cyberbrain_episodic`.
 8. Dreaming is a first-class evidence-backed consolidation process, not a free-form generative summarizer.
 9. Dreaming must not invent facts; canonical evolution requires evidence.
@@ -22,10 +22,10 @@
 ## Implementation sequence
 
 ```text
-audit → define boundaries → specify → extract deliberately → test → migrate
+audit → define boundaries → specify → implement deliberately → test
 ```
 
-Do not copy the existing MeiLin source tree wholesale into CyberBrain as a shortcut.
+Do not copy a client-specific or deployment-specific implementation wholesale into CyberBrain as a shortcut.
 
 ## License
 

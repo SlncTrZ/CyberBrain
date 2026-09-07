@@ -28,7 +28,7 @@ Alternative provider ids are allowed. CyberBrain treats the configured tool name
 
 ### `help`
 
-Read-only, zero side effects, compliant with `MCP_PROVIDER_STANDARD.md`.
+Read-only, zero side effects, compliant with `../MCP_PROVIDER_STANDARD.md`.
 
 ### `reason`
 
@@ -166,7 +166,7 @@ It should identify:
 
 ## Error semantics
 
-Use structured provider errors consistent with `MCP_PROVIDER_STANDARD.md`.
+Use structured provider errors consistent with `../MCP_PROVIDER_STANDARD.md`.
 
 Malformed input -> `validation_error`.
 

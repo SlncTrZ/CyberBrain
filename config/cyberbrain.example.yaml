@@ -1,4 +1,6 @@
-# Non-secret CyberBrain behavior configuration example.
+# Documentation-only non-secret behavior example.
+# Current CyberBrain runtime does NOT load this YAML file.
+# Use CYBERBRAIN_* environment variables and the documented Dream route JSON for active runtime configuration.
 server:
   host: 0.0.0.0
   port: 8767

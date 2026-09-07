@@ -1,20 +1,23 @@
 # CyberBrain Documentation
 
-This directory separates current runtime/release guidance from historical migration evidence.
+The documentation tree separates current normative guidance from historical evidence.
 
-## Current
+## Current guidance
 
-- `DREAMING_ROUTING.md` — provider-neutral MCP-first Dream routing and ordered LLM route configuration.
-- `CURRENT_RUNTIME_2026-09-04.md` — current CyberBrain V1 runtime topology and operating boundaries.
-- `V1_FREEZE_2026-09-04.md` — V1 completion/freeze decision and use-and-observe operating mode.
+- CURRENT_RUNTIME.md — current deployment-neutral runtime contract and service boundaries.
+- DREAMING_ROUTING.md — provider-neutral MCP-first Dream routing and ordered LLM route configuration.
+- ../TOOL_GUIDE.md — current MCP tool behavior.
+- ../PLAN.md — current operating mode and architectural invariants.
+- ../specs/ — canonical data, retrieval, evolution, Dreaming, Reasoner, security, and tool contracts.
 
-## Historical migration/release evidence
+## Historical evidence
 
-- `CURRENT_ARCHITECTURE.md` — pre-CyberBrain legacy runtime audit.
-- `DATA_MODEL_AUDIT.md` — pre-migration data-shape audit.
-- `LEGACY_MIGRATION_AUDIT_2026-09-04.md` — legacy migration disposition audit.
-- `MIGRATION_PLAN.md` — migration plan used during implementation.
-- `STAGED_MIGRATION_REPORT_2026-09-04.md` — staged/final-freeze migration evidence.
-- `RELEASE_CANDIDATE_2026-09-04.md` — historical release-candidate gate.
+All migration, cutover, freeze, release-candidate, data-audit, and earlier runtime snapshots live in:
 
-Historical documents intentionally preserve observations that may differ from the current V1 runtime.
+- history/
+
+Historical files are preserved for provenance. They may contain dates, counts, temporary collection
+names, compatibility service slots, acceptance-window instructions, or benchmark results that were
+true at the time but are not current operating instructions.
+
+When current and historical documents differ, current guidance and canonical specs take precedence.

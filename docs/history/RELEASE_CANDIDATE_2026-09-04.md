@@ -1,6 +1,6 @@
 # Historical CyberBrain V1 Release Candidate — 2026-09-04
 
-> Historical document. This records the release-candidate gate before V1 completion. For current runtime state see `CURRENT_RUNTIME_2026-09-04.md` and `V1_FREEZE_2026-09-04.md`.
+> Historical document. This records the release-candidate gate before V1 completion. For current runtime guidance see `../CURRENT_RUNTIME.md`; the V1 freeze file in this directory is also historical.
 
 ## Scope
 
@@ -128,7 +128,7 @@ If CyberBrain itself fails acceptance:
 
 ## V1 freeze
 
-CyberBrain V1 is frozen for daily-use acceptance. See `docs/V1_FREEZE_2026-09-04.md`. New work requires evidence from real usage rather than architecture completeness.
+CyberBrain V1 is frozen for daily-use acceptance. See `docs/history/V1_FREEZE_2026-09-04.md`. New work requires evidence from real usage rather than architecture completeness.
 
 ## Historical remaining work at RC time
 

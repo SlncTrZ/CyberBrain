@@ -1,6 +1,6 @@
 # CyberBrain MCP Tool Contract v1
 
-CyberBrain complies with `MCP_PROVIDER_STANDARD.md`.
+CyberBrain complies with the repository integration standard in `../MCP_PROVIDER_STANDARD.md`.
 
 ## Required tools
 
@@ -142,6 +142,6 @@ dream_review_resolve
 
 ## Legacy aliases
 
-Legacy MeiLin tools may be supported temporarily by a compatibility adapter, not by polluting the canonical domain API.
+Legacy client tools may be supported temporarily by a compatibility adapter, not by polluting the canonical domain API.
 
 Known legacy behavior bugs are not part of the new canonical contract.

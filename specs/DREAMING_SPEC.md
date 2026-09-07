@@ -164,19 +164,18 @@ any MCP reasoning provider
 
 A Reasoner returns structured candidates and evidence references; it never receives authority to write Knowledge directly. All returned output must pass CyberBrain validation/evidence gates before any mutation.
 
-## Observed production constraints from Phase 0
+## Historical migration rationale
 
-Dreaming must account for heterogeneous legacy/new episodic payloads:
+Earlier migration audits found heterogeneous imported episodic payloads, including mixed timestamp representations, metadata placement, and incomplete legacy fields. Those observations are historical evidence; they are not claims about the current canonical runtime.
 
-- timestamps currently exist as both integer epoch values and strings
-- session/channel metadata may be top-level on older points but nested under `extra_metadata` on newer points
-- some episodic points have no version/status metadata
-- the current recall tool does not correctly apply the advertised `channel` filter
+The canonical requirements derived from that evidence remain:
 
-Therefore Dreaming must consume a canonical normalization layer rather than reading raw Qdrant payloads directly.
+- imported or legacy payloads must pass through normalization before Dreaming consumes them;
+- temporal recall must use the canonical event-time accessor rather than raw payload assumptions;
+- advertised retrieval filters must be enforced and covered by tests;
+- Knowledge status is interpreted through canonical evolution identity/version rules rather than treated as an unverified truth signal;
+- migration-specific compatibility must not weaken current provenance or evidence validation.
 
-Temporal recall must use a canonical event-time accessor whose migration precedence is explicitly specified and tested against real production payloads before Dreaming writes anything.
+Historical Phase 0 and migration evidence is preserved under `docs/history/`.
 
-The current production Knowledge Evolution path also permits multiple active versions for some entities. Dreaming must treat `status=active` as evidence to inspect, not unquestioned canonical truth, until reconciliation rules are implemented.
-
-Detailed thresholds and evidence/task budgets are runtime policy and may be tuned from production evidence. Dreaming writes are enabled only through the implemented provenance validation, promotion/review gate, DreamRun audit, and Knowledge Evolution writeback path.
+Detailed thresholds and evidence/task budgets are runtime policy and may be tuned from operational evidence. Dreaming writes are enabled only through the implemented provenance validation, promotion/review gate, DreamRun audit, and Knowledge Evolution writeback path.

@@ -101,7 +101,7 @@ Legacy integer/string timestamps are migration concerns handled by a compatibili
 id: eaf13f05-f235-4f0c-b93f-00f5a8ab91f2
 schema_version: 1
 record_type: episode
-content: Decided to extract CyberBrain from MeiLin as shared infrastructure.
+content: Decided to use CyberBrain as shared memory infrastructure for multiple AI clients.
 session_id: session-20260904-cyberbrain
 event_time: 2026-09-04T15:25:00.000Z
 channel: chatgpt
@@ -111,7 +111,7 @@ project: CyberBrain
 topic: architecture
 keywords:
   - CyberBrain
-  - MeiLin
+  - shared-memory
 importance: high
 source: conversation
 dream_status: pending

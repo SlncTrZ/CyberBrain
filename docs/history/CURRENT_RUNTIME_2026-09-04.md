@@ -1,5 +1,7 @@
 # CyberBrain Current Runtime — 2026-09-04
 
+> Historical runtime snapshot. This file records deployment state as of 2026-09-04 and is not current operating guidance. See `../CURRENT_RUNTIME.md` for the current source-level runtime contract.
+
 ## Ownership boundary
 
 This document describes CyberBrain only. SlncTrZ-MCP owns gateway routing, canonical `<provider>.<tool>` names, gateway policy, provider lifecycle, and catalog composition. CyberBrain exposes provider-local MCP tool names. Gateway incompatibilities are reported at the boundary; they are not repaired from this project.
