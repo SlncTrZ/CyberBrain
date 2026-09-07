@@ -33,6 +33,8 @@ knowledge_store
 knowledge_timeline
 memory_search
 memory_store
+prediction_record
+prediction_resolve
 dream_enqueue
 dream_status
 dream_reason_claim
@@ -80,6 +82,15 @@ Read-only. Returns the running provider contract, version metadata, contract has
 
 These aliases may be retired after dependent clients have migrated to canonical CyberBrain tools. New integrations should use the canonical tools above.
 
+### Prediction learning
+
+- `prediction_record` stores an explicit expected outcome and prior confidence as canonical Episodic Memory before an action or decision is evaluated.
+- `prediction_resolve` stores an observed outcome linked to a prior Prediction and derives a deterministic prediction-error class plus confidence-weighted error signal.
+- Prediction/Outcome records remain Episodic evidence. Neither prior confidence nor outcome assessment has direct Knowledge write authority.
+- Outcome identity context is inherited from the referenced Prediction so callers cannot silently relabel the learning event.
+
+See `specs/PREDICTION_LEARNING.md` for the full contract.
+
 ### Dreaming operations
 
 - `dream_enqueue` queues a completed session for the Dream worker. Optional focal topics may be supplied.
@@ -91,4 +102,4 @@ These aliases may be retired after dependent clients have migrated to canonical 
 
 Dreaming operations do not expose a direct write path. A candidate can reach Knowledge only through Reasoner provenance validation, the promotion gate, optional review resolution, and Knowledge Evolution writeback.
 
-For v0.1.5 Dream worker routing, CyberBrain prepares the full Dream request and bounded micro-task set first, registers the whole run atomically in the Reason Task inbox, then gives external MCP consumers one common claim/submit window (`CYBERBRAIN_DREAM_MCP_WAIT_SECONDS`, default 30 seconds). MCP-completed tasks are preserved as the winning results. After the common deadline, only unfinished tasks are sent to the configured fallback Reasoner endpoint. The fallback service reads an ordered, provider-neutral route configuration: provider 1 models in declared order, then provider 2 models, and so on. CyberBrain does not hard-code provider names, model names, or an external routing product. Credentials are resolved only from runtime environment variables named by each route's `auth_env`. The MCP wait is run-level, not a serial per-task delay.
+For current Dream worker routing, CyberBrain prepares the full Dream request and bounded micro-task set first, registers the whole run atomically in the Reason Task inbox, then gives external MCP consumers one common claim/submit window (`CYBERBRAIN_DREAM_MCP_WAIT_SECONDS`, default 30 seconds). MCP-completed tasks are preserved as the winning results. After the common deadline, only unfinished tasks are sent to the configured fallback Reasoner endpoint. The fallback service reads an ordered, provider-neutral route configuration: provider 1 models in declared order, then provider 2 models, and so on. CyberBrain does not hard-code provider names, model names, or an external routing product. Credentials are resolved only from runtime environment variables named by each route's `auth_env`. The MCP wait is run-level, not a serial per-task delay.

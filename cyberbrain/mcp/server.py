@@ -6,6 +6,7 @@ import hashlib
 import json
 from datetime import datetime
 from pathlib import Path
+from uuid import UUID
 
 import mcp.types as types
 from mcp.server import Server
@@ -218,6 +219,65 @@ async def list_tools() -> list[types.Tool]:
                     "extensions": {"type": "object"},
                 },
                 "required": ["content", "session_id", "event_time"],
+                "additionalProperties": False,
+            },
+        ),
+        types.Tool(
+            name="prediction_record",
+            description="Record an evidence-neutral prediction as canonical episodic memory.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "expected_outcome": {"type": "string"},
+                    "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+                    "session_id": {"type": "string"},
+                    "event_time": {"type": "string", "format": "date-time"},
+                    "action": {"type": "string"},
+                    "rationale": {"type": "string"},
+                    "channel": {"type": "string"},
+                    "agent": {"type": "string"},
+                    "project": {"type": "string"},
+                    "topic": {"type": "string"},
+                    "keywords": {"type": "array", "items": {"type": "string"}},
+                    "importance": {"type": "string"},
+                },
+                "required": [
+                    "expected_outcome",
+                    "confidence",
+                    "session_id",
+                    "event_time",
+                ],
+                "additionalProperties": False,
+            },
+        ),
+        types.Tool(
+            name="prediction_resolve",
+            description=(
+                "Record an observed outcome linked to a prior prediction "
+                "and derive prediction error."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "prediction_id": {"type": "string", "format": "uuid"},
+                    "observed_outcome": {"type": "string"},
+                    "assessment": {
+                        "type": "string",
+                        "enum": [
+                            "confirmed",
+                            "partially_confirmed",
+                            "contradicted",
+                            "indeterminate",
+                        ],
+                    },
+                    "event_time": {"type": "string", "format": "date-time"},
+                },
+                "required": [
+                    "prediction_id",
+                    "observed_outcome",
+                    "assessment",
+                    "event_time",
+                ],
                 "additionalProperties": False,
             },
         ),
@@ -479,6 +539,24 @@ def _dispatch_tool(name: str, args: dict) -> list[types.TextContent]:
         role_value = args.pop("role", None)
         role = EpisodeRole(role_value) if role_value is not None else None
         record = runtime.memory.store(event_time=event_time, role=role, **args)
+        return _json_text(record.model_dump(mode="json"))
+
+    if name == "prediction_record":
+        event_time = datetime.fromisoformat(str(args.pop("event_time")).replace("Z", "+00:00"))
+        record = runtime.prediction_learning.record_prediction(
+            event_time=event_time,
+            **args,
+        )
+        return _json_text(record.model_dump(mode="json"))
+
+    if name == "prediction_resolve":
+        event_time = datetime.fromisoformat(str(args.pop("event_time")).replace("Z", "+00:00"))
+        prediction_id = UUID(str(args.pop("prediction_id")))
+        record = runtime.prediction_learning.record_outcome(
+            prediction_id=prediction_id,
+            event_time=event_time,
+            **args,
+        )
         return _json_text(record.model_dump(mode="json"))
 
     if name == "tech_store":

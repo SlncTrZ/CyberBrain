@@ -36,6 +36,14 @@ CyberBrain intentionally keeps exactly two canonical durable Qdrant collections:
 Dreaming is a process, not a third collection. Queue, audit, and reason-task coordination state are
 operational state stored separately from canonical Knowledge and Episodic Memory.
 
+## Learning primitives
+
+Main now includes the first bounded cognitive-learning mechanism: Prediction / Outcome / Prediction Error.
+
+Agents can record an explicit expected outcome and prior confidence before an action, then resolve that prediction with an observed outcome and finite assessment. CyberBrain stores both as canonical Episodic evidence and derives a transparent prediction-error signal. This does not implement metacognition or self-modeling.
+
+See specs/PREDICTION_LEARNING.md.
+
 ## Dreaming
 
 Dreaming is evidence-grounded consolidation.

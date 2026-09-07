@@ -73,6 +73,22 @@ failed
 - Unknown source-specific fields belong under `extensions` or `context`.
 - Dreaming consumes canonical episodic records and never reads raw provider-specific payload shapes directly.
 
+## Cognitive learning context
+
+Prediction-learning events remain ordinary canonical Episodes and use the existing `context` field rather than adding another collection or record type.
+
+Reserved shape:
+
+```text
+context.cognition.kind = prediction | outcome
+```
+
+Prediction records use their immutable Episode ID as `context.cognition.prediction_id`. Outcome records reference that ID and preserve the expected outcome, prior confidence, observed outcome, assessment, and derived prediction-error signals.
+
+The cognition context is evidence metadata. It does not change the canonical `record_type=episode` contract and does not grant direct Knowledge write authority.
+
+See `PREDICTION_LEARNING.md`.
+
 ## Session model
 
 A session is a cognitive work boundary rather than a calendar-day boundary.

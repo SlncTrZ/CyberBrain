@@ -4,7 +4,7 @@ import asyncio
 import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from cyberbrain.knowledge.evolution import EvolutionOutcome, EvolutionResult
 from cyberbrain.mcp.server import call_tool, configure_dream_operations, configure_runtime
@@ -60,15 +60,71 @@ class FakeMemory:
         )
 
 
+class FakePredictionLearning:
+    def __init__(self) -> None:
+        self.prediction_calls: list[dict] = []
+        self.outcome_calls: list[dict] = []
+
+    def record_prediction(self, **kwargs):
+        self.prediction_calls.append(dict(kwargs))
+        prediction_id = uuid4()
+        return EpisodeRecord(
+            id=prediction_id,
+            content=f"Prediction: {kwargs['expected_outcome']}",
+            session_id=kwargs["session_id"],
+            event_time=kwargs["event_time"],
+            content_hash="2" * 64,
+            source="cognitive_prediction",
+            context={
+                "cognition": {
+                    "kind": "prediction",
+                    "prediction_id": str(prediction_id),
+                    "expected_outcome": kwargs["expected_outcome"],
+                    "confidence": kwargs["confidence"],
+                }
+            },
+        )
+
+    def record_outcome(self, **kwargs):
+        self.outcome_calls.append(dict(kwargs))
+        return EpisodeRecord(
+            id=uuid4(),
+            content=f"Outcome: {kwargs['observed_outcome']}",
+            session_id="s-prediction",
+            event_time=kwargs["event_time"],
+            content_hash="3" * 64,
+            source="cognitive_outcome",
+            context={
+                "cognition": {
+                    "kind": "outcome",
+                    "prediction_id": str(kwargs["prediction_id"]),
+                    "observed_outcome": kwargs["observed_outcome"],
+                    "assessment": kwargs["assessment"],
+                }
+            },
+        )
+
+
+PREDICTION_LEARNING = FakePredictionLearning()
+
+
 @dataclass
 class FakeRuntime:
     knowledge_evolution: FakeKnowledgeEvolution
     knowledge_search: FakeKnowledgeSearch
     memory: FakeMemory
+    prediction_learning: FakePredictionLearning
 
 
 def setup_module() -> None:
-    configure_runtime(FakeRuntime(FakeKnowledgeEvolution(), FakeKnowledgeSearch(), FakeMemory()))
+    configure_runtime(
+        FakeRuntime(
+            FakeKnowledgeEvolution(),
+            FakeKnowledgeSearch(),
+            FakeMemory(),
+            PREDICTION_LEARNING,
+        )
+    )
     configure_dream_operations(FakeDreamOperations())
 
 
@@ -115,6 +171,44 @@ def test_memory_search_handler_applies_filters() -> None:
     result = _call("memory_search", {"query": "x", "channel": "chatgpt", "limit": 2})
     assert result[0]["channel"] == "chatgpt"
     assert result[0]["limit"] == 2
+
+
+def test_prediction_record_handler_parses_datetime_and_confidence() -> None:
+    result = _call(
+        "prediction_record",
+        {
+            "expected_outcome": "The validation passes.",
+            "confidence": 0.75,
+            "session_id": "s-prediction",
+            "event_time": datetime.now(UTC).isoformat(),
+            "project": "CyberBrain",
+        },
+    )
+
+    cognition = result["context"]["cognition"]
+    assert result["source"] == "cognitive_prediction"
+    assert cognition["kind"] == "prediction"
+    assert cognition["confidence"] == 0.75
+    assert PREDICTION_LEARNING.prediction_calls[-1]["project"] == "CyberBrain"
+
+
+def test_prediction_resolve_handler_parses_uuid_and_assessment() -> None:
+    prediction_id = uuid4()
+    result = _call(
+        "prediction_resolve",
+        {
+            "prediction_id": str(prediction_id),
+            "observed_outcome": "The validation failed.",
+            "assessment": "contradicted",
+            "event_time": datetime.now(UTC).isoformat(),
+        },
+    )
+
+    call = PREDICTION_LEARNING.outcome_calls[-1]
+    assert isinstance(call["prediction_id"], UUID)
+    assert call["prediction_id"] == prediction_id
+    assert call["assessment"] == "contradicted"
+    assert result["context"]["cognition"]["kind"] == "outcome"
 
 
 def test_legacy_knowledge_search_normalizes_wing_to_domain() -> None:

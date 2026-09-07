@@ -81,12 +81,14 @@ previous mechanism should first produce enough operational evidence to justify t
 ### Ordered roadmap
 
 1. Prediction / Outcome / Prediction Error
+   - Status: implemented on main; observation period required before mechanism 2 begins.
    - Record what an agent expected before an action or decision.
    - Record what actually happened.
    - Derive the mismatch without treating the prediction as truth.
    - Use prediction error as learning evidence.
 
 2. Metacognition / Calibration
+   - Status: planned; do not implement until Prediction Learning observation evidence is reviewed.
    - Compare prior confidence with actual outcomes.
    - Detect recurring overconfidence, underconfidence, and reasoning failure patterns.
    - Learn about reasoning quality without granting self-assessment direct Knowledge write
@@ -149,6 +151,7 @@ Normative/current guidance:
 - docs/CURRENT_RUNTIME.md
 - docs/DREAMING_ROUTING.md
 - specs/
+  - including specs/PREDICTION_LEARNING.md for the first cognitive learning mechanism.
 
 Historical development and migration evidence lives under docs/history/ and is non-normative.
 

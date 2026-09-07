@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from cyberbrain.cognition.prediction import PredictionLearningService
 from cyberbrain.core.metrics import MetricsRegistry
 from cyberbrain.core.settings import Settings
 from cyberbrain.embedding.base import EmbeddingProvider
@@ -23,6 +24,7 @@ class RuntimeServices:
     knowledge_evolution: KnowledgeEvolutionService
     knowledge_search: KnowledgeSearchService
     memory: MemoryService
+    prediction_learning: PredictionLearningService
 
 
 def build_runtime(settings: Settings) -> RuntimeServices:
@@ -64,6 +66,12 @@ def build_runtime(settings: Settings) -> RuntimeServices:
     )
     knowledge_evolution.reconcile_pending()
 
+    memory = MemoryService(
+        repository=repository,
+        embedding=embedding,
+        collection=settings.episodic_collection,
+        score_threshold=settings.memory_search_score_threshold,
+    )
     return RuntimeServices(
         metrics=metrics,
         repository=repository,
@@ -75,10 +83,10 @@ def build_runtime(settings: Settings) -> RuntimeServices:
             collection=settings.knowledge_collection,
             score_threshold=settings.knowledge_search_score_threshold,
         ),
-        memory=MemoryService(
+        memory=memory,
+        prediction_learning=PredictionLearningService(
+            memory=memory,
             repository=repository,
-            embedding=embedding,
-            collection=settings.episodic_collection,
-            score_threshold=settings.memory_search_score_threshold,
+            episodic_collection=settings.episodic_collection,
         ),
     )

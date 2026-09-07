@@ -11,6 +11,8 @@ knowledge_store
 knowledge_timeline
 memory_search
 memory_store
+prediction_record
+prediction_resolve
 dream_enqueue
 dream_status
 dream_reviews
@@ -26,6 +28,8 @@ cyberbrain.knowledge_store
 cyberbrain.knowledge_timeline
 cyberbrain.memory_search
 cyberbrain.memory_store
+cyberbrain.prediction_record
+cyberbrain.prediction_resolve
 cyberbrain.dream_enqueue
 cyberbrain.dream_status
 cyberbrain.dream_reviews
@@ -126,6 +130,34 @@ event_time
 Optional episodic metadata follows `MEMORY_SCHEMA.md`.
 
 New ordinary episodes default to `dream_status=pending`.
+
+## Prediction learning tools
+
+`prediction_record` requires:
+
+```text
+expected_outcome
+confidence
+session_id
+event_time
+```
+
+`confidence` is bounded to 0..1 and describes the caller's prior confidence, not truth probability.
+
+`prediction_resolve` requires:
+
+```text
+prediction_id
+observed_outcome
+assessment
+event_time
+```
+
+Allowed assessment values are `confirmed`, `partially_confirmed`, `contradicted`, and `indeterminate`.
+
+Both operations store canonical Episodic records. Outcome metadata inherits the referenced Prediction's session/agent/project/topic identity. Prediction error is derived deterministically and remains learning evidence rather than Knowledge truth.
+
+See `PREDICTION_LEARNING.md`.
 
 ## Dreaming tools
 
