@@ -1,7 +1,7 @@
 # CyberBrain — Current Plan
 
 > Status: Current project guidance.
-> Release baseline: v0.1.5.
+> Release baseline: v0.1.6.
 
 ## Operating mode
 
@@ -81,14 +81,14 @@ previous mechanism should first produce enough operational evidence to justify t
 ### Ordered roadmap
 
 1. Prediction / Outcome / Prediction Error
-   - Status: implemented on main; observation and pending-resolution tooling are active, and observation evidence must be reviewed before mechanism 2 begins.
+   - Status: implemented and released in v0.1.6; initial end-to-end gateway validation passed; observation remains active.
    - Record what an agent expected before an action or decision.
    - Record what actually happened.
    - Derive the mismatch without treating the prediction as truth.
    - Use prediction error as learning evidence.
 
 2. Metacognition / Calibration
-   - Status: initial read-only calibration analysis implemented on main; observation evidence must be reviewed before mechanism 3 begins.
+   - Status: initial read-only calibration analysis released in v0.1.6; initial end-to-end gateway validation passed; observation evidence must be reviewed before mechanism 3 begins.
    - Compare prior confidence with actual outcomes.
    - Detect recurring overconfidence, underconfidence, and reasoning failure patterns.
    - Learn about reasoning quality without granting self-assessment direct Knowledge write

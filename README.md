@@ -9,9 +9,9 @@ evidence-grounded Dreaming with traceable reasoning and explicit promotion/revie
 
 ## Status
 
-Latest tagged release: v0.1.5.
+Latest tagged release: v0.1.6.
 
-Current development version on `main`: 0.1.6-dev.
+Current development version on `main`: 0.1.6.
 
 The repository is in use-and-observe mode: changes should be driven by reproducible defects,
 operational evidence, security/privacy needs, or portability gaps rather than speculative feature
@@ -44,7 +44,7 @@ Main now includes the first bounded cognitive-learning mechanism: Prediction / O
 
 Agents can record an explicit expected outcome and prior confidence before an action, then resolve that prediction with an observed outcome and finite assessment. CyberBrain stores both as canonical Episodic evidence and derives a transparent prediction-error signal. This does not implement metacognition or self-modeling.
 
-See specs/PREDICTION_LEARNING.md. Main also contains an initial read-only Metacognition / Calibration analysis over resolved Prediction Learning evidence. It does not persist self-beliefs or change agent strategy. See specs/METACOGNITION_CALIBRATION.md.
+See specs/PREDICTION_LEARNING.md. Main also contains an initial read-only Metacognition / Calibration analysis over resolved Prediction Learning evidence. It does not persist self-beliefs or change agent strategy. Initial end-to-end MCP gateway validation has passed; both mechanisms remain in observation. See specs/METACOGNITION_CALIBRATION.md.
 
 ## Dreaming
 
