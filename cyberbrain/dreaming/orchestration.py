@@ -86,6 +86,7 @@ class MultipassDreamReasoner(DreamReasoner):
 
         result_by_id = {result.task_id: result for result in results}
         candidates: list[DreamCandidate] = []
+        dropped_advice_claims = 0
 
         for task in tasks:
             result = result_by_id[task.task_id]
@@ -93,13 +94,19 @@ class MultipassDreamReasoner(DreamReasoner):
                 raise ValueError("micro reasoner response task_id does not match task")
             allowed = {item.id for item in task.evidence}
             for index, claim in enumerate(result.claims):
+                if self._contains_advice(claim.claim):
+                    dropped_advice_claims += 1
+                    continue
                 self._validate_claim(task, claim, allowed)
                 candidates.append(self._candidate_from_claim(task, claim, index))
 
+        notes = [f"multipass_tasks={len(tasks)}"]
+        if dropped_advice_claims:
+            notes.append(f"dropped_advice_claims={dropped_advice_claims}")
         return DreamReasoningResult(
             request_id=request.request_id,
             candidates=candidates,
-            notes=[f"multipass_tasks={len(tasks)}"],
+            notes=notes,
         )
 
     def _build_tasks(self, request: DreamReasoningRequest) -> list[ReasoningTask]:
@@ -216,9 +223,11 @@ class MultipassDreamReasoner(DreamReasoner):
         unknown = sorted(set(claim.evidence_ids) - allowed)
         if unknown:
             raise ValueError(f"micro reasoner fabricated evidence IDs: {unknown}")
-        lowered = claim.claim.casefold()
-        if any(marker in lowered for marker in ("nên ", "đề xuất", "recommend", "should ")):
-            raise ValueError("micro reasoner returned advice instead of historical consolidation")
+
+    @staticmethod
+    def _contains_advice(value: str) -> bool:
+        lowered = value.casefold()
+        return any(marker in lowered for marker in ("nên ", "đề xuất", "recommend", "should "))
 
     @staticmethod
     def _candidate_from_claim(

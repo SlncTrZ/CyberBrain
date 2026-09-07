@@ -101,6 +101,28 @@ def test_multipass_reasoner_rejects_fabricated_evidence() -> None:
         MultipassDreamReasoner(micro_reasoner=FabricatingMicroReasoner()).reason(_request())
 
 
+def test_assemble_drops_advice_claim_without_failing_entire_run() -> None:
+    reasoner = MultipassDreamReasoner(micro_reasoner=FakeMicroReasoner())
+    request = _request()
+    tasks = reasoner.build_tasks(request)
+    valid = [FakeMicroReasoner().reason_task(task) for task in tasks]
+    valid[0] = ReasoningTaskResult(
+        task_id=tasks[0].task_id,
+        claims=[
+            ReasoningClaim(
+                claim="Đề xuất guard try/catch.",
+                evidence_ids=[tasks[0].evidence[0].id],
+                confidence=0.9,
+            )
+        ],
+    )
+
+    result = reasoner.assemble(request, tasks=tasks, results=valid)
+
+    assert len(result.candidates) == len(tasks) - 1
+    assert result.notes == [f"multipass_tasks={len(tasks)}", "dropped_advice_claims=1"]
+
+
 def test_assemble_rejects_missing_and_unexpected_results() -> None:
     reasoner = MultipassDreamReasoner(micro_reasoner=FakeMicroReasoner())
     request = _request()
