@@ -36,6 +36,7 @@ memory_store
 prediction_record
 prediction_resolve
 prediction_observe
+prediction_pending
 dream_enqueue
 dream_status
 dream_reason_claim
@@ -88,10 +89,11 @@ These aliases may be retired after dependent clients have migrated to canonical 
 - `prediction_record` stores an explicit expected outcome and prior confidence as canonical Episodic Memory before an action or decision is evaluated.
 - `prediction_resolve` stores an observed outcome linked to a prior Prediction and derives a deterministic prediction-error class plus confidence-weighted error signal.
 - `prediction_observe` is read-only and summarizes the current observation sample: prediction/outcome counts, resolved/unresolved predictions, duplicate outcomes, assessment/error distributions, and mean confidence/error signals.
+- `prediction_pending` is read-only and lists unresolved Predictions so an agent can return later and close the learning loop with `prediction_resolve`. Results are bounded and include `may_be_incomplete` when the configured scan limit is reached.
 - Prediction/Outcome records remain Episodic evidence. Neither prior confidence nor outcome assessment has direct Knowledge write authority.
 - Outcome identity context is inherited from the referenced Prediction so callers cannot silently relabel the learning event.
 
-See `specs/PREDICTION_LEARNING.md` for the full contract.
+Recommended agent loop: `prediction_record` → `prediction_pending` / `prediction_observe` → `prediction_resolve` → Dreaming. See `specs/PREDICTION_LEARNING.md` for the full contract.
 
 ### Dreaming operations
 

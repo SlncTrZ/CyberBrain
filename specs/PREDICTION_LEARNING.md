@@ -173,6 +173,41 @@ When more than one Outcome references the same Prediction, observation metrics u
 
 The summary is descriptive only. It does not classify an agent as overconfident/underconfident and does not write Knowledge.
 
+## Pending prediction interface
+
+Canonical read-only MCP operation:
+
+    prediction_pending
+
+Optional filters:
+
+    session_id
+    agent
+    project
+    topic
+    limit
+    scan_limit
+
+The result contains unresolved Predictions in deterministic event-time order and includes the prediction ID, expected outcome, prior confidence, action, and inherited identity context needed to resolve the event later.
+
+The implementation scans bounded Prediction and Outcome samples. If either scan reaches scan_limit, it returns:
+
+    may_be_incomplete = true
+
+Callers must then treat the list as a partial view rather than the complete unresolved population.
+
+This tool does not create reminders, change prediction state, or infer an Outcome.
+
+Recommended operational loop:
+
+    prediction_record
+        ↓
+    prediction_pending / prediction_observe
+        ↓
+    prediction_resolve
+        ↓
+    Dreaming evidence
+
 ## Dreaming integration
 
 Prediction and Outcome Episodes already flow through canonical episodic retrieval.

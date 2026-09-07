@@ -80,6 +80,31 @@ class PredictionObservation(BaseModel):
     filters: dict[str, str]
 
 
+class PendingPrediction(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    prediction_id: UUID
+    event_time: datetime
+    expected_outcome: str
+    confidence: float
+    action: str | None
+    session_id: str
+    channel: str | None
+    agent: str | None
+    project: str | None
+    topic: str | None
+
+
+class PendingPredictionList(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    items: list[PendingPrediction]
+    returned: int
+    may_be_incomplete: bool
+    scan_limit: int
+    filters: dict[str, str]
+
+
 class PredictionLearningService:
     """Record predictions and later outcomes without granting either truth authority."""
 
@@ -281,6 +306,85 @@ class PredictionLearningService:
             error_class_counts=error_class_counts,
             may_be_truncated=len(predictions) >= limit or len(outcomes) >= limit,
             sample_limit=limit,
+            filters=dict(filters),
+        )
+
+    def pending(
+        self,
+        *,
+        limit: int = 100,
+        session_id: str | None = None,
+        agent: str | None = None,
+        project: str | None = None,
+        topic: str | None = None,
+        scan_limit: int = 10000,
+    ) -> PendingPredictionList:
+        if not 1 <= limit <= 1000:
+            raise ValueError("prediction pending limit must be between 1 and 1000")
+        if not 1 <= scan_limit <= 10000:
+            raise ValueError("prediction pending scan limit must be between 1 and 10000")
+
+        filters = {
+            key: value
+            for key, value in {
+                "session_id": session_id,
+                "agent": agent,
+                "project": project,
+                "topic": topic,
+            }.items()
+            if value is not None
+        }
+        predictions = self._scroll_cognition(
+            source="cognitive_prediction",
+            limit=scan_limit,
+            filters=filters,
+        )
+        outcomes = self._scroll_cognition(
+            source="cognitive_outcome",
+            limit=scan_limit,
+            filters=filters,
+        )
+        resolved_ids = {
+            str(cognition.get("prediction_id") or "")
+            for _record, cognition in outcomes
+            if cognition.get("prediction_id")
+        }
+
+        pending_items: list[PendingPrediction] = []
+        for record, cognition in predictions:
+            prediction_id = str(record.id)
+            if prediction_id in resolved_ids:
+                continue
+            pending_items.append(
+                PendingPrediction(
+                    prediction_id=record.id,
+                    event_time=record.event_time,
+                    expected_outcome=str(cognition["expected_outcome"]),
+                    confidence=float(cognition["confidence"]),
+                    action=(
+                        str(cognition["action"])
+                        if cognition.get("action") is not None
+                        else None
+                    ),
+                    session_id=record.session_id,
+                    channel=record.channel,
+                    agent=record.agent,
+                    project=record.project,
+                    topic=record.topic,
+                )
+            )
+
+        pending_items.sort(
+            key=lambda item: (item.event_time, str(item.prediction_id)),
+        )
+        selected = pending_items[:limit]
+        return PendingPredictionList(
+            items=selected,
+            returned=len(selected),
+            may_be_incomplete=(
+                len(predictions) >= scan_limit or len(outcomes) >= scan_limit
+            ),
+            scan_limit=scan_limit,
             filters=dict(filters),
         )
 

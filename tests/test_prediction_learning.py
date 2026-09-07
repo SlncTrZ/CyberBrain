@@ -423,6 +423,127 @@ def test_observe_rejects_invalid_limit(learning) -> None:
         service.observe(limit=0)
 
 
+def test_pending_lists_only_unresolved_predictions_in_time_order(learning) -> None:
+    service, _memory, _repository = learning
+    start = datetime(2026, 9, 7, 1, 0, tzinfo=UTC)
+
+    first = service.record_prediction(
+        expected_outcome="First unresolved prediction.",
+        confidence=0.6,
+        session_id="session-1",
+        event_time=start,
+        agent="agent-a",
+        project="Project A",
+        topic="validation",
+    )
+    resolved = service.record_prediction(
+        expected_outcome="Resolved prediction.",
+        confidence=0.8,
+        session_id="session-1",
+        event_time=start + timedelta(minutes=1),
+        agent="agent-a",
+        project="Project A",
+        topic="validation",
+    )
+    second = service.record_prediction(
+        expected_outcome="Second unresolved prediction.",
+        confidence=0.7,
+        session_id="session-1",
+        event_time=start + timedelta(minutes=2),
+        agent="agent-a",
+        project="Project A",
+        topic="validation",
+    )
+    service.record_outcome(
+        prediction_id=resolved.id,
+        observed_outcome="Resolved.",
+        assessment="confirmed",
+        event_time=start + timedelta(minutes=3),
+    )
+
+    pending = service.pending(project="Project A")
+
+    assert [item.prediction_id for item in pending.items] == [first.id, second.id]
+    assert pending.returned == 2
+    assert pending.may_be_incomplete is False
+    assert pending.filters == {"project": "Project A"}
+
+
+def test_pending_respects_filters_and_result_limit(learning) -> None:
+    service, _memory, _repository = learning
+    start = datetime(2026, 9, 7, 1, 0, tzinfo=UTC)
+
+    service.record_prediction(
+        expected_outcome="Agent A prediction 1.",
+        confidence=0.6,
+        session_id="session-a",
+        event_time=start,
+        agent="agent-a",
+        project="Project A",
+        topic="release",
+    )
+    service.record_prediction(
+        expected_outcome="Agent A prediction 2.",
+        confidence=0.7,
+        session_id="session-a",
+        event_time=start + timedelta(minutes=1),
+        agent="agent-a",
+        project="Project A",
+        topic="release",
+    )
+    service.record_prediction(
+        expected_outcome="Agent B prediction.",
+        confidence=0.9,
+        session_id="session-b",
+        event_time=start,
+        agent="agent-b",
+        project="Project B",
+        topic="release",
+    )
+
+    pending = service.pending(
+        session_id="session-a",
+        agent="agent-a",
+        project="Project A",
+        topic="release",
+        limit=1,
+    )
+
+    assert pending.returned == 1
+    assert pending.items[0].session_id == "session-a"
+    assert pending.items[0].agent == "agent-a"
+    assert pending.filters == {
+        "session_id": "session-a",
+        "agent": "agent-a",
+        "project": "Project A",
+        "topic": "release",
+    }
+
+
+def test_pending_marks_incomplete_when_scan_limit_is_reached(learning) -> None:
+    service, _memory, _repository = learning
+    service.record_prediction(
+        expected_outcome="One prediction.",
+        confidence=0.5,
+        session_id="session-1",
+        event_time=datetime(2026, 9, 7, 1, 0, tzinfo=UTC),
+    )
+
+    pending = service.pending(scan_limit=1)
+
+    assert pending.may_be_incomplete is True
+    assert pending.scan_limit == 1
+
+
+def test_pending_rejects_invalid_limits(learning) -> None:
+    service, _memory, _repository = learning
+
+    with pytest.raises(ValueError, match="pending limit"):
+        service.pending(limit=0)
+    with pytest.raises(ValueError, match="scan limit"):
+        service.pending(scan_limit=0)
+
+
 def test_outcome_can_occur_later_than_prediction(learning) -> None:
     service, _memory, _repository = learning
     start = datetime(2026, 9, 7, 1, 0, tzinfo=UTC)

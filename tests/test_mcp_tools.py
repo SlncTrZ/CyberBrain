@@ -65,6 +65,7 @@ class FakePredictionLearning:
         self.prediction_calls: list[dict] = []
         self.outcome_calls: list[dict] = []
         self.observe_calls: list[dict] = []
+        self.pending_calls: list[dict] = []
 
     def record_prediction(self, **kwargs):
         self.prediction_calls.append(dict(kwargs))
@@ -135,6 +136,38 @@ class FakePredictionLearning:
                 key: str(value)
                 for key, value in kwargs.items()
                 if key != "limit" and value is not None
+            },
+        )
+
+    def pending(self, **kwargs):
+        from cyberbrain.cognition.prediction import (
+            PendingPrediction,
+            PendingPredictionList,
+        )
+
+        self.pending_calls.append(dict(kwargs))
+        return PendingPredictionList(
+            items=[
+                PendingPrediction(
+                    prediction_id=uuid4(),
+                    event_time=datetime.now(UTC),
+                    expected_outcome="Pending outcome.",
+                    confidence=0.6,
+                    action="validate",
+                    session_id="s-prediction",
+                    channel="mcp",
+                    agent="agent-a",
+                    project="CyberBrain",
+                    topic="validation",
+                )
+            ],
+            returned=1,
+            may_be_incomplete=False,
+            scan_limit=int(kwargs.get("scan_limit", 10000)),
+            filters={
+                key: str(value)
+                for key, value in kwargs.items()
+                if key not in {"limit", "scan_limit"} and value is not None
             },
         )
 
@@ -244,6 +277,29 @@ def test_prediction_observe_handler_returns_read_only_summary() -> None:
         "project": "CyberBrain",
         "agent": "agent-a",
         "limit": 50,
+    }
+
+
+def test_prediction_pending_handler_returns_unresolved_predictions() -> None:
+    result = _call(
+        "prediction_pending",
+        {
+            "project": "CyberBrain",
+            "agent": "agent-a",
+            "limit": 10,
+            "scan_limit": 500,
+        },
+    )
+
+    assert result["returned"] == 1
+    assert result["items"][0]["expected_outcome"] == "Pending outcome."
+    assert result["items"][0]["confidence"] == 0.6
+    assert result["may_be_incomplete"] is False
+    assert PREDICTION_LEARNING.pending_calls[-1] == {
+        "project": "CyberBrain",
+        "agent": "agent-a",
+        "limit": 10,
+        "scan_limit": 500,
     }
 
 
