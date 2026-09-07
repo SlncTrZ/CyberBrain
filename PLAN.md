@@ -1,12 +1,13 @@
 # CyberBrain — Current Plan
 
 > Status: Current project guidance.
-> Release baseline: v0.1.6.
+> Release baseline: v0.1.7.
 
 ## Operating mode
 
-CyberBrain is in a use-and-observe phase. The project should prefer evidence-driven fixes and
-measured improvements over speculative expansion.
+CyberBrain is in a use-and-observe phase. Dreaming V1 historical replay acceptance is complete in
+v0.1.7. The project should prefer evidence-driven fixes and measured improvements over speculative
+expansion.
 
 ## Current product boundary
 

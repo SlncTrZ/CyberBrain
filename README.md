@@ -9,9 +9,9 @@ evidence-grounded Dreaming with traceable reasoning and explicit promotion/revie
 
 ## Status
 
-Latest tagged release: v0.1.6.
+Latest tagged release: v0.1.7.
 
-Current development version on `main`: 0.1.6.
+Current development version on `main`: 0.1.7.
 
 The repository is in use-and-observe mode: changes should be driven by reproducible defects,
 operational evidence, security/privacy needs, or portability gaps rather than speculative feature
@@ -48,7 +48,7 @@ See specs/PREDICTION_LEARNING.md. Main also contains an initial read-only Metaco
 
 ## Dreaming
 
-Dreaming is evidence-grounded consolidation.
+Dreaming is evidence-grounded consolidation. Dreaming V1 historical replay acceptance is complete in v0.1.7 and the mechanism is in use-and-observe mode.
 
 A reasoning result cannot write Knowledge directly. It must pass contract validation, evidence-ID
 validation, promotion policy, and review/writeback rules before canonical Knowledge changes.
