@@ -112,3 +112,21 @@ def test_associative_recall_never_returns_seed_duplicates() -> None:
     ]
 
     assert expander.expand(seed=seed, bucket=_bucket()) == []
+
+
+def test_associative_recall_does_not_expand_from_project_scope_labels() -> None:
+    recall = FakeRecall()
+    expander = BoundedAssociativeRecall(retriever=recall)
+    seed = [
+        EvidenceItem(
+            id="seed-project-only",
+            record_type="episode",
+            content="A project-scoped episode without semantic identity metadata",
+            score=0.9,
+            event_time=datetime(2026, 8, 20, tzinfo=UTC),
+            metadata={"project": "pi"},
+        )
+    ]
+
+    assert expander.expand(seed=seed, bucket=_bucket()) == []
+    assert recall.queries == []

@@ -96,7 +96,11 @@ class BoundedAssociativeRecall:
     ) -> list[str]:
         queries: list[str] = []
         for item in items:
-            for key in ("entity_name", "topic", "project"):
+            # Association expansion must stay anchored to semantic identity. A project label is a
+            # scope/filter hint, not a semantic neighbor query: broad labels such as "pi" can
+            # retrieve unrelated evidence from every domain in that project and contaminate a
+            # Dream topic. Entity identity and explicit topic remain bounded association signals.
+            for key in ("entity_name", "topic"):
                 value = str(item.metadata.get(key) or "").strip()
                 normalized = value.casefold()
                 if not value or normalized in seen_queries:
