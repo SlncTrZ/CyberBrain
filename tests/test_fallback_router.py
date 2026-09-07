@@ -252,6 +252,22 @@ def test_public_example_route_config_matches_schema() -> None:
     assert config.routes[0].models == ["model-1A", "model-1B"]
 
 
+def test_route_config_model_validate_is_ready_under_runtime_pydantic() -> None:
+    config = DreamLLMRoutesConfig.model_validate(
+        {
+            "routes": [
+                {
+                    "name": "provider-1",
+                    "base_url": "http://provider-1.invalid",
+                    "models": ["model-1A"],
+                }
+            ]
+        }
+    )
+
+    assert config.routes[0].name == "provider-1"
+
+
 def test_load_route_config_from_file(tmp_path) -> None:
     path = tmp_path / "dream-routes.json"
     path.write_text(

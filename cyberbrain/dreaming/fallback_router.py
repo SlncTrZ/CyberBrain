@@ -99,6 +99,11 @@ class DreamLLMRoutesConfig(BaseModel):
         return routes
 
 
+# Pydantic 2.13 requires postponed annotations to be rebuilt before runtime
+# `model_validate()` calls made by the standalone fallback-router process.
+DreamLLMRoutesConfig.model_rebuild()
+
+
 def load_route_config(
     *,
     file_path: str | None = None,
