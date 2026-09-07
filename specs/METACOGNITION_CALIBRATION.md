@@ -1,4 +1,4 @@
-# Metacognition / Calibration Specification v1
+# Calibration Specification v1
 
 > Status: Initial read-only cognitive mechanism.
 > Dependency: Prediction / Outcome / Prediction Error.
@@ -166,7 +166,7 @@ Those require separate evidence and specifications.
 
 ## Observation requirement
 
-Before Salience / Priority becomes active development, observe:
+During ongoing Calibration observation, review:
 
 - how quickly samples accumulate by agent/project/topic;
 - whether the confirmed/partial/contradicted mapping is useful enough;
@@ -174,5 +174,7 @@ Before Salience / Priority becomes active development, observe:
 - whether aggregate bias hides important domain-specific patterns;
 - whether may_be_incomplete becomes common at real data volume;
 - whether calibration reports correlate with useful Dreaming lessons.
+
+`minimum_samples=20` is the first statistical review checkpoint, not an automatic downstream activation gate. Review should also consider task/topic diversity, prospective recording quality, unresolved/duplicate Outcome behavior, causal/identity integrity, and whether outcome diversity arose naturally from real operation.
 
 Later changes should be driven by these observations rather than by anthropomorphic assumptions.

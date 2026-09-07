@@ -239,7 +239,7 @@ Those behaviors require separate specifications and evidence before implementati
 
 ## Observation requirement
 
-Before Metacognition / Calibration becomes active development, real usage should establish:
+During ongoing Prediction Learning and Calibration observation, real usage should establish:
 
 - whether agents reliably record predictions before consequential actions;
 - whether assessment categories are expressive enough;

@@ -96,11 +96,11 @@ These aliases may be retired after dependent clients have migrated to canonical 
 
 Recommended agent loop: `prediction_record` → `prediction_pending` / `prediction_observe` → `prediction_resolve` → Dreaming. See `specs/PREDICTION_LEARNING.md` for the full contract.
 
-### Metacognition / Calibration
+### Calibration
 
 - `calibration_observe` is read-only and analyzes resolved Prediction Learning evidence.
 - It reports sample count, excluded indeterminate outcomes, mean prior confidence, mean empirical score, calibration bias, squared calibration error, bounded/incomplete status, and a sample-level assessment.
-- Below `minimum_samples`, assessment is always `insufficient_evidence` even if the numerical bias is large.
+- Below `minimum_samples`, assessment is always `insufficient_evidence` even if the numerical bias is large. Reaching the configured minimum makes the sample reviewable; it does not automatically activate any downstream mechanism.
 - With enough samples, bias above the configured threshold is labeled `overconfident`, below the negative threshold `underconfident`, otherwise `roughly_calibrated`.
 - These labels describe the selected evidence sample only. They are not persisted as agent identity or Knowledge and do not change prompts, strategy, routing, or model behavior.
 

@@ -158,6 +158,24 @@ linear.
 
 These are data and authority dependencies, not permission to bypass current development gates.
 
+### Observation checkpoint
+
+Prediction Learning and Calibration remain in observation after release. The configured Calibration
+minimum of 20 usable resolved Prediction/Outcome pairs is the first review checkpoint for whether the
+sample is large enough to interpret aggregate calibration statistics. It is not an automatic feature
+or activation gate.
+
+Review should also consider evidence diversity and integrity:
+
+- predictions should be recorded prospectively before meaningful outcomes are known;
+- evidence should span multiple meaningful task/topic categories rather than one narrow test path;
+- unresolved and duplicate Outcome behavior must remain explainable;
+- causal ordering and inherited Prediction identity must remain intact;
+- outcome diversity must emerge from real operation rather than manufactured failures.
+
+Reaching the checkpoint triggers review of evidence quality and mechanism behavior only. It does not
+automatically start or activate any downstream mechanism.
+
 ### Cognitive safety invariants
 
 The roadmap must preserve these distinctions:
