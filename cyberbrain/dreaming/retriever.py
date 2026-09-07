@@ -21,11 +21,15 @@ class QdrantEvidenceRetriever:
         embedding: EmbeddingProvider,
         knowledge_collection: str,
         episodic_collection: str,
+        score_threshold: float | None = 0.55,
     ) -> None:
+        if score_threshold is not None and not 0 <= score_threshold <= 1:
+            raise ValueError("score_threshold must be between 0 and 1 or null")
         self._repository = repository
         self._embedding = embedding
         self._knowledge_collection = knowledge_collection
         self._episodic_collection = episodic_collection
+        self._score_threshold = score_threshold
 
     def recall(
         self,
@@ -43,12 +47,14 @@ class QdrantEvidenceRetriever:
             vector=vector,
             limit=limit,
             qdrant_filter=self._episodic_filter(bucket),
+            score_threshold=self._score_threshold,
         )
         knowledge = self._repository.search(
             self._knowledge_collection,
             vector=vector,
             limit=limit,
             qdrant_filter=self._knowledge_filter(bucket),
+            score_threshold=self._score_threshold,
         )
 
         items = [

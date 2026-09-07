@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     dream_association_per_query_limit: int = 3
     dream_association_total_limit: int = 12
     dream_per_bucket_limit: int = 5
+    dream_retrieval_score_threshold: float | None = 0.55
 
     def validate_runtime(self) -> None:
         if self.require_auth and not (self.mcp_auth_token or "").strip():
@@ -74,6 +75,13 @@ class Settings(BaseSettings):
             raise ConfigurationError("dream_association_total_limit must be >= 1")
         if self.dream_per_bucket_limit < 1:
             raise ConfigurationError("dream_per_bucket_limit must be >= 1")
+        if (
+            self.dream_retrieval_score_threshold is not None
+            and not 0 <= self.dream_retrieval_score_threshold <= 1
+        ):
+            raise ConfigurationError(
+                "dream_retrieval_score_threshold must be between 0 and 1 or null"
+            )
 
     def validate_dream_worker(self) -> None:
         self.validate_runtime()

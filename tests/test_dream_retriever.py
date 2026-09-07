@@ -35,6 +35,7 @@ class FakeRepository:
                 "vector": vector,
                 "limit": limit,
                 "filter": qdrant_filter,
+                "score_threshold": score_threshold,
             }
         )
         if collection == "episodic":
@@ -95,6 +96,8 @@ def test_retriever_applies_temporal_filters_and_preserves_metadata() -> None:
 
     episodic_filter = repo.calls[0]["filter"]
     knowledge_filter = repo.calls[1]["filter"]
+    assert repo.calls[0]["score_threshold"] == 0.55
+    assert repo.calls[1]["score_threshold"] == 0.55
     assert episodic_filter == {
         "must": [
             {

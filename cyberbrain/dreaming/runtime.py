@@ -67,6 +67,7 @@ def build_dream_worker_runtime(settings: Settings) -> DreamWorkerRuntime:
         embedding=services.embedding,
         knowledge_collection=settings.knowledge_collection,
         episodic_collection=settings.episodic_collection,
+        score_threshold=settings.dream_retrieval_score_threshold,
     )
     associative = BoundedAssociativeRecall(
         retriever=retriever,
