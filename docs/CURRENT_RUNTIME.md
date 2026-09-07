@@ -74,6 +74,12 @@ Fallback routing is fully deployment-configured:
 CyberBrain does not hard-code provider names, model catalogs, commercial policy, or an external
 routing product. See docs/DREAMING_ROUTING.md.
 
+Dreaming V1 historical replay has passed its acceptance gate. Long session and historical records
+are reduced to bounded focal evidence, temporal recall remains anchored to the session end, and
+Dream outputs remain subject to the existing review/promotion boundary. Further bulk replay,
+re-dream semantics, candidate compression, and richer observability are deferred improvements rather
+than V1 acceptance requirements.
+
 ## Configuration
 
 The current runtime is configured through environment variables consumed by Pydantic Settings and
