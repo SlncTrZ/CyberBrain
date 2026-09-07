@@ -18,6 +18,7 @@ from cyberbrain.dreaming.reasoner import (
     ReasoningTaskKind,
     ReasoningTaskResult,
 )
+from cyberbrain.dreaming.relevance import TopicRelevanceGuard
 
 _REPLACEMENT = ("removed", "replaced", "deprecated", "loại bỏ", "thay bằng", "không dùng nữa")
 _CAVEAT = ("caveat", "lưu ý", "unresolved", "đang tắt", "fail", "failed", "không phải regression")
@@ -41,9 +42,11 @@ class MultipassDreamReasoner(DreamReasoner):
         *,
         micro_reasoner: MicroReasoner,
         policy: MultipassPolicy | None = None,
+        relevance_guard: TopicRelevanceGuard | None = None,
     ) -> None:
         self._micro_reasoner = micro_reasoner
         self._policy = policy or MultipassPolicy()
+        self._relevance_guard = relevance_guard or TopicRelevanceGuard()
 
     def reason(self, request: DreamReasoningRequest) -> DreamReasoningResult:
         tasks = self.build_tasks(request)
@@ -87,6 +90,7 @@ class MultipassDreamReasoner(DreamReasoner):
         result_by_id = {result.task_id: result for result in results}
         candidates: list[DreamCandidate] = []
         dropped_advice_claims = 0
+        dropped_irrelevant_claims = 0
 
         for task in tasks:
             result = result_by_id[task.task_id]
@@ -94,15 +98,20 @@ class MultipassDreamReasoner(DreamReasoner):
                 raise ValueError("micro reasoner response task_id does not match task")
             allowed = {item.id for item in task.evidence}
             for index, claim in enumerate(result.claims):
+                self._validate_claim(task, claim, allowed)
                 if self._contains_advice(claim.claim):
                     dropped_advice_claims += 1
                     continue
-                self._validate_claim(task, claim, allowed)
+                if not self._relevance_guard.text_relevant(topic=task.topic, text=claim.claim):
+                    dropped_irrelevant_claims += 1
+                    continue
                 candidates.append(self._candidate_from_claim(task, claim, index))
 
         notes = [f"multipass_tasks={len(tasks)}"]
         if dropped_advice_claims:
             notes.append(f"dropped_advice_claims={dropped_advice_claims}")
+        if dropped_irrelevant_claims:
+            notes.append(f"dropped_irrelevant_claims={dropped_irrelevant_claims}")
         return DreamReasoningResult(
             request_id=request.request_id,
             candidates=candidates,

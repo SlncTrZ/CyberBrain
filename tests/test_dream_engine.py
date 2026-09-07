@@ -76,7 +76,7 @@ def test_prepare_request_filters_explicit_cross_project_evidence() -> None:
                 EvidenceItem(
                     id="matching-project",
                     record_type="knowledge",
-                    content="matching",
+                    content="CyberBrain matching evidence",
                     score=0.9,
                     event_time=bucket.end,
                     metadata={"project": "Slnc_Pi"},
@@ -84,7 +84,7 @@ def test_prepare_request_filters_explicit_cross_project_evidence() -> None:
                 EvidenceItem(
                     id="missing-project",
                     record_type="knowledge",
-                    content="missing",
+                    content="CyberBrain evidence without project metadata",
                     score=0.8,
                     event_time=bucket.end,
                     metadata={},
@@ -92,7 +92,7 @@ def test_prepare_request_filters_explicit_cross_project_evidence() -> None:
                 EvidenceItem(
                     id="wrong-project",
                     record_type="knowledge",
-                    content="wrong",
+                    content="CyberBrain evidence from wrong project",
                     score=0.95,
                     event_time=bucket.end,
                     metadata={"project": "TCDserver"},
@@ -106,7 +106,7 @@ def test_prepare_request_filters_explicit_cross_project_evidence() -> None:
                 EvidenceItem(
                     id="assoc-matching",
                     record_type="episode",
-                    content="assoc matching",
+                    content="CyberBrain associative matching evidence",
                     score=0.85,
                     event_time=bucket.end,
                     metadata={"project": "Slnc_Pi"},
@@ -114,7 +114,7 @@ def test_prepare_request_filters_explicit_cross_project_evidence() -> None:
                 EvidenceItem(
                     id="assoc-wrong",
                     record_type="episode",
-                    content="assoc wrong",
+                    content="CyberBrain associative evidence from wrong project",
                     score=0.99,
                     event_time=bucket.end,
                     metadata={"project": "pi"},

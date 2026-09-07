@@ -184,6 +184,8 @@ dream_review_resolve
 
 `dream_enqueue` schedules a completed session. `dream_status` exposes queue state. `dream_reviews` lists unresolved evidence-gated candidates, and `dream_review_resolve` records an approve/reject decision with reviewer provenance. No Dreaming tool has direct Knowledge write authority; all writes still pass CyberBrain evidence/promotion policy and Knowledge Evolution.
 
+Dream evidence selection must remain causally bounded and focal-topic scoped. Runtime recall may apply a configured semantic-score floor, must reject explicit project mismatches when the session has one stable project, and must apply a deterministic topic-relevance guard before evidence reaches reasoning. Structured `Phase N` focal topics may not consolidate evidence from a different phase. Reasoner claims must pass evidence-ID validation before advisory or topic-irrelevant claims can be dropped, so filtering cannot bypass fabricated-evidence fail-closed behavior.
+
 ## Legacy aliases
 
 Legacy client tools may be supported temporarily by a compatibility adapter, not by polluting the canonical domain API.

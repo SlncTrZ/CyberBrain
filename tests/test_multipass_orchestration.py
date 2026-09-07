@@ -101,6 +101,26 @@ def test_multipass_reasoner_rejects_fabricated_evidence() -> None:
         MultipassDreamReasoner(micro_reasoner=FabricatingMicroReasoner()).reason(_request())
 
 
+def test_advice_claim_with_fabricated_evidence_still_fails_closed() -> None:
+    reasoner = MultipassDreamReasoner(micro_reasoner=FakeMicroReasoner())
+    request = _request()
+    tasks = reasoner.build_tasks(request)
+    valid = [FakeMicroReasoner().reason_task(task) for task in tasks]
+    valid[0] = ReasoningTaskResult(
+        task_id=tasks[0].task_id,
+        claims=[
+            ReasoningClaim(
+                claim="Đề xuất guard try/catch.",
+                evidence_ids=["fabricated"],
+                confidence=0.9,
+            )
+        ],
+    )
+
+    with pytest.raises(ValueError, match="fabricated evidence IDs"):
+        reasoner.assemble(request, tasks=tasks, results=valid)
+
+
 def test_assemble_drops_advice_claim_without_failing_entire_run() -> None:
     reasoner = MultipassDreamReasoner(micro_reasoner=FakeMicroReasoner())
     request = _request()
@@ -121,6 +141,47 @@ def test_assemble_drops_advice_claim_without_failing_entire_run() -> None:
 
     assert len(result.candidates) == len(tasks) - 1
     assert result.notes == [f"multipass_tasks={len(tasks)}", "dropped_advice_claims=1"]
+
+
+def test_assemble_drops_irrelevant_claim_without_failing_entire_run() -> None:
+    now = datetime(2026, 9, 4, 2, 0, tzinfo=UTC)
+    request = DreamReasoningRequest(
+        request_id="req-phase8",
+        session_id="session-phase8",
+        focal_topics=["SlncTrZ-MCP Phase 8 standalone quality gates"],
+        session_start=now,
+        session_end=now,
+        evidence_by_topic={
+            "SlncTrZ-MCP Phase 8 standalone quality gates": [
+                EvidenceItem(
+                    id="e-phase8",
+                    record_type="knowledge",
+                    content="Phase 8 standalone SEA Linux x64 quality validation passed.",
+                    score=0.9,
+                    event_time=now,
+                )
+            ]
+        },
+    )
+    reasoner = MultipassDreamReasoner(micro_reasoner=FakeMicroReasoner())
+    tasks = reasoner.build_tasks(request)
+    results = [
+        ReasoningTaskResult(
+            task_id=tasks[0].task_id,
+            claims=[
+                ReasoningClaim(
+                    claim="Phase 5 extension gateway baseline has a clean working tree.",
+                    evidence_ids=["e-phase8"],
+                    confidence=0.9,
+                )
+            ],
+        )
+    ]
+
+    result = reasoner.assemble(request, tasks=tasks, results=results)
+
+    assert result.candidates == []
+    assert result.notes == ["multipass_tasks=1", "dropped_irrelevant_claims=1"]
 
 
 def test_assemble_rejects_missing_and_unexpected_results() -> None:

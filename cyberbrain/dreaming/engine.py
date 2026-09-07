@@ -13,6 +13,7 @@ from cyberbrain.dreaming.reasoner import (
     DreamReasoningResult,
     EvidenceItem,
 )
+from cyberbrain.dreaming.relevance import TopicRelevanceGuard
 
 
 @dataclass(frozen=True)
@@ -48,12 +49,14 @@ class DreamingEngine:
         reasoner: DreamReasoner,
         planner: DreamingPlanner | None = None,
         associative_expander: AssociativeExpander | None = None,
+        relevance_guard: TopicRelevanceGuard | None = None,
         per_bucket_limit: int = 5,
     ) -> None:
         self._retriever = retriever
         self._reasoner = reasoner
         self._planner = planner or DreamingPlanner()
         self._associative_expander = associative_expander
+        self._relevance_guard = relevance_guard or TopicRelevanceGuard()
         self._per_bucket_limit = per_bucket_limit
 
     def prepare_request(
@@ -72,13 +75,16 @@ class DreamingEngine:
         for topic in topics:
             topic_evidence: list[EvidenceItem] = []
             for bucket in plan.buckets:
-                direct = self._filter_project_scope(
-                    self._retriever.recall(
-                        topic=topic,
-                        bucket=bucket,
-                        limit=self._per_bucket_limit,
+                direct = self._relevance_guard.filter_evidence(
+                    topic=topic,
+                    items=self._filter_project_scope(
+                        self._retriever.recall(
+                            topic=topic,
+                            bucket=bucket,
+                            limit=self._per_bucket_limit,
+                        ),
+                        session_project=session_project,
                     ),
-                    session_project=session_project,
                 )
                 topic_evidence.extend(direct)
                 if self._associative_expander is not None:
@@ -87,9 +93,12 @@ class DreamingEngine:
                         bucket=bucket,
                     )
                     topic_evidence.extend(
-                        self._filter_project_scope(
-                            expanded,
-                            session_project=session_project,
+                        self._relevance_guard.filter_evidence(
+                            topic=topic,
+                            items=self._filter_project_scope(
+                                expanded,
+                                session_project=session_project,
+                            ),
                         )
                     )
             evidence[topic] = self._deduplicate(topic_evidence)
