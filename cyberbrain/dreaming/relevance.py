@@ -98,6 +98,26 @@ class TopicRelevanceGuard:
         required = 1 if len(anchors) == 1 else 2
         return len(matched) >= required
 
+    def claim_relevant(self, *, topic: str, text: str) -> bool:
+        anchors = self._anchors(topic)
+        if not anchors:
+            return True
+
+        tokens = set(_TOKEN_RE.findall(text.casefold()))
+        identifiers = [anchor for anchor in anchors if _IDENTIFIER_RE.fullmatch(anchor)]
+        if identifiers:
+            return all(identifier in tokens for identifier in identifiers)
+
+        topic_phase = self._phase(topic)
+        if len(anchors) == 1 and topic_phase is None:
+            return True
+        if topic_phase is not None:
+            if topic_phase not in set(_PHASE_RE.findall(text)):
+                return False
+            return any(self._anchor_matches(anchor, tokens) for anchor in anchors)
+
+        return self._anchor_matches(anchors[0], tokens)
+
     def topic_excerpt(
         self,
         *,
@@ -131,7 +151,7 @@ class TopicRelevanceGuard:
                     score += 12
             for position, anchor in enumerate(anchors):
                 if self._anchor_matches(anchor, tokens):
-                    score += 4 if position == 0 else 2
+                    score += 10 if position == 0 else 6
             if score:
                 ranked.append((score, index))
 
@@ -142,9 +162,6 @@ class TopicRelevanceGuard:
         for _score, index in sorted(ranked, key=lambda item: (-item[0], item[1])):
             start = max(0, index - context_lines)
             end = min(len(lines), index + context_lines + 1)
-            window = "\n".join(lines[start:end])
-            if not self.text_relevant(topic=topic, text=window):
-                continue
             overlaps = any(
                 not (end <= prior_start or start >= prior_end)
                 for prior_start, prior_end in selected
@@ -171,7 +188,10 @@ class TopicRelevanceGuard:
             if part:
                 parts.append(part)
                 used += len(separator) + len(part)
-        return "\n...\n".join(parts) or None
+        excerpt = "\n...\n".join(parts)
+        if not excerpt or not self.text_relevant(topic=topic, text=excerpt):
+            return None
+        return excerpt
 
     @staticmethod
     def _phase(value: str) -> str | None:

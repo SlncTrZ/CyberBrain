@@ -115,6 +115,76 @@ def test_topic_excerpt_is_bounded_and_keeps_phase_local_context() -> None:
     assert "unrelated historical line 0" not in excerpt
 
 
+def test_claim_relevance_allows_single_anchor_topic_without_repetition() -> None:
+    guard = TopicRelevanceGuard()
+
+    assert guard.claim_relevant(
+        topic="routing",
+        text="Configured provider order is deterministic.",
+    )
+
+
+def test_claim_relevance_keeps_entity_fact_without_repeating_process_word() -> None:
+    guard = TopicRelevanceGuard()
+    topic = "ComfyUI update v0.30.2 v0.33.3"
+
+    assert guard.claim_relevant(
+        topic=topic,
+        text="ComfyUI official version is 0.33.x.",
+    )
+    assert not guard.claim_relevant(
+        topic=topic,
+        text="Kernel and plugin packages are already aligned.",
+    )
+
+
+def test_claim_relevance_keeps_exact_phase_and_identifier_guards() -> None:
+    guard = TopicRelevanceGuard()
+
+    assert guard.claim_relevant(
+        topic="SlncTrZ-MCP Phase 5 extension gateway",
+        text="Phase 5 gateway acceptance passed on Windows.",
+    )
+    assert not guard.claim_relevant(
+        topic="SlncTrZ-MCP Phase 5 extension gateway",
+        text="Phase 6 gateway acceptance passed on Windows.",
+    )
+    assert guard.claim_relevant(
+        topic="SlncTrZ-MCP commit 396bd64 hidden bugs",
+        text="Commit 396bd64 exposed Windows ACL failures.",
+    )
+    assert not guard.claim_relevant(
+        topic="SlncTrZ-MCP commit 396bd64 hidden bugs",
+        text="Commit 77cafd1 completed read-only hardening.",
+    )
+
+
+def test_topic_excerpt_can_combine_distributed_session_anchors() -> None:
+    guard = TopicRelevanceGuard()
+    topic = "SlncTrZ-MCP Phase 0 infrastructure foundation"
+    transcript = "\n".join(
+        [
+            "Phase 0 completed and pushed.",
+            *(f"phase context {index}" for index in range(20)),
+            "The gateway is infrastructure-grade rather than a script.",
+            *(f"middle context {index}" for index in range(20)),
+            "Root commit initializes the repository foundation.",
+        ]
+    )
+
+    excerpt = guard.topic_excerpt(
+        topic=topic,
+        text=transcript,
+        max_chars=1200,
+        context_lines=1,
+    )
+
+    assert excerpt is not None
+    assert "Phase 0" in excerpt
+    assert "infrastructure-grade" in excerpt
+    assert "repository foundation" in excerpt
+
+
 def test_clean_room_oauth_requires_clean_room_plus_another_anchor() -> None:
     guard = TopicRelevanceGuard()
     topic = "SlncTrZ-MCP clean-room OAuth provenance"

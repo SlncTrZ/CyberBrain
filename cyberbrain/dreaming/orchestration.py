@@ -102,7 +102,7 @@ class MultipassDreamReasoner(DreamReasoner):
                 if self._contains_advice(claim.claim):
                     dropped_advice_claims += 1
                     continue
-                if not self._relevance_guard.text_relevant(topic=task.topic, text=claim.claim):
+                if not self._relevance_guard.claim_relevant(topic=task.topic, text=claim.claim):
                     dropped_irrelevant_claims += 1
                     continue
                 candidates.append(self._candidate_from_claim(task, claim, index))
