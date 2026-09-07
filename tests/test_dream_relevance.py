@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
 
+from cyberbrain.dreaming.reasoner import EvidenceItem
 from cyberbrain.dreaming.relevance import TopicRelevanceGuard
 
 
@@ -140,6 +141,76 @@ def test_topic_excerpt_stops_after_minimal_sufficient_topic_coverage() -> None:
     assert "Gemini CLI" in excerpt
     assert "npm uninstall" in excerpt
     assert 'Gemini "Connected"' not in excerpt
+
+
+def test_long_historical_evidence_requires_local_topic_coverage() -> None:
+    guard = TopicRelevanceGuard()
+    topic = "VideoAdapter engine code presets skills"
+    scattered = "\n".join(
+        [
+            "Slnc_VideoAdapter migration note.",
+            *(f"unrelated filler {index}" for index in range(220)),
+            "Engine code policy detail.",
+            *(f"more filler {index}" for index in range(220)),
+            "Director skills inventory.",
+        ]
+    )
+    local = "\n".join(
+        [
+            *(f"filler {index}" for index in range(220)),
+            "VideoAdapter Engine code has 6 scripts, style presets and director skills.",
+            "The same local section lists preset and skill counts.",
+            *(f"later filler {index}" for index in range(220)),
+        ]
+    )
+    items = [
+        EvidenceItem("scattered", "episode", scattered, 0.8, None),
+        EvidenceItem("local", "episode", local, 0.8, None),
+    ]
+
+    filtered = guard.filter_evidence(topic=topic, items=items)
+
+    assert [item.id for item in filtered] == ["local"]
+    assert filtered[0].metadata["topic_excerpt"] is True
+    assert len(filtered[0].content) <= 3600
+
+
+def test_multi_anchor_evidence_requires_stronger_topic_coverage() -> None:
+    guard = TopicRelevanceGuard()
+    topic = "VideoAdapter engine code presets skills"
+
+    assert guard.text_relevant(
+        topic=topic,
+        text=(
+            "VideoAdapter Engine code has six scripts, ten style presets, "
+            "and forty director skills."
+        ),
+    )
+    assert not guard.text_relevant(
+        topic=topic,
+        text=(
+            "Slnc_VideoAdapter migrated The Mind Shaper into CHANNEL-STYLE.yaml "
+            "with production_mode stickman."
+        ),
+    )
+    assert not guard.text_relevant(
+        topic=topic,
+        text="Slnc_VideoAdapter validation code reads production policy.",
+    )
+
+
+def test_multi_anchor_claim_accepts_semantic_fact_without_entity_repetition() -> None:
+    guard = TopicRelevanceGuard()
+    topic = "VideoAdapter engine code presets skills"
+
+    assert guard.claim_relevant(
+        topic=topic,
+        text="Engine code has 6 scripts with 2,058 lines.",
+    )
+    assert not guard.claim_relevant(
+        topic=topic,
+        text="Slnc_VideoAdapter migrated The Mind Shaper into the production framework.",
+    )
 
 
 def test_claim_relevance_allows_single_anchor_topic_without_repetition() -> None:

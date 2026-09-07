@@ -57,7 +57,33 @@ class TopicRelevanceGuard:
         topic: str,
         items: Iterable[EvidenceItem],
     ) -> list[EvidenceItem]:
-        return [item for item in items if self.evidence_relevant(topic=topic, item=item)]
+        result: list[EvidenceItem] = []
+        for item in items:
+            if len(item.content) <= 3600:
+                if self.evidence_relevant(topic=topic, item=item):
+                    result.append(item)
+                continue
+
+            excerpt = self.topic_excerpt(
+                topic=topic,
+                text=item.content,
+                max_windows=1,
+            )
+            if excerpt is None:
+                continue
+            metadata = dict(item.metadata)
+            metadata["topic_excerpt"] = True
+            result.append(
+                EvidenceItem(
+                    id=item.id,
+                    record_type=item.record_type,
+                    content=excerpt,
+                    score=item.score,
+                    event_time=item.event_time,
+                    metadata=metadata,
+                )
+            )
+        return result
 
     def evidence_relevant(self, *, topic: str, item: EvidenceItem) -> bool:
         searchable = " ".join(
@@ -95,7 +121,12 @@ class TopicRelevanceGuard:
         if not matched or matched[0] != anchors[0]:
             return False
 
-        required = 1 if len(anchors) == 1 else 2
+        if len(anchors) == 1:
+            required = 1
+        elif len(anchors) >= 5:
+            required = 3
+        else:
+            required = 2
         return len(matched) >= required
 
     def claim_relevant(self, *, topic: str, text: str) -> bool:
@@ -116,7 +147,9 @@ class TopicRelevanceGuard:
                 return False
             return any(self._anchor_matches(anchor, tokens) for anchor in anchors)
 
-        return self._anchor_matches(anchors[0], tokens)
+        matched = [anchor for anchor in anchors if self._anchor_matches(anchor, tokens)]
+        required = 1 if len(anchors) <= 3 else 2
+        return len(matched) >= required
 
     def topic_excerpt(
         self,
