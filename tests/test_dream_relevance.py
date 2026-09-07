@@ -270,6 +270,56 @@ def test_multi_anchor_claim_accepts_semantic_fact_without_entity_repetition() ->
     )
 
 
+def test_association_query_is_provenance_not_relevance_evidence() -> None:
+    guard = TopicRelevanceGuard()
+    topic = "reports.truongcongdinh.org missing report browser cache diagnosis"
+    item = EvidenceItem(
+        id="assoc-drift",
+        record_type="knowledge",
+        content="Vision analyzer model inventory was updated for Ollama.",
+        score=0.7,
+        event_time=None,
+        metadata={
+            "topic": "device_inventory",
+            "entity_name": "update/vision-analyzer-models",
+            "association_query": "fix/reports-web-date-cache-20260813",
+        },
+    )
+
+    assert guard.filter_evidence(topic=topic, items=[item]) == []
+
+
+def test_hostname_entity_anchors_do_not_satisfy_report_cache_intent() -> None:
+    guard = TopicRelevanceGuard()
+    topic = "reports.truongcongdinh.org missing report browser cache diagnosis"
+
+    assert guard.text_relevant(
+        topic=topic,
+        text=(
+            "reports.truongcongdinh.org had missing cards because Chrome browser cache "
+            "kept an older index; Cache-Control no-cache fixed the report listing."
+        ),
+    )
+    assert not guard.text_relevant(
+        topic=topic,
+        text=(
+            "reports.truongcongdinh.org runs through cloudflared and nginx-reports "
+            "with basic auth and gen-index.sh."
+        ),
+    )
+    assert not guard.claim_relevant(
+        topic=topic,
+        text=(
+            "reports.truongcongdinh.org hoạt động qua cloudflared container và "
+            "nginx-reports:80 với basic auth."
+        ),
+    )
+    assert guard.claim_relevant(
+        topic=topic,
+        text="Chrome browser cache kept an older report index and caused missing cards.",
+    )
+
+
 def test_many_anchor_claim_rejects_entity_platform_only_drift() -> None:
     guard = TopicRelevanceGuard()
     topic = "Mindset YouTube long video production process"

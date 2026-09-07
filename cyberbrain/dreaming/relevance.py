@@ -10,6 +10,7 @@ from cyberbrain.dreaming.reasoner import EvidenceItem
 _TOKEN_RE = re.compile(r"[a-z0-9]+")
 _PHASE_RE = re.compile(r"\bphase[\s._-]*(\d+)\b", re.IGNORECASE)
 _IDENTIFIER_RE = re.compile(r"(?=.*[a-z])(?=.*\d)[a-z0-9]{6,}")
+_HOSTNAME_RE = re.compile(r"\b(?:[a-z0-9-]+\.)+[a-z]{2,}\b", re.IGNORECASE)
 _OUTCOME_CUE_RE = re.compile(
     r"(?:\bresult\b|\bresults\b|\bconclusion\b|\bconfirmed\b|\bverified\b|"
     r"\bresolved\b|\bready\b|\bpassed\b|\bfailed\b|\broot cause\b|"
@@ -100,7 +101,6 @@ class TopicRelevanceGuard:
                 str(item.metadata.get("domain") or ""),
                 str(item.metadata.get("topic") or ""),
                 str(item.metadata.get("entity_name") or ""),
-                str(item.metadata.get("association_query") or ""),
             )
             if value
         )
@@ -128,12 +128,13 @@ class TopicRelevanceGuard:
         if not matched or matched[0] != anchors[0]:
             return False
 
-        if len(anchors) == 1:
-            required = 1
-        elif len(anchors) >= 5:
-            required = 3
-        else:
-            required = 2
+        if len(anchors) >= 5:
+            return self._multi_anchor_coverage(
+                topic=topic,
+                anchors=anchors,
+                matched=matched,
+            )
+        required = 1 if len(anchors) == 1 else 2
         return len(matched) >= required
 
     def claim_relevant(self, *, topic: str, text: str) -> bool:
@@ -156,7 +157,11 @@ class TopicRelevanceGuard:
 
         matched = [anchor for anchor in anchors if self._anchor_matches(anchor, tokens)]
         if len(anchors) >= 5:
-            return len(matched) >= 3 or (len(matched) >= 2 and anchors[0] not in matched)
+            return self._multi_anchor_coverage(
+                topic=topic,
+                anchors=anchors,
+                matched=matched,
+            )
         required = 1 if len(anchors) <= 3 else 2
         return len(matched) >= required
 
@@ -278,6 +283,32 @@ class TopicRelevanceGuard:
         if not excerpt or not self.text_relevant(topic=topic, text=excerpt):
             return None
         return excerpt
+
+    def _multi_anchor_coverage(
+        self,
+        *,
+        topic: str,
+        anchors: list[str],
+        matched: list[str],
+    ) -> bool:
+        intent_anchors = set(self._intent_anchors(topic=topic, anchors=anchors))
+        intent_matches = sum(anchor in intent_anchors for anchor in matched)
+        return intent_matches >= 2 or (len(matched) >= 3 and intent_matches >= 1)
+
+    def _intent_anchors(self, *, topic: str, anchors: list[str]) -> list[str]:
+        hostname_tokens: set[str] = set()
+        for hostname in _HOSTNAME_RE.findall(topic.casefold()):
+            hostname_tokens.update(_TOKEN_RE.findall(hostname))
+
+        if hostname_tokens:
+            return [
+                anchor
+                for anchor in anchors
+                if not self._anchor_matches(anchor, hostname_tokens)
+            ]
+        if len(anchors) <= 1:
+            return list(anchors)
+        return anchors[1:]
 
     @staticmethod
     def _phase(value: str) -> str | None:
