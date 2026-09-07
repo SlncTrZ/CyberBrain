@@ -44,6 +44,14 @@ Operational Dream state is stored separately in SQLite files, including:
 
 Knowledge Evolution may use a shared filesystem lock for single-host cross-process serialization.
 
+## Cognitive learning
+
+The first cognitive-learning mechanism stores Prediction and Outcome records inside `cyberbrain_episodic`; it does not create another durable collection.
+
+The provider exposes `prediction_record`, `prediction_resolve`, and read-only `prediction_observe`. Prediction/Outcome metadata is stored under `context.cognition`, and Dreaming can consume it through the existing episodic evidence path. Observation summaries aggregate bounded evidence without mutating Episodic Memory or Knowledge.
+
+Current development is in an observation period for this mechanism. Metacognition / Calibration is not yet part of the runtime contract.
+
 ## Dreaming profile
 
 The optional Docker Compose dreaming profile adds:

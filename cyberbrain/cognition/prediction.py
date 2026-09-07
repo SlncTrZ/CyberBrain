@@ -63,6 +63,23 @@ class OutcomeInput(BaseModel):
         return normalized
 
 
+class PredictionObservation(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    predictions_total: int
+    outcomes_total: int
+    resolved_predictions: int
+    unresolved_predictions: int
+    duplicate_outcomes: int
+    mean_prediction_confidence: float | None
+    mean_confidence_weighted_error: float | None
+    assessment_counts: dict[str, int]
+    error_class_counts: dict[str, int]
+    may_be_truncated: bool
+    sample_limit: int
+    filters: dict[str, str]
+
+
 class PredictionLearningService:
     """Record predictions and later outcomes without granting either truth authority."""
 
@@ -181,6 +198,128 @@ class PredictionLearningService:
             source="cognitive_outcome",
             context={"cognition": cognition},
         )
+
+    def observe(
+        self,
+        *,
+        limit: int = 1000,
+        session_id: str | None = None,
+        agent: str | None = None,
+        project: str | None = None,
+        topic: str | None = None,
+    ) -> PredictionObservation:
+        if not 1 <= limit <= 10000:
+            raise ValueError("prediction observation limit must be between 1 and 10000")
+
+        filters = {
+            key: value
+            for key, value in {
+                "session_id": session_id,
+                "agent": agent,
+                "project": project,
+                "topic": topic,
+            }.items()
+            if value is not None
+        }
+        predictions = self._scroll_cognition(
+            source="cognitive_prediction",
+            limit=limit,
+            filters=filters,
+        )
+        outcomes = self._scroll_cognition(
+            source="cognitive_outcome",
+            limit=limit,
+            filters=filters,
+        )
+
+        prediction_rows: dict[str, tuple[EpisodeRecord, dict[str, Any]]] = {}
+        for record, cognition in predictions:
+            prediction_rows[str(record.id)] = (record, cognition)
+
+        latest_outcomes: dict[str, tuple[EpisodeRecord, dict[str, Any]]] = {}
+        outcome_counts: dict[str, int] = {}
+        for record, cognition in outcomes:
+            prediction_id = str(cognition.get("prediction_id") or "")
+            if prediction_id not in prediction_rows:
+                continue
+            outcome_counts[prediction_id] = outcome_counts.get(prediction_id, 0) + 1
+            current = latest_outcomes.get(prediction_id)
+            if current is None or record.event_time > current[0].event_time:
+                latest_outcomes[prediction_id] = (record, cognition)
+
+        confidences = [
+            float(cognition["confidence"])
+            for _record, cognition in prediction_rows.values()
+            if isinstance(cognition.get("confidence"), int | float)
+        ]
+        weighted_errors: list[float] = []
+        assessment_counts = {item.value: 0 for item in PredictionAssessment}
+        error_class_counts = {item.value: 0 for item in PredictionErrorClass}
+
+        for _record, cognition in latest_outcomes.values():
+            assessment = str(cognition.get("assessment") or "")
+            if assessment in assessment_counts:
+                assessment_counts[assessment] += 1
+            error_class = str(cognition.get("prediction_error_class") or "")
+            if error_class in error_class_counts:
+                error_class_counts[error_class] += 1
+            weighted_error = cognition.get("confidence_weighted_error")
+            if isinstance(weighted_error, int | float):
+                weighted_errors.append(float(weighted_error))
+
+        resolved = len(latest_outcomes)
+        duplicate_outcomes = sum(max(0, count - 1) for count in outcome_counts.values())
+        return PredictionObservation(
+            predictions_total=len(prediction_rows),
+            outcomes_total=len(outcomes),
+            resolved_predictions=resolved,
+            unresolved_predictions=max(0, len(prediction_rows) - resolved),
+            duplicate_outcomes=duplicate_outcomes,
+            mean_prediction_confidence=self._mean(confidences),
+            mean_confidence_weighted_error=self._mean(weighted_errors),
+            assessment_counts=assessment_counts,
+            error_class_counts=error_class_counts,
+            may_be_truncated=len(predictions) >= limit or len(outcomes) >= limit,
+            sample_limit=limit,
+            filters=dict(filters),
+        )
+
+    def _scroll_cognition(
+        self,
+        *,
+        source: str,
+        limit: int,
+        filters: dict[str, str],
+    ) -> list[tuple[EpisodeRecord, dict[str, Any]]]:
+        conditions = [{"key": "source", "match": {"value": source}}]
+        conditions.extend(
+            {"key": key, "match": {"value": value}}
+            for key, value in filters.items()
+        )
+        points = self._repository.scroll(
+            self._episodic_collection,
+            qdrant_filter={"must": conditions},
+            limit=limit,
+        )
+        result: list[tuple[EpisodeRecord, dict[str, Any]]] = []
+        expected_kind = "prediction" if source == "cognitive_prediction" else "outcome"
+        for point in points:
+            payload = point.get("payload") or {}
+            try:
+                record = EpisodeRecord.model_validate(payload)
+            except Exception:
+                continue
+            cognition = record.context.get("cognition")
+            if not isinstance(cognition, dict) or cognition.get("kind") != expected_kind:
+                continue
+            result.append((record, cognition))
+        return result
+
+    @staticmethod
+    def _mean(values: list[float]) -> float | None:
+        if not values:
+            return None
+        return round(sum(values) / len(values), 6)
 
     def _load_prediction(self, prediction_id: UUID) -> EpisodeRecord:
         point = self._repository.retrieve(

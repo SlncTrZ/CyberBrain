@@ -13,6 +13,7 @@ memory_search
 memory_store
 prediction_record
 prediction_resolve
+prediction_observe
 dream_enqueue
 dream_status
 dream_reviews
@@ -30,6 +31,7 @@ cyberbrain.memory_search
 cyberbrain.memory_store
 cyberbrain.prediction_record
 cyberbrain.prediction_resolve
+cyberbrain.prediction_observe
 cyberbrain.dream_enqueue
 cyberbrain.dream_status
 cyberbrain.dream_reviews
@@ -155,7 +157,9 @@ event_time
 
 Allowed assessment values are `confirmed`, `partially_confirmed`, `contradicted`, and `indeterminate`.
 
-Both operations store canonical Episodic records. Outcome metadata inherits the referenced Prediction's session/agent/project/topic identity. Prediction error is derived deterministically and remains learning evidence rather than Knowledge truth.
+Both write operations store canonical Episodic records. Outcome metadata inherits the referenced Prediction's session/agent/project/topic identity. Prediction error is derived deterministically and remains learning evidence rather than Knowledge truth.
+
+`prediction_observe` is read-only. It may filter by session, agent, project, and topic and returns bounded aggregate observation evidence without mutating Episodic Memory or Knowledge.
 
 See `PREDICTION_LEARNING.md`.
 

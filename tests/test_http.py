@@ -137,6 +137,7 @@ def test_tool_catalog_contains_canonical_and_legacy_compatibility_tools() -> Non
         "memory_store",
         "prediction_record",
         "prediction_resolve",
+        "prediction_observe",
         "tech_store",
         "tech_find",
         "ai_memory_read",

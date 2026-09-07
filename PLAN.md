@@ -81,7 +81,7 @@ previous mechanism should first produce enough operational evidence to justify t
 ### Ordered roadmap
 
 1. Prediction / Outcome / Prediction Error
-   - Status: implemented on main; observation period required before mechanism 2 begins.
+   - Status: implemented on main; observation tooling is active and observation evidence must be reviewed before mechanism 2 begins.
    - Record what an agent expected before an action or decision.
    - Record what actually happened.
    - Derive the mismatch without treating the prediction as truth.

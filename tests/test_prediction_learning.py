@@ -89,11 +89,23 @@ class FakeRepository:
         qdrant_filter: dict[str, Any] | None = None,
         limit: int = 100,
     ) -> list[dict[str, Any]]:
-        del collection, qdrant_filter
+        del collection
+        conditions = (qdrant_filter or {}).get("must", [])
+
+        def matches(point: dict[str, Any]) -> bool:
+            payload = point["payload"]
+            for condition in conditions:
+                key = str(condition["key"])
+                expected = condition["match"]["value"]
+                if payload.get(key) != expected:
+                    return False
+            return True
+
         return [
             {"id": point["id"], "payload": point["payload"]}
-            for point in list(self.points.values())[:limit]
-        ]
+            for point in self.points.values()
+            if matches(point)
+        ][:limit]
 
 
 @pytest.fixture
@@ -295,6 +307,120 @@ def test_outcome_cannot_precede_prediction(learning) -> None:
             assessment="indeterminate",
             event_time=start - timedelta(seconds=1),
         )
+
+
+def test_observe_summarizes_latest_outcome_per_prediction(learning) -> None:
+    service, _memory, _repository = learning
+    start = datetime(2026, 9, 7, 1, 0, tzinfo=UTC)
+
+    first = service.record_prediction(
+        expected_outcome="First prediction succeeds.",
+        confidence=0.8,
+        session_id="session-1",
+        event_time=start,
+        agent="agent-a",
+        project="Project A",
+        topic="validation",
+    )
+    second = service.record_prediction(
+        expected_outcome="Second prediction succeeds.",
+        confidence=0.4,
+        session_id="session-1",
+        event_time=start + timedelta(minutes=1),
+        agent="agent-a",
+        project="Project A",
+        topic="validation",
+    )
+    service.record_outcome(
+        prediction_id=first.id,
+        observed_outcome="First result failed.",
+        assessment="contradicted",
+        event_time=start + timedelta(minutes=2),
+    )
+    service.record_outcome(
+        prediction_id=first.id,
+        observed_outcome="Later evidence partially confirmed the expectation.",
+        assessment="partially_confirmed",
+        event_time=start + timedelta(minutes=3),
+    )
+
+    observation = service.observe(project="Project A")
+
+    assert observation.predictions_total == 2
+    assert observation.outcomes_total == 2
+    assert observation.resolved_predictions == 1
+    assert observation.unresolved_predictions == 1
+    assert observation.duplicate_outcomes == 1
+    assert observation.mean_prediction_confidence == 0.6
+    assert observation.assessment_counts["partially_confirmed"] == 1
+    assert observation.assessment_counts["contradicted"] == 0
+    assert observation.error_class_counts["partial"] == 1
+    assert observation.mean_confidence_weighted_error == 0.4
+    assert observation.filters == {"project": "Project A"}
+    assert second.id != first.id
+
+
+def test_observe_filters_prediction_population(learning) -> None:
+    service, _memory, _repository = learning
+    start = datetime(2026, 9, 7, 1, 0, tzinfo=UTC)
+
+    service.record_prediction(
+        expected_outcome="Project A prediction.",
+        confidence=0.7,
+        session_id="session-a",
+        event_time=start,
+        agent="agent-a",
+        project="Project A",
+        topic="release",
+    )
+    service.record_prediction(
+        expected_outcome="Project B prediction.",
+        confidence=0.9,
+        session_id="session-b",
+        event_time=start,
+        agent="agent-b",
+        project="Project B",
+        topic="release",
+    )
+
+    observation = service.observe(
+        session_id="session-a",
+        agent="agent-a",
+        project="Project A",
+        topic="release",
+    )
+
+    assert observation.predictions_total == 1
+    assert observation.unresolved_predictions == 1
+    assert observation.mean_prediction_confidence == 0.7
+    assert observation.filters == {
+        "session_id": "session-a",
+        "agent": "agent-a",
+        "project": "Project A",
+        "topic": "release",
+    }
+
+
+def test_observe_marks_possible_truncation(learning) -> None:
+    service, _memory, _repository = learning
+    service.record_prediction(
+        expected_outcome="One prediction.",
+        confidence=0.5,
+        session_id="session-1",
+        event_time=datetime(2026, 9, 7, 1, 0, tzinfo=UTC),
+    )
+
+    observation = service.observe(limit=1)
+
+    assert observation.may_be_truncated is True
+    assert observation.sample_limit == 1
+
+
+def test_observe_rejects_invalid_limit(learning) -> None:
+    service, _memory, _repository = learning
+
+    with pytest.raises(ValueError, match="between 1 and 10000"):
+        service.observe(limit=0)
 
 
 def test_outcome_can_occur_later_than_prediction(learning) -> None:

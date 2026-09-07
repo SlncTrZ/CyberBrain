@@ -64,6 +64,7 @@ class FakePredictionLearning:
     def __init__(self) -> None:
         self.prediction_calls: list[dict] = []
         self.outcome_calls: list[dict] = []
+        self.observe_calls: list[dict] = []
 
     def record_prediction(self, **kwargs):
         self.prediction_calls.append(dict(kwargs))
@@ -101,6 +102,39 @@ class FakePredictionLearning:
                     "observed_outcome": kwargs["observed_outcome"],
                     "assessment": kwargs["assessment"],
                 }
+            },
+        )
+
+    def observe(self, **kwargs):
+        from cyberbrain.cognition.prediction import PredictionObservation
+
+        self.observe_calls.append(dict(kwargs))
+        return PredictionObservation(
+            predictions_total=3,
+            outcomes_total=2,
+            resolved_predictions=2,
+            unresolved_predictions=1,
+            duplicate_outcomes=0,
+            mean_prediction_confidence=0.7,
+            mean_confidence_weighted_error=0.25,
+            assessment_counts={
+                "confirmed": 1,
+                "partially_confirmed": 0,
+                "contradicted": 1,
+                "indeterminate": 0,
+            },
+            error_class_counts={
+                "none": 1,
+                "partial": 0,
+                "full": 1,
+                "indeterminate": 0,
+            },
+            may_be_truncated=False,
+            sample_limit=int(kwargs.get("limit", 1000)),
+            filters={
+                key: str(value)
+                for key, value in kwargs.items()
+                if key != "limit" and value is not None
             },
         )
 
@@ -190,6 +224,27 @@ def test_prediction_record_handler_parses_datetime_and_confidence() -> None:
     assert cognition["kind"] == "prediction"
     assert cognition["confidence"] == 0.75
     assert PREDICTION_LEARNING.prediction_calls[-1]["project"] == "CyberBrain"
+
+
+def test_prediction_observe_handler_returns_read_only_summary() -> None:
+    result = _call(
+        "prediction_observe",
+        {
+            "project": "CyberBrain",
+            "agent": "agent-a",
+            "limit": 50,
+        },
+    )
+
+    assert result["predictions_total"] == 3
+    assert result["resolved_predictions"] == 2
+    assert result["unresolved_predictions"] == 1
+    assert result["assessment_counts"]["contradicted"] == 1
+    assert PREDICTION_LEARNING.observe_calls[-1] == {
+        "project": "CyberBrain",
+        "agent": "agent-a",
+        "limit": 50,
+    }
 
 
 def test_prediction_resolve_handler_parses_uuid_and_assessment() -> None:

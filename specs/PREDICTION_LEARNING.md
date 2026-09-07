@@ -140,6 +140,39 @@ the expected and observed outcomes.
 A high-confidence contradicted prediction therefore produces a larger calibration signal than a
 low-confidence contradicted prediction, but it still does not prove why the prediction failed.
 
+## Observation interface
+
+Canonical read-only MCP operation:
+
+    prediction_observe
+
+Optional filters:
+
+    session_id
+    agent
+    project
+    topic
+    limit
+
+The observation summary reports:
+
+    predictions_total
+    outcomes_total
+    resolved_predictions
+    unresolved_predictions
+    duplicate_outcomes
+    mean_prediction_confidence
+    mean_confidence_weighted_error
+    assessment_counts
+    error_class_counts
+    may_be_truncated
+    sample_limit
+    filters
+
+When more than one Outcome references the same Prediction, observation metrics use the latest Outcome for assessment/error distributions so calibration-like signals are not double-counted. Extra Outcomes are reported separately through duplicate_outcomes.
+
+The summary is descriptive only. It does not classify an agent as overconfident/underconfident and does not write Knowledge.
+
 ## Dreaming integration
 
 Prediction and Outcome Episodes already flow through canonical episodic retrieval.

@@ -282,6 +282,21 @@ async def list_tools() -> list[types.Tool]:
             },
         ),
         types.Tool(
+            name="prediction_observe",
+            description="Summarize Prediction Learning observation evidence without mutation.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "session_id": {"type": "string"},
+                    "agent": {"type": "string"},
+                    "project": {"type": "string"},
+                    "topic": {"type": "string"},
+                    "limit": {"type": "integer", "minimum": 1, "maximum": 10000},
+                },
+                "additionalProperties": False,
+            },
+        ),
+        types.Tool(
             name="tech_store",
             description="Legacy compatibility alias for storing technical knowledge.",
             inputSchema={
@@ -558,6 +573,10 @@ def _dispatch_tool(name: str, args: dict) -> list[types.TextContent]:
             **args,
         )
         return _json_text(record.model_dump(mode="json"))
+
+    if name == "prediction_observe":
+        observation = runtime.prediction_learning.observe(**args)
+        return _json_text(observation.model_dump(mode="json"))
 
     if name == "tech_store":
         content = str(args.pop("content"))
