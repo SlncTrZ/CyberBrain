@@ -56,8 +56,8 @@ only because it may become useful later.
 
 ## Cognitive learning roadmap
 
-CyberBrain may evolve from a memory system into a learning substrate for agents by adding
-observable, testable cognitive mechanisms one at a time.
+CyberBrain may evolve from a memory system into a learning substrate for agents through
+observable, testable cognitive mechanisms with explicit ownership and evidence dependencies.
 
 This roadmap is not an attempt to reproduce human consciousness. It extracts useful mechanisms
 from human cognition and turns them into explicit technical primitives that can be measured,
@@ -65,66 +65,98 @@ validated, and kept evidence-grounded.
 
 ### Development rule
 
-Implement exactly one cognitive mechanism at a time.
+Treat the cognitive roadmap as a dependency graph with explicit ownership, not as a rigid seven-step
+feature checklist. By default, keep only one new mechanism in active implementation at a time, while
+allowing specification or read-only/shadow observation of downstream mechanisms when dependencies
+are explicit and current project guidance permits it.
 
 A mechanism is not considered complete until it has:
 
 - a written contract/specification;
+- one clearly owned class of decisions that does not duplicate another mechanism;
 - explicit data ownership and lifecycle;
 - deterministic validation rules where possible;
 - tests for correctness and failure modes;
 - provenance/evidence boundaries;
-- an observation period before the next mechanism is promoted into active development.
+- an observation period before persistent or behavioral authority expands.
 
-Do not start implementation of the next mechanism merely because the previous one has code. The
-previous mechanism should first produce enough operational evidence to justify the next layer.
+Dreaming V1 is a stable consolidation substrate rather than one of the numbered mechanisms. New
+mechanisms should consume its evidence-grounded outputs instead of reimplementing Dream reasoning,
+lesson induction, or promotion logic.
 
-### Ordered roadmap
+### Roadmap and mechanism ownership
 
-1. Prediction / Outcome / Prediction Error
-   - Status: implemented and released in v0.1.6; initial end-to-end gateway validation passed; observation remains active.
-   - Record what an agent expected before an action or decision.
-   - Record what actually happened.
-   - Derive the mismatch without treating the prediction as truth.
-   - Use prediction error as learning evidence.
+The numbering preserves roadmap continuity; it does not imply that every dependency is strictly
+linear.
 
-2. Metacognition / Calibration
-   - Status: initial read-only calibration analysis released in v0.1.6; initial end-to-end gateway validation passed; observation evidence must be reviewed before mechanism 3 begins.
-   - Compare prior confidence with actual outcomes.
-   - Detect recurring overconfidence, underconfidence, and reasoning failure patterns.
-   - Learn about reasoning quality without granting self-assessment direct Knowledge write
-     authority.
+1. Prediction Learning
+   - Status: implemented and released in v0.1.6; observation remains active.
+   - Owns: explicit Prediction → observed Outcome → deterministic Prediction Error.
+   - Produces learning evidence; it does not decide what is salient, what becomes a concept, or how
+     the agent should describe itself.
 
-3. Salience / Attention
-   - Status: planned; do not implement until calibration observation evidence is reviewed.
-   - Prioritize experiences using signals such as novelty, prediction error, consequence,
-     contradiction, repetition, user emphasis, and unresolved uncertainty.
-   - Use salience to influence what is surfaced, retained, or scheduled for deeper Dreaming.
-   - Do not equate salience with truth or importance in every context.
+2. Calibration
+   - Status: initial read-only analysis released in v0.1.6; observation remains active.
+   - Owns: epistemic performance statistics over resolved predictions, including confidence bias
+     and calibration error.
+   - Calibration labels describe evidence samples only. They must not become persistent self-beliefs
+     or strategy mutations.
 
-4. Concept Formation / Induction
-   - Generalize repeated evidence-backed episodes into reusable patterns or concepts.
-   - Preserve links to the source episodes and counterexamples.
-   - Require promotion/evidence gates before generalized concepts become canonical Knowledge.
+3. Salience / Priority
+   - Status: planned; not in active development.
+   - Owns: bounded, explainable priority signals over memories/events/candidates.
+   - May use novelty, prediction error, contradiction, repetition, consequence, user emphasis, and
+     unresolvedness.
+   - Does not select or persist the active task context; that belongs to Working Memory.
+   - Does not decide truth, promotion, forgetting, or Knowledge mutation.
+
+4. Concept Formation / Abstraction
+   - Status: planned.
+   - Owns: identifying recurring clusters, concept identities, and abstraction relationships across
+     evidence-backed memories and durable lessons.
+   - Dreaming remains responsible for evidence-grounded consolidation and durable lesson candidates;
+     Concept Formation must not implement a second Dream/induction engine.
+   - Concepts must retain links to supporting evidence, counterexamples, and provenance.
 
 5. Working Memory / Active Context
-   - Maintain bounded task-local state such as current goals, active hypotheses, assumptions,
+   - Status: planned.
+   - Owns: a bounded transient active set for the current task: goals, hypotheses, assumptions,
      blockers, evidence, and open questions.
-   - Keep this state transient and distinct from Episodic Memory and canonical Knowledge.
-   - Consolidate only useful outcomes after the working context closes.
+   - May consume Salience/Priority and task relevance, but must not redefine salience itself.
+   - Active context remains distinct from Episodic Memory and canonical Knowledge.
 
 6. Agent Self-Model
-   - Accumulate evidence about recurring strengths, weaknesses, strategies, calibration, and
-     failure modes for a specific agent identity.
-   - Treat self-model claims as hypotheses derived from repeated observations, not permanent truth.
-   - Prevent one failure or one success from becoming a canonical self-belief.
+   - Status: planned.
+   - Owns: evidence-backed, agent-scoped hypotheses about recurring capabilities, limitations,
+     operating tendencies, and strategy constraints.
+   - Calibration is one input, not the Self-Model itself.
+   - Self-model claims remain revisable hypotheses and never become identity truth from one success
+     or failure.
 
-7. Decay / Forgetting / Reconsolidation
-   - Reduce retrieval priority for stale or low-utility memories without silently erasing
-     provenance.
-   - Strengthen repeatedly useful knowledge.
-   - Reconsider knowledge when contradiction or supersession evidence appears.
-   - Add this only after real data volume demonstrates the need.
+7. Memory Lifecycle
+   - Status: planned; add only when real data volume demonstrates the need.
+   - Owns: retention strength/decay, retrieval suppression or forgetting policy, and lifecycle
+     triggers for reconsideration.
+   - Provenance must not be silently erased.
+   - Reconsolidation should reuse Dreaming and Knowledge Evolution where reasoning or supersession is
+     required rather than create a second consolidation engine.
+
+### Dependency view
+
+    Prediction Learning ──→ Calibration
+            │
+            └──────────────→ Dreaming
+
+    Episodic Memory ───────→ Dreaming ───────→ durable lessons
+                                  │
+                                  ├───────────→ Salience / Priority
+                                  └───────────→ Concept Formation / Abstraction
+
+    Salience + task relevance ────────────────→ Working Memory / Active Context
+    Calibration + repeated evidence ──────────→ Agent Self-Model
+    Memory/Knowledge usage + contradiction ──→ Memory Lifecycle
+
+These are data and authority dependencies, not permission to bypass current development gates.
 
 ### Cognitive safety invariants
 

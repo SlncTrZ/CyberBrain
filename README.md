@@ -40,11 +40,11 @@ operational state stored separately from canonical Knowledge and Episodic Memory
 
 ## Learning primitives
 
-Main now includes the first bounded cognitive-learning mechanism: Prediction / Outcome / Prediction Error.
+Main now includes the first bounded cognitive-learning mechanism: Prediction Learning (Prediction / Outcome / Prediction Error).
 
 Agents can record an explicit expected outcome and prior confidence before an action, then resolve that prediction with an observed outcome and finite assessment. CyberBrain stores both as canonical Episodic evidence and derives a transparent prediction-error signal. This does not implement metacognition or self-modeling.
 
-See specs/PREDICTION_LEARNING.md. Main also contains an initial read-only Metacognition / Calibration analysis over resolved Prediction Learning evidence. It does not persist self-beliefs or change agent strategy. Initial end-to-end MCP gateway validation has passed; both mechanisms remain in observation. See specs/METACOGNITION_CALIBRATION.md.
+See specs/PREDICTION_LEARNING.md. Main also contains an initial read-only Calibration analysis over resolved Prediction Learning evidence. It does not persist self-beliefs or change agent strategy. Initial end-to-end MCP gateway validation has passed; both mechanisms remain in observation. See specs/METACOGNITION_CALIBRATION.md.
 
 ## Dreaming
 

@@ -160,13 +160,13 @@ This version does not:
 - compare models/providers;
 - automatically tune confidence values;
 - maintain a long-lived self-belief such as "agent X is overconfident";
-- implement Salience / Attention.
+- implement Salience / Priority.
 
 Those require separate evidence and specifications.
 
 ## Observation requirement
 
-Before Salience / Attention becomes active development, observe:
+Before Salience / Priority becomes active development, observe:
 
 - how quickly samples accumulate by agent/project/topic;
 - whether the confirmed/partial/contradicted mapping is useful enough;
