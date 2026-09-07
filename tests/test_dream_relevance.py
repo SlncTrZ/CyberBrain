@@ -115,6 +115,33 @@ def test_topic_excerpt_is_bounded_and_keeps_phase_local_context() -> None:
     assert "unrelated historical line 0" not in excerpt
 
 
+def test_topic_excerpt_stops_after_minimal_sufficient_topic_coverage() -> None:
+    guard = TopicRelevanceGuard()
+    topic = "Gemini CLI complete removal"
+    transcript = "\n".join(
+        [
+            "Gỡ bỏ hoàn toàn Gemini CLI trên PC .171.",
+            "npm uninstall -g @google/gemini-cli và xóa thư mục .gemini.",
+            "where gemini không còn kết quả.",
+            *(f"unrelated line {index}" for index in range(80)),
+            'Gemini "Connected" nhưng backend không nhận tool schema.',
+            "Đây là caveat về MCP tool driving, không phải removal.",
+        ]
+    )
+
+    excerpt = guard.topic_excerpt(
+        topic=topic,
+        text=transcript,
+        max_chars=800,
+        context_lines=1,
+    )
+
+    assert excerpt is not None
+    assert "Gemini CLI" in excerpt
+    assert "npm uninstall" in excerpt
+    assert 'Gemini "Connected"' not in excerpt
+
+
 def test_claim_relevance_allows_single_anchor_topic_without_repetition() -> None:
     guard = TopicRelevanceGuard()
 

@@ -169,6 +169,12 @@ class TopicRelevanceGuard:
             if overlaps:
                 continue
             selected.append((start, end))
+            provisional = "\n...\n".join(
+                "\n".join(lines[window_start:window_end])
+                for window_start, window_end in sorted(selected)
+            )
+            if self.text_relevant(topic=topic, text=provisional):
+                break
             if len(selected) >= max_windows:
                 break
 
