@@ -39,6 +39,7 @@ class EpisodeSnippet:
     content: str
     event_time: datetime
     project: str | None = None
+    evidence_id: str | None = None
 
 
 @dataclass(frozen=True)

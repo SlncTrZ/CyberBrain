@@ -76,6 +76,45 @@ def test_core_write_phase_three_rejects_gpu_benchmark() -> None:
     )
 
 
+def test_commit_identifier_requires_exact_identifier_match() -> None:
+    guard = TopicRelevanceGuard()
+    topic = "SlncTrZ-MCP commit 396bd64 hidden bugs"
+
+    assert guard.text_relevant(
+        topic=topic,
+        text="Commit 396bd64 exposed Windows ACL failures and hidden bugs.",
+    )
+    assert not guard.text_relevant(
+        topic=topic,
+        text=(
+            "SlncTrZ-MCP architecture checkpoint records commit history and hidden "
+            "runtime caveats without the audited commit identifier."
+        ),
+    )
+
+
+def test_topic_excerpt_is_bounded_and_keeps_phase_local_context() -> None:
+    guard = TopicRelevanceGuard()
+    topic = "SlncTrZ-MCP Phase 5 extension gateway"
+    transcript = "\n".join(
+        [
+            *(f"unrelated historical line {index}" for index in range(300)),
+            "Phase 5 — Universal MCP Extension Gateway",
+            "The extension gateway routes authorized extension tools through MCP.",
+            "Phase 5 acceptance was completed with transport lifecycle boundaries.",
+            *(f"unrelated later line {index}" for index in range(300)),
+        ]
+    )
+
+    excerpt = guard.topic_excerpt(topic=topic, text=transcript)
+
+    assert excerpt is not None
+    assert len(excerpt) <= 3600
+    assert "Phase 5" in excerpt
+    assert "extension gateway" in excerpt.casefold()
+    assert "unrelated historical line 0" not in excerpt
+
+
 def test_clean_room_oauth_requires_clean_room_plus_another_anchor() -> None:
     guard = TopicRelevanceGuard()
     topic = "SlncTrZ-MCP clean-room OAuth provenance"

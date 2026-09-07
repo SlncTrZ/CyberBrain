@@ -73,7 +73,11 @@ class DreamingEngine:
         evidence: dict[str, list[EvidenceItem]] = {}
 
         for topic in topics:
-            topic_evidence: list[EvidenceItem] = []
+            topic_evidence = self._session_evidence(
+                episodes,
+                session_id=session_id,
+                topic=topic,
+            )
             for bucket in plan.buckets:
                 direct = self._relevance_guard.filter_evidence(
                     topic=topic,
@@ -133,6 +137,43 @@ class DreamingEngine:
             focal_topics=focal_topics,
         )
         return self.reason_prepared(request)
+
+    def _session_evidence(
+        self,
+        episodes: list[EpisodeSnippet],
+        *,
+        session_id: str,
+        topic: str,
+    ) -> list[EvidenceItem]:
+        result: list[EvidenceItem] = []
+        for episode in episodes:
+            evidence_id = str(episode.evidence_id or "").strip()
+            if not evidence_id:
+                continue
+            excerpt = self._relevance_guard.topic_excerpt(
+                topic=topic,
+                text=episode.content,
+            )
+            if not excerpt:
+                continue
+            metadata = {
+                "session_id": session_id,
+                "source": "session_episode",
+                "direct_session": True,
+            }
+            if episode.project:
+                metadata["project"] = episode.project
+            result.append(
+                EvidenceItem(
+                    id=evidence_id,
+                    record_type="episode",
+                    content=excerpt,
+                    score=1.0,
+                    event_time=episode.event_time,
+                    metadata=metadata,
+                )
+            )
+        return result
 
     @staticmethod
     def _normalize_topics(topics: list[str]) -> list[str]:

@@ -48,11 +48,13 @@ class QdrantSessionEpisodeLoader:
             if event_time is None:
                 continue
             project = str(payload.get("project") or "").strip() or None
+            evidence_id = str(point.get("id") or "").strip() or None
             episodes.append(
                 EpisodeSnippet(
                     content=content,
                     event_time=event_time,
                     project=project,
+                    evidence_id=evidence_id,
                 )
             )
 

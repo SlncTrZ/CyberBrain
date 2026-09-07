@@ -144,6 +144,58 @@ def test_prepare_request_filters_explicit_cross_project_evidence() -> None:
     assert ids == ["matching-project", "missing-project", "assoc-matching"]
 
 
+def test_prepare_request_prefers_bounded_direct_session_evidence() -> None:
+    class DuplicateRetriever:
+        def recall(self, *, topic, bucket, limit):  # noqa: ANN001
+            del topic, limit
+            return [
+                EvidenceItem(
+                    id="session-e1",
+                    record_type="episode",
+                    content="Phase 5 extension gateway historical duplicate.",
+                    score=0.7,
+                    event_time=bucket.end,
+                    metadata={"project": "Slnc_Pi"},
+                )
+            ]
+
+    transcript = "\n".join(
+        [
+            *(f"noise line {index}" for index in range(300)),
+            "Phase 5 — Universal MCP Extension Gateway",
+            "The extension gateway routes authorized extension tools through MCP.",
+            "Phase 5 acceptance completed with transport lifecycle boundaries.",
+            *(f"later noise {index}" for index in range(300)),
+        ]
+    )
+    episodes = [
+        EpisodeSnippet(
+            content=transcript,
+            event_time=datetime(2026, 8, 28, 8, 0, tzinfo=UTC),
+            project="Slnc_Pi",
+            evidence_id="session-e1",
+        )
+    ]
+    engine = DreamingEngine(
+        retriever=DuplicateRetriever(),
+        reasoner=FakeReasoner(),
+    )
+
+    request = engine.prepare_request(
+        episodes,
+        session_id="session-phase5",
+        focal_topics=["SlncTrZ-MCP Phase 5 extension gateway"],
+    )
+
+    items = request.evidence_by_topic["SlncTrZ-MCP Phase 5 extension gateway"]
+    assert [item.id for item in items] == ["session-e1"]
+    assert items[0].score == 1.0
+    assert items[0].metadata["direct_session"] is True
+    assert items[0].metadata["session_id"] == "session-phase5"
+    assert len(items[0].content) <= 3600
+    assert "Phase 5" in items[0].content
+
+
 def test_prepare_request_then_reason_matches_dry_run_contract() -> None:
     episodes = [
         EpisodeSnippet(

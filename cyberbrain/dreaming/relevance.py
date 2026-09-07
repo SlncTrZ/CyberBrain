@@ -9,6 +9,7 @@ from cyberbrain.dreaming.reasoner import EvidenceItem
 
 _TOKEN_RE = re.compile(r"[a-z0-9]+")
 _PHASE_RE = re.compile(r"\bphase[\s._-]*(\d+)\b", re.IGNORECASE)
+_IDENTIFIER_RE = re.compile(r"(?=.*[a-z])(?=.*\d)[a-z0-9]{6,}")
 
 _GENERIC_TOPIC_TOKENS = {
     "a",
@@ -77,6 +78,11 @@ class TopicRelevanceGuard:
         if not anchors:
             return True
 
+        tokens = set(_TOKEN_RE.findall(text.casefold()))
+        identifiers = [anchor for anchor in anchors if _IDENTIFIER_RE.fullmatch(anchor)]
+        if identifiers:
+            return all(identifier in tokens for identifier in identifiers)
+
         topic_phase = self._phase(topic)
         if len(anchors) == 1 and topic_phase is None:
             return True
@@ -85,13 +91,87 @@ class TopicRelevanceGuard:
         if topic_phase is not None and topic_phase not in text_phases:
             return False
 
-        tokens = set(_TOKEN_RE.findall(text.casefold()))
         matched = [anchor for anchor in anchors if self._anchor_matches(anchor, tokens)]
         if not matched or matched[0] != anchors[0]:
             return False
 
         required = 1 if len(anchors) == 1 else 2
         return len(matched) >= required
+
+    def topic_excerpt(
+        self,
+        *,
+        topic: str,
+        text: str,
+        max_chars: int = 3600,
+        context_lines: int = 3,
+        max_windows: int = 4,
+    ) -> str | None:
+        value = text.strip()
+        if not value:
+            return None
+        if len(value) <= max_chars:
+            return value if self.text_relevant(topic=topic, text=value) else None
+
+        lines = [line.strip() for line in value.splitlines() if line.strip()]
+        if not lines:
+            return None
+
+        anchors = self._anchors(topic)
+        topic_phase = self._phase(topic)
+        identifiers = [anchor for anchor in anchors if _IDENTIFIER_RE.fullmatch(anchor)]
+        ranked: list[tuple[int, int]] = []
+        for index, line in enumerate(lines):
+            tokens = set(_TOKEN_RE.findall(line.casefold()))
+            score = 0
+            if topic_phase is not None and topic_phase in set(_PHASE_RE.findall(line)):
+                score += 8
+            for identifier in identifiers:
+                if identifier in tokens:
+                    score += 12
+            for position, anchor in enumerate(anchors):
+                if self._anchor_matches(anchor, tokens):
+                    score += 4 if position == 0 else 2
+            if score:
+                ranked.append((score, index))
+
+        if not ranked:
+            return None
+
+        selected: list[tuple[int, int]] = []
+        for _score, index in sorted(ranked, key=lambda item: (-item[0], item[1])):
+            start = max(0, index - context_lines)
+            end = min(len(lines), index + context_lines + 1)
+            window = "\n".join(lines[start:end])
+            if not self.text_relevant(topic=topic, text=window):
+                continue
+            overlaps = any(
+                not (end <= prior_start or start >= prior_end)
+                for prior_start, prior_end in selected
+            )
+            if overlaps:
+                continue
+            selected.append((start, end))
+            if len(selected) >= max_windows:
+                break
+
+        if not selected:
+            return None
+
+        parts: list[str] = []
+        used = 0
+        for start, end in sorted(selected):
+            part = "\n".join(lines[start:end])
+            separator = "\n...\n" if parts else ""
+            remaining = max_chars - used - len(separator)
+            if remaining <= 0:
+                break
+            if len(part) > remaining:
+                part = part[:remaining].rstrip()
+            if part:
+                parts.append(part)
+                used += len(separator) + len(part)
+        return "\n...\n".join(parts) or None
 
     @staticmethod
     def _phase(value: str) -> str | None:
