@@ -1,21 +1,19 @@
 # SPDX-License-Identifier: MPL-2.0
-"""Fallback-only Dream micro-reasoner: 9router Gemini, OpenCode free, then Ollama."""
+"""Configured fallback LLM routes for Dream micro-reasoning."""
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
-import sqlite3
 import sys
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import httpx
 import uvicorn
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from cyberbrain.reasoner_provider.backends.ollama import OllamaMicroReasoningBackend
 from cyberbrain.reasoner_provider.contracts import (
     ReasonTaskRequest,
     ReasonTaskResult,
@@ -24,186 +22,163 @@ from cyberbrain.reasoner_provider.contracts import (
 from cyberbrain.reasoner_provider.http import create_reasoner_app
 from cyberbrain.reasoner_provider.server import configure_micro_backend
 
+ProtocolName = Literal["responses", "messages", "chat_completions"]
+AuthMode = Literal["none", "bearer", "api_key"]
 
-class NineRouterModelPool:
-    """Discover and route Dream tasks across preferred 9router model tiers."""
 
-    GEMINI_PRIORITY = (
-        "gemini-pro",
-        "gemini-flash",
+class LLMRouteConfig(BaseModel):
+    """One ordered LLM provider route and its ordered model candidates."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=80)
+    base_url: str = Field(min_length=1)
+    models: list[str] = Field(min_length=1)
+    protocols: list[ProtocolName] = Field(
+        default_factory=lambda: ["responses", "chat_completions", "messages"]
     )
+    auth: AuthMode = "none"
+    auth_env: str | None = None
+    timeout_seconds: float = Field(default=120.0, gt=0)
+    max_tokens: int = Field(default=2400, ge=64)
+    failure_cooldown_seconds: float = Field(default=60.0, ge=0)
+
+    @field_validator("name", "base_url")
+    @classmethod
+    def _strip_required(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("value must not be empty")
+        return normalized
+
+    @field_validator("models")
+    @classmethod
+    def _validate_models(cls, values: list[str]) -> list[str]:
+        models = [value.strip() for value in values]
+        if any(not value for value in models):
+            raise ValueError("model names must not be empty")
+        if len(models) != len(set(models)):
+            raise ValueError("model names must be unique within a route")
+        return models
+
+    @field_validator("protocols")
+    @classmethod
+    def _validate_protocols(cls, values: list[ProtocolName]) -> list[ProtocolName]:
+        if not values:
+            raise ValueError("protocols must not be empty")
+        if len(values) != len(set(values)):
+            raise ValueError("protocols must be unique within a route")
+        return values
+
+    @model_validator(mode="after")
+    def _validate_route(self) -> LLMRouteConfig:
+        if not self.base_url.startswith(("http://", "https://")):
+            raise ValueError("base_url must use http or https")
+        if self.auth != "none" and not (self.auth_env or "").strip():
+            raise ValueError("auth_env is required when auth is enabled")
+        if self.auth == "none" and self.auth_env is not None:
+            raise ValueError("auth_env must be omitted when auth is none")
+        if self.auth_env is not None:
+            self.auth_env = self.auth_env.strip()
+        return self
+
+
+class DreamLLMRoutesConfig(BaseModel):
+    """Ordered fallback routes. MCP priority is handled before this list."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    routes: list[LLMRouteConfig] = Field(min_length=1)
+
+    @field_validator("routes")
+    @classmethod
+    def _unique_route_names(cls, routes: list[LLMRouteConfig]) -> list[LLMRouteConfig]:
+        names = [route.name for route in routes]
+        if len(names) != len(set(names)):
+            raise ValueError("route names must be unique")
+        return routes
+
+
+def load_route_config(
+    *,
+    file_path: str | None = None,
+    inline_json: str | None = None,
+) -> DreamLLMRoutesConfig:
+    path_value = (
+        file_path
+        if file_path is not None
+        else os.environ.get("CYBERBRAIN_DREAM_LLM_ROUTES_FILE")
+    )
+    json_value = (
+        inline_json
+        if inline_json is not None
+        else os.environ.get("CYBERBRAIN_DREAM_LLM_ROUTES_JSON")
+    )
+
+    if (path_value or "").strip() and (json_value or "").strip():
+        raise ValueError(
+            "set only one of CYBERBRAIN_DREAM_LLM_ROUTES_FILE "
+            "or CYBERBRAIN_DREAM_LLM_ROUTES_JSON"
+        )
+
+    if (path_value or "").strip():
+        path = Path(str(path_value).strip())
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    elif (json_value or "").strip():
+        payload = json.loads(str(json_value))
+    else:
+        raise ValueError(
+            "Dream fallback routes are not configured; set "
+            "CYBERBRAIN_DREAM_LLM_ROUTES_FILE or CYBERBRAIN_DREAM_LLM_ROUTES_JSON"
+        )
+
+    return DreamLLMRoutesConfig.model_validate(payload)
+
+
+class ConfiguredLLMRoutePool:
+    """Try configured provider routes and models exactly in user-defined order."""
 
     def __init__(
         self,
+        config: DreamLLMRoutesConfig,
         *,
-        base_url: str,
-        data_dir: str,
-        timeout_seconds: float,
-        max_tokens: int,
-        catalog_ttl_seconds: float = 900.0,
-        failure_cooldown_seconds: float = 600.0,
+        environ: dict[str, str] | None = None,
     ) -> None:
-        self._base_url = base_url.rstrip("/")
-        self._data_dir = Path(data_dir)
-        self._timeout = timeout_seconds
-        self._max_tokens = max_tokens
-        self._catalog_ttl = catalog_ttl_seconds
-        self._failure_cooldown = failure_cooldown_seconds
-        self._cached_models: list[dict[str, Any]] = []
-        self._catalog_loaded_at = 0.0
-        self._failed_until: dict[str, float] = {}
+        self._config = config
+        self._environ = os.environ if environ is None else environ
+        self._failed_until: dict[tuple[str, str], float] = {}
+        self._validate_secrets()
 
-    def _api_key(self) -> str:
-        db_path = self._data_dir / "db" / "data.sqlite"
-        connection = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
-        try:
-            row = connection.execute(
-                """
-                SELECT key
-                FROM apiKeys
-                WHERE isActive = 1
-                ORDER BY createdAt DESC
-                LIMIT 1
-                """
-            ).fetchone()
-        finally:
-            connection.close()
-        if row is None or not str(row[0]).strip():
-            raise RuntimeError("9router has no active API key")
-        return str(row[0]).strip()
-
-    def _cli_token(self) -> str:
-        machine_id = (self._data_dir / "machine-id").read_text(encoding="utf-8").strip()
-        secret = (self._data_dir / "auth" / "cli-secret").read_text(encoding="utf-8").strip()
-        if not machine_id or not secret:
-            raise RuntimeError("9router CLI authentication material is unavailable")
-        return hashlib.sha256(
-            f"{machine_id}9r-cli-auth{secret}".encode()
-        ).hexdigest()[:16]
-
-    def _catalog_headers(self) -> dict[str, str]:
-        return {
-            "x-9r-cli-token": self._cli_token(),
-            "Content-Type": "application/json",
-        }
-
-    def _v1_headers(self) -> dict[str, str]:
-        return {
-            "Authorization": f"Bearer {self._api_key()}",
-            "Content-Type": "application/json",
-        }
-
-    @staticmethod
-    def _model_name(model: dict[str, Any]) -> str:
-        full_model = str(model.get("fullModel") or "").strip()
-        if full_model:
-            return full_model
-        routed_model = str(model.get("routedModel") or "").strip()
-        if routed_model:
-            return routed_model
-        provider = str(model.get("provider") or "").strip()
-        model_id = str(model.get("model") or "").strip()
-        return f"{provider}/{model_id}" if provider and model_id else model_id
-
-    @classmethod
-    def _gemini_identity(cls, model: dict[str, Any]) -> str:
-        for key in ("model", "alias"):
-            value = str(model.get(key) or "").strip().casefold()
-            if value in {name.casefold() for name in cls.GEMINI_PRIORITY}:
-                return value
-        return ""
-
-    @classmethod
-    def _is_gemini(cls, model: dict[str, Any]) -> bool:
-        return bool(cls._gemini_identity(model))
-
-    @staticmethod
-    def _is_oc_free(model: dict[str, Any]) -> bool:
-        provider = str(model.get("provider") or "").strip().casefold()
-        model_id = str(model.get("model") or "").strip().casefold()
-        full_model = str(model.get("fullModel") or "").strip().casefold()
-        if provider != "oc" and not full_model.startswith("oc/"):
-            return False
-        return "free" in model_id
-
-    @classmethod
-    def _ordered_gemini(cls, models: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        by_identity = {
-            cls._gemini_identity(model): model
-            for model in models
-            if cls._is_gemini(model)
-        }
-        return [
-            by_identity[name.casefold()]
-            for name in cls.GEMINI_PRIORITY
-            if name.casefold() in by_identity
+    def _validate_secrets(self) -> None:
+        missing = [
+            route.auth_env
+            for route in self._config.routes
+            if route.auth != "none"
+            and route.auth_env is not None
+            and not (self._environ.get(route.auth_env) or "").strip()
         ]
-
-    @staticmethod
-    def _ordered_oc_free(models: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        groups: dict[int, list[dict[str, Any]]] = {0: [], 1: []}
-        for model in models:
-            if not NineRouterModelPool._is_oc_free(model):
-                continue
-            reasoning = bool((model.get("caps") or {}).get("reasoning"))
-            groups[0 if reasoning else 1].append(model)
-        ordered: list[dict[str, Any]] = []
-        for group in (0, 1):
-            ordered.extend(
-                sorted(
-                    groups[group],
-                    key=lambda item: NineRouterModelPool._model_name(item),
-                    reverse=True,
-                )
+        if missing:
+            raise ValueError(
+                "configured Dream route credential environment variables are missing: "
+                + ", ".join(sorted(set(missing)))
             )
-        return ordered
 
-    def discover(self, *, force: bool = False) -> list[dict[str, Any]]:
-        now = time.monotonic()
-        if (
-            not force
-            and self._cached_models
-            and now - self._catalog_loaded_at < self._catalog_ttl
-        ):
-            return list(self._cached_models)
+    def _headers(self, route: LLMRouteConfig) -> dict[str, str]:
+        headers = {"Content-Type": "application/json"}
+        if route.auth == "none":
+            return headers
 
-        with httpx.Client(timeout=min(self._timeout, 30.0)) as client:
-            response = client.get(
-                f"{self._base_url}/api/models",
-                headers=self._catalog_headers(),
+        assert route.auth_env is not None
+        token = (self._environ.get(route.auth_env) or "").strip()
+        if not token:
+            raise ValueError(
+                f"configured credential environment variable is empty: {route.auth_env}"
             )
-            response.raise_for_status()
-            payload = response.json()
-
-        models = [
-            model
-            for model in payload.get("models") or []
-            if isinstance(model, dict)
-        ]
-        self._cached_models = models
-        self._catalog_loaded_at = now
-        return list(self._cached_models)
-
-    def _probe(self, model: str) -> bool:
-        now = time.monotonic()
-        if self._failed_until.get(model, 0.0) > now:
-            return False
-
-        try:
-            with httpx.Client(timeout=min(self._timeout, 25.0)) as client:
-                response = client.post(
-                    f"{self._base_url}/api/models/test",
-                    headers=self._catalog_headers(),
-                    json={"model": model, "kind": "llm"},
-                )
-                response.raise_for_status()
-                ok = bool(response.json().get("ok"))
-        except Exception:
-            ok = False
-
-        if not ok:
-            self._failed_until[model] = now + self._failure_cooldown
-        return ok
+        if route.auth == "bearer":
+            headers["Authorization"] = f"Bearer {token}"
+        elif route.auth == "api_key":
+            headers["X-API-Key"] = token
+        return headers
 
     @staticmethod
     def _extract_content(payload: dict[str, Any]) -> str:
@@ -226,9 +201,11 @@ class NineRouterModelPool:
         if parts:
             return "\n".join(parts)
 
-        top_content = payload.get("content")
-        if isinstance(top_content, list):
-            for item in top_content:
+        content = payload.get("content")
+        if isinstance(content, str) and content.strip():
+            return content
+        if isinstance(content, list):
+            for item in content:
                 if isinstance(item, dict):
                     text = item.get("text")
                     if isinstance(text, str) and text.strip():
@@ -237,14 +214,15 @@ class NineRouterModelPool:
                 return "\n".join(parts)
 
         choices = payload.get("choices") or []
-        if choices:
+        if choices and isinstance(choices[0], dict):
             message = choices[0].get("message") or {}
-            for key in ("content", "reasoning_content", "reasoning", "thinking"):
-                value = message.get(key)
-                if isinstance(value, str) and value.strip():
-                    return value
+            if isinstance(message, dict):
+                for key in ("content", "reasoning_content", "reasoning", "thinking"):
+                    value = message.get(key)
+                    if isinstance(value, str) and value.strip():
+                        return value
 
-        raise RuntimeError("9router returned no usable text content")
+        raise RuntimeError("LLM provider returned no usable text content")
 
     @staticmethod
     def _parse_json(text: str) -> dict[str, Any]:
@@ -260,79 +238,150 @@ class NineRouterModelPool:
             value = "\n".join(lines).strip()
             if value.lower().startswith("json\n"):
                 value = value[5:].strip()
+
         try:
             parsed = json.loads(value)
         except json.JSONDecodeError:
             start = value.find("{")
             end = value.rfind("}")
             if start < 0 or end <= start:
-                raise RuntimeError("9router returned invalid JSON") from None
+                raise RuntimeError("LLM provider returned invalid JSON") from None
             parsed = json.loads(value[start : end + 1])
         if not isinstance(parsed, dict):
-            raise RuntimeError("9router JSON must be an object")
+            raise RuntimeError("LLM provider JSON must be an object")
         return parsed
 
-    def _reason_with_model(
-        self,
-        model: str,
-        request: dict[str, Any],
-    ) -> dict[str, Any]:
+    @staticmethod
+    def _prompt(request: dict[str, Any]) -> str:
+        task_id = str(request["task_id"])
+        topic = str(request.get("topic") or "")
+        kind = str(request.get("kind") or "")
+        instruction = str(request.get("instruction") or "")
+        evidence = request.get("evidence") or []
+        return (
+            "You are a strict evidence-grounded consolidator. "
+            "Use only supplied evidence. Preserve negation exactly. Never invent. "
+            "Do not give advice, plans, or future recommendations. "
+            "Every claim must cite only evidence IDs supplied below. "
+            "If the task cannot be supported, return an empty claims array. "
+            f"Echo task_id exactly as {task_id!r}. "
+            "Return concise factual claims as JSON only.\n\n"
+            f"TOPIC: {topic}\n"
+            f"TASK KIND: {kind}\n"
+            f"INSTRUCTION: {instruction}\n"
+            "EVIDENCE:\n"
+            + json.dumps(evidence, ensure_ascii=False, indent=2)
+        )
+
+    @staticmethod
+    def _schema(*, task_id: str, allowed_ids: list[str]) -> dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "task_id": {"type": "string", "enum": [task_id]},
+                "claims": {
+                    "type": "array",
+                    "maxItems": 4,
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "claim": {"type": "string", "maxLength": 320},
+                            "evidence_ids": {
+                                "type": "array",
+                                "minItems": 1,
+                                "maxItems": 4,
+                                "items": {"type": "string", "enum": allowed_ids},
+                            },
+                            "confidence": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 1,
+                            },
+                        },
+                        "required": ["claim", "evidence_ids", "confidence"],
+                    },
+                },
+            },
+            "required": ["task_id", "claims"],
+        }
+
+    @classmethod
+    def _input_text(cls, request: dict[str, Any]) -> str:
         evidence = request.get("evidence") or []
         allowed_ids = [str(item.get("id")) for item in evidence if item.get("id")]
-        if not allowed_ids:
-            return {"task_id": request["task_id"], "claims": []}
-
-        schema = OllamaMicroReasoningBackend._schema(
+        schema = cls._schema(
             task_id=str(request["task_id"]),
             allowed_ids=allowed_ids,
         )
-        prompt = (
-            OllamaMicroReasoningBackend._prompt(request)
+        return (
+            cls._prompt(request)
             + "\n\nReturn ONLY one JSON object matching this schema exactly:\n"
             + json.dumps(schema, ensure_ascii=False)
         )
-        input_text = (
-            "You are a strict evidence-grounded consolidator. "
-            "Return JSON only. Never invent evidence IDs.\n\n"
-            + prompt
-        )
-        headers = self._v1_headers()
 
-        variants = (
-            (
+    @staticmethod
+    def _body(
+        protocol: ProtocolName,
+        *,
+        model: str,
+        input_text: str,
+        max_tokens: int,
+    ) -> tuple[str, dict[str, Any]]:
+        if protocol == "responses":
+            return (
                 "/v1/responses",
                 {
                     "model": model,
                     "input": input_text,
                     "stream": False,
-                    "max_output_tokens": self._max_tokens,
+                    "max_output_tokens": max_tokens,
                 },
-            ),
-            (
+            )
+        if protocol == "messages":
+            return (
                 "/v1/messages",
                 {
                     "model": model,
-                    "max_tokens": self._max_tokens,
+                    "max_tokens": max_tokens,
                     "stream": False,
                     "messages": [{"role": "user", "content": input_text}],
                 },
-            ),
-            (
-                "/v1/chat/completions",
-                {
-                    "model": model,
-                    "max_tokens": self._max_tokens,
-                    "stream": False,
-                    "messages": [{"role": "user", "content": input_text}],
-                },
-            ),
+            )
+        return (
+            "/v1/chat/completions",
+            {
+                "model": model,
+                "max_tokens": max_tokens,
+                "stream": False,
+                "messages": [{"role": "user", "content": input_text}],
+            },
         )
+
+    def _reason_with_model(
+        self,
+        route: LLMRouteConfig,
+        model: str,
+        request: dict[str, Any],
+    ) -> dict[str, Any]:
+        evidence = request.get("evidence") or []
+        if not [item for item in evidence if item.get("id")]:
+            return {"task_id": request["task_id"], "claims": []}
+
+        input_text = self._input_text(request)
+        headers = self._headers(route)
         errors: list[str] = []
-        with httpx.Client(timeout=self._timeout) as client:
-            for path, body in variants:
+
+        with httpx.Client(timeout=route.timeout_seconds) as client:
+            for protocol in route.protocols:
+                path, body = self._body(
+                    protocol,
+                    model=model,
+                    input_text=input_text,
+                    max_tokens=route.max_tokens,
+                )
                 try:
                     response = client.post(
-                        f"{self._base_url}{path}",
+                        f"{route.base_url.rstrip('/')}{path}",
                         headers=headers,
                         json=body,
                     )
@@ -340,10 +389,10 @@ class NineRouterModelPool:
                     text = self._extract_content(response.json())
                     return self._parse_json(text)
                 except Exception as exc:
-                    errors.append(f"{path}:{type(exc).__name__}")
+                    errors.append(f"{protocol}:{type(exc).__name__}")
 
         raise RuntimeError(
-            f"9router model {model!r} failed all compatible protocols: "
+            f"configured route {route.name!r} model {model!r} failed: "
             + ",".join(errors)
         )
 
@@ -351,45 +400,32 @@ class NineRouterModelPool:
         self,
         request: dict[str, Any],
     ) -> tuple[dict[str, Any], str, str]:
-        catalog = self.discover()
-        tiers = (
-            ("gemini", self._ordered_gemini(catalog)),
-            ("opencode_free", self._ordered_oc_free(catalog)),
-        )
-        if not any(models for _tier, models in tiers):
-            raise RuntimeError(
-                "9router catalog contains no configured Gemini or OpenCode free models"
-            )
-
         errors: list[str] = []
-        for tier, models in tiers:
-            for item in models:
-                model = self._model_name(item)
-                if not model:
-                    continue
-                if not self._probe(model):
-                    errors.append(f"{tier}:{model}:probe_failed")
+        now = time.monotonic()
+
+        for route in self._config.routes:
+            for model in route.models:
+                key = (route.name, model)
+                if self._failed_until.get(key, 0.0) > now:
                     continue
                 try:
-                    return self._reason_with_model(model, request), model, tier
+                    return self._reason_with_model(route, model, request), route.name, model
                 except Exception as exc:
-                    self._failed_until[model] = time.monotonic() + self._failure_cooldown
-                    errors.append(f"{tier}:{model}:{type(exc).__name__}")
+                    self._failed_until[key] = (
+                        time.monotonic() + route.failure_cooldown_seconds
+                    )
+                    errors.append(f"{route.name}:{model}:{type(exc).__name__}")
 
-        raise RuntimeError("all 9router Dream models failed: " + ",".join(errors[:12]))
+        raise RuntimeError(
+            "all configured Dream LLM routes failed: " + ",".join(errors[:20])
+        )
 
 
 class FallbackReasonerRouter:
-    """Fallback router only. MCP priority is owned by the Dream worker run coordinator."""
+    """Fallback LLM endpoint. MCP priority is owned by the Dream worker."""
 
-    def __init__(
-        self,
-        *,
-        nine_router: NineRouterModelPool,
-        ollama: OllamaMicroReasoningBackend,
-    ) -> None:
-        self._nine_router = nine_router
-        self._ollama = ollama
+    def __init__(self, *, route_pool: ConfiguredLLMRoutePool) -> None:
+        self._route_pool = route_pool
 
     @staticmethod
     def _validate(request: dict[str, Any], raw: dict[str, Any]) -> dict[str, Any]:
@@ -401,55 +437,19 @@ class FallbackReasonerRouter:
     def reason_task(self, request: dict[str, Any]) -> dict[str, Any]:
         normalized = ReasonTaskRequest.model_validate(request).model_dump(mode="json")
         task_id = str(normalized["task_id"])
-
-        try:
-            raw, model, tier = self._nine_router.reason_task(normalized)
-            result = self._validate(normalized, raw)
-            print(
-                f"reasoner_route 9router_ok task={task_id} tier={tier} model={model}",
-                flush=True,
-            )
-            return result
-        except Exception as exc:
-            print(
-                f"reasoner_route 9router_failed task={task_id} "
-                f"error={type(exc).__name__}; trying_ollama",
-                flush=True,
-            )
-
-        raw = self._ollama.reason_task(normalized)
+        raw, route_name, model = self._route_pool.reason_task(normalized)
         result = self._validate(normalized, raw)
-        model = os.environ.get(
-            "DREAM_OLLAMA_MODEL",
-            "qwen3-vl:2b-thinking",
-        )
         print(
-            f"reasoner_route ollama_ok task={task_id} model={model}",
+            f"reasoner_route llm_ok task={task_id} route={route_name} model={model}",
             flush=True,
         )
         return result
 
 
 def build_backend() -> FallbackReasonerRouter:
+    config = load_route_config()
     return FallbackReasonerRouter(
-        nine_router=NineRouterModelPool(
-            base_url=os.environ.get("DREAM_9ROUTER_URL", "http://9router:20128"),
-            data_dir=os.environ.get("DREAM_9ROUTER_DATA_DIR", "/nine-data"),
-            timeout_seconds=float(os.environ.get("DREAM_9ROUTER_TIMEOUT_SECONDS", "180")),
-            max_tokens=int(os.environ.get("DREAM_9ROUTER_MAX_TOKENS", "2400")),
-            catalog_ttl_seconds=float(
-                os.environ.get("DREAM_9ROUTER_CATALOG_TTL_SECONDS", "900")
-            ),
-            failure_cooldown_seconds=float(
-                os.environ.get("DREAM_9ROUTER_FAILURE_COOLDOWN_SECONDS", "600")
-            ),
-        ),
-        ollama=OllamaMicroReasoningBackend(
-            base_url=os.environ.get("DREAM_OLLAMA_URL", "http://ollama:11434"),
-            model=os.environ.get("DREAM_OLLAMA_MODEL", "qwen3-vl:2b-thinking"),
-            timeout_seconds=float(os.environ.get("DREAM_OLLAMA_TIMEOUT_SECONDS", "240")),
-            num_predict=int(os.environ.get("DREAM_OLLAMA_NUM_PREDICT", "700")),
-        ),
+        route_pool=ConfiguredLLMRoutePool(config),
     )
 
 

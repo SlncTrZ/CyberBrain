@@ -54,7 +54,7 @@ def _request() -> DreamReasoningRequest:
                 EvidenceItem(
                     id="e2",
                     record_type="knowledge",
-                    content="9router is the fallback engine after MCP.",
+                    content="Configured LLM routes are the fallback path after MCP.",
                     score=0.95,
                     event_time=now - timedelta(minutes=10),
                     metadata={"verification": "tested"},

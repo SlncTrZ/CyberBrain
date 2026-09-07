@@ -24,7 +24,7 @@ CyberBrain Dream worker
     ↓
 MCP Reasoner boundary
     ├── preferred operating policy: primary MCP Reasoner for most Dreaming work
-    └── deployed local CPU fallback provider: qwen3-vl:2b-thinking
+    └── deployed fallback Reasoner: deployment-configured
 ```
 
 Temporary MeiLin aliases are adapters into canonical CyberBrain services; they are not a second persistence implementation.
@@ -90,7 +90,7 @@ Historical migrated Episodes are `dream_status=skipped` so migration does not re
 
 Dream jobs are claimed atomically in SQLite so multiple workers cannot process the same pending job concurrently. Queue state owns intermediate processing/retry state. Canonical Episodes transition to `processed` with `dream_run_id` and `dreamed_at` after a successful run, or to `failed` when the job fails.
 
-Dreaming is background work. The agreed operating policy is MCP-first Reasoning for the large majority of Dreaming work, with the local CPU Reasoner reserved as fallback. The current deployment includes the local `qwen3-vl:2b-thinking` MCP Reasoner service and Dream worker; primary/fallback routing remains an operational routing concern rather than a V1 domain requirement. Local fallback may take several minutes for a full multipass run without blocking foreground Knowledge/Memory use.
+Dreaming is background work. The agreed operating policy is MCP-first Reasoning for the large majority of Dreaming work, with configured LLM routes reserved for fallback. Provider/model selection remains deployment configuration rather than a V1 domain requirement. Slow fallback routes may take longer for a full multipass run without blocking foreground Knowledge/Memory use.
 
 ## Rollback
 

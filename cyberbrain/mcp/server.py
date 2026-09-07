@@ -66,15 +66,7 @@ def _guide_path() -> Path:
 
 
 def _legacy_domain(value: str) -> str:
-    normalized = value.strip().casefold()
-    mapping = {
-        "code_chronicles": "code",
-        "tcdserver": "ops",
-        "openclaw": "ops",
-        "robotics": "hardware",
-        "omniscience_wiki": "research",
-    }
-    return mapping.get(normalized, normalized or "ops")
+    return value.strip().casefold() or "ops"
 
 
 def _help_payload() -> str:

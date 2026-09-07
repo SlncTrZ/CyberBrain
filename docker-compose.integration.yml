@@ -95,6 +95,8 @@ services:
       CYBERBRAIN_KNOWLEDGE_EVOLUTION_LOCK_FILE: /data/knowledge_evolution.lock
       CYBERBRAIN_DREAM_QUEUE_DB: /data/dream_queue.sqlite
       CYBERBRAIN_DREAM_AUDIT_DB: /data/dream_audit.sqlite
+      CYBERBRAIN_DREAM_REASON_TASK_DB: /data/dream_reason_tasks.sqlite
+      CYBERBRAIN_DREAM_MCP_WAIT_SECONDS: 0
       CYBERBRAIN_DREAM_REASONER_URL: http://reasoner:8770/mcp
       CYBERBRAIN_DREAM_REASONER_TOOL: reason_task
       CYBERBRAIN_DREAM_WORKER_POLL_SECONDS: 0.5

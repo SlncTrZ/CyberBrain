@@ -1,0 +1,80 @@
+# SPDX-License-Identifier: MPL-2.0
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install project and release tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]" build
+
+      - name: Verify tag matches package version
+        run: |
+          python - <<'PY'
+          import os
+          import tomllib
+          import cyberbrain
+
+          tag = os.environ["GITHUB_REF_NAME"]
+          with open("pyproject.toml", "rb") as handle:
+              project_version = tomllib.load(handle)["project"]["version"]
+          expected = f"v{project_version}"
+          assert cyberbrain.__version__ == project_version
+          assert tag == expected, f"tag {tag!r} does not match {expected!r}"
+          print(expected)
+          PY
+
+      - name: Ruff
+        run: ruff check .
+
+      - name: Tests
+        run: pytest -q
+
+      - name: Validate Compose
+        env:
+          CYBERBRAIN_MCP_AUTH_TOKEN: release-placeholder-token
+          CYBERBRAIN_DREAM_REASONER_BEARER_TOKEN: release-placeholder-reasoner-token
+        run: |
+          docker compose config --quiet
+          docker compose --profile dreaming config --quiet
+          docker compose -f docker-compose.integration.yml config --quiet
+
+      - name: Build release image
+        run: docker build -t "cyberbrain:${GITHUB_REF_NAME#v}" .
+
+      - name: Build release artifacts
+        run: |
+          python -m build
+          cd dist
+          sha256sum *.whl *.tar.gz > SHA256SUMS.txt
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            dist/*.whl \
+            dist/*.tar.gz \
+            dist/SHA256SUMS.txt \
+            --verify-tag \
+            --generate-notes \
+            --title "CyberBrain $GITHUB_REF_NAME"

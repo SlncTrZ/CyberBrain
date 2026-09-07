@@ -4,6 +4,7 @@ This directory separates current runtime/release guidance from historical migrat
 
 ## Current
 
+- `DREAMING_ROUTING.md` — provider-neutral MCP-first Dream routing and ordered LLM route configuration.
 - `CURRENT_RUNTIME_2026-09-04.md` — current CyberBrain V1 runtime topology and operating boundaries.
 - `V1_FREEZE_2026-09-04.md` — V1 completion/freeze decision and use-and-observe operating mode.
 

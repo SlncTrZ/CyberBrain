@@ -30,6 +30,29 @@ services:
       embedding-init:
         condition: service_completed_successfully
 
+  dream-route-reasoner:
+    build:
+      context: .
+    restart: unless-stopped
+    profiles: ["dreaming"]
+    command: ["python", "-m", "cyberbrain.dreaming.fallback_router"]
+    expose:
+      - "8771"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s=socket.create_connection(('127.0.0.1',8771),3); s.close()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      REASONER_AUTH_TOKEN: ${CYBERBRAIN_DREAM_REASONER_BEARER_TOKEN:?CYBERBRAIN_DREAM_REASONER_BEARER_TOKEN is required}
+      REASONER_ROUTER_PORT: 8771
+      CYBERBRAIN_DREAM_LLM_ROUTES_FILE: ${CYBERBRAIN_DREAM_LLM_ROUTES_FILE:-/config/dream-routes.json}
+    volumes:
+      - ./config:/config:ro
+
   dream-worker:
     build:
       context: .
@@ -55,10 +78,14 @@ services:
       CYBERBRAIN_KNOWLEDGE_EVOLUTION_LOCK_FILE: /data/knowledge_evolution.lock
       CYBERBRAIN_DREAM_QUEUE_DB: /data/dream_queue.sqlite
       CYBERBRAIN_DREAM_AUDIT_DB: /data/dream_audit.sqlite
-      CYBERBRAIN_DREAM_REASONER_URL: ${CYBERBRAIN_DREAM_REASONER_URL:-}
+      CYBERBRAIN_DREAM_REASON_TASK_DB: /data/dream_reason_tasks.sqlite
+      CYBERBRAIN_DREAM_MCP_WAIT_SECONDS: ${CYBERBRAIN_DREAM_MCP_WAIT_SECONDS:-30}
+      CYBERBRAIN_DREAM_MCP_POLL_SECONDS: ${CYBERBRAIN_DREAM_MCP_POLL_SECONDS:-0.5}
+      CYBERBRAIN_DREAM_REASONER_URL: ${CYBERBRAIN_DREAM_REASONER_URL:-http://dream-route-reasoner:8771/mcp}
       CYBERBRAIN_DREAM_REASONER_TOOL: ${CYBERBRAIN_DREAM_REASONER_TOOL:-reason_task}
-      CYBERBRAIN_DREAM_REASONER_BEARER_TOKEN: ${CYBERBRAIN_DREAM_REASONER_BEARER_TOKEN:-}
+      CYBERBRAIN_DREAM_REASONER_BEARER_TOKEN: ${CYBERBRAIN_DREAM_REASONER_BEARER_TOKEN:?CYBERBRAIN_DREAM_REASONER_BEARER_TOKEN is required}
       CYBERBRAIN_DREAM_REASONER_API_KEY: ${CYBERBRAIN_DREAM_REASONER_API_KEY:-}
+      CYBERBRAIN_DREAM_REASONER_TIMEOUT_SECONDS: ${CYBERBRAIN_DREAM_REASONER_TIMEOUT_SECONDS:-240}
       CYBERBRAIN_DREAM_WORKER_POLL_SECONDS: ${CYBERBRAIN_DREAM_WORKER_POLL_SECONDS:-2}
       CYBERBRAIN_DREAM_WORKER_MAX_ATTEMPTS: ${CYBERBRAIN_DREAM_WORKER_MAX_ATTEMPTS:-3}
     volumes:
@@ -68,6 +95,30 @@ services:
         condition: service_started
       embedding-init:
         condition: service_completed_successfully
+      dream-route-reasoner:
+        condition: service_healthy
+
+  dream-scheduler:
+    build:
+      context: .
+    restart: unless-stopped
+    profiles: ["dreaming"]
+    command: ["python", "-m", "cyberbrain.dreaming.scheduler"]
+    environment:
+      CYBERBRAIN_QDRANT_URL: http://qdrant:6333
+      CYBERBRAIN_QDRANT_API_KEY: ${CYBERBRAIN_QDRANT_API_KEY:-}
+      CYBERBRAIN_EPISODIC_COLLECTION: cyberbrain_episodic
+      CYBERBRAIN_DREAM_QUEUE_DB: /data/dream_queue.sqlite
+      CYBERBRAIN_DREAM_SCHEDULER_UTC: ${CYBERBRAIN_DREAM_SCHEDULER_UTC:-23:50}
+      CYBERBRAIN_DREAM_SCHEDULER_QUIET_MINUTES: ${CYBERBRAIN_DREAM_SCHEDULER_QUIET_MINUTES:-60}
+      CYBERBRAIN_DREAM_SCHEDULER_TOPIC_LIMIT: ${CYBERBRAIN_DREAM_SCHEDULER_TOPIC_LIMIT:-3}
+      CYBERBRAIN_DREAM_SCHEDULER_PAGE_SIZE: ${CYBERBRAIN_DREAM_SCHEDULER_PAGE_SIZE:-512}
+      CYBERBRAIN_DREAM_SCHEDULER_MAX_POINTS: ${CYBERBRAIN_DREAM_SCHEDULER_MAX_POINTS:-20000}
+    volumes:
+      - cyberbrain-data:/data
+    depends_on:
+      qdrant:
+        condition: service_started
 
   reasoner:
     build:

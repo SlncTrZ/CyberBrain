@@ -1,0 +1,38 @@
+{
+  "routes": [
+    {
+      "name": "provider-1",
+      "base_url": "https://provider-1.example",
+      "models": [
+        "model-1A",
+        "model-1B"
+      ],
+      "protocols": [
+        "responses",
+        "chat_completions"
+      ],
+      "auth": "bearer",
+      "auth_env": "CYBERBRAIN_DREAM_PROVIDER_1_TOKEN",
+      "timeout_seconds": 120,
+      "max_tokens": 2400,
+      "failure_cooldown_seconds": 60
+    },
+    {
+      "name": "provider-2",
+      "base_url": "https://provider-2.example",
+      "models": [
+        "model-2A",
+        "model-2B"
+      ],
+      "protocols": [
+        "chat_completions",
+        "messages"
+      ],
+      "auth": "api_key",
+      "auth_env": "CYBERBRAIN_DREAM_PROVIDER_2_TOKEN",
+      "timeout_seconds": 180,
+      "max_tokens": 2400,
+      "failure_cooldown_seconds": 60
+    }
+  ]
+}

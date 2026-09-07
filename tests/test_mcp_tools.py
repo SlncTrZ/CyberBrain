@@ -117,9 +117,9 @@ def test_memory_search_handler_applies_filters() -> None:
     assert result[0]["limit"] == 2
 
 
-def test_legacy_knowledge_search_maps_wing_to_domain() -> None:
-    result = _call("knowledge_search", {"query": "x", "wing": "tcdserver", "limit": 3})
-    assert result[0]["domain"] == "ops"
+def test_legacy_knowledge_search_normalizes_wing_to_domain() -> None:
+    result = _call("knowledge_search", {"query": "x", "wing": "Operations", "limit": 3})
+    assert result[0]["domain"] == "operations"
     assert result[0]["query"] == "x"
 
 

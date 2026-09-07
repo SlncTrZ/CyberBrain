@@ -1,5 +1,7 @@
 # CyberBrain
 
+[![CI](https://github.com/SlncTrZ/CyberBrain/actions/workflows/ci.yml/badge.svg)](https://github.com/SlncTrZ/CyberBrain/actions/workflows/ci.yml)
+
 CyberBrain is a portable knowledge + memory infrastructure for AI agents.
 
 It provides durable knowledge storage, episodic memory, retrieval, Knowledge Evolution, and a first-class Dreaming Engine that consolidates experience into smaller evidence-backed conclusions.
@@ -12,12 +14,12 @@ CyberBrain now implements canonical Knowledge, Episodic Memory, Dreaming, MCP/AP
 
 Current verification baseline:
 
-- 122 automated tests passing
+- automated unit and contract tests enforced by GitHub CI
 - Ruff clean
 - canonical staged migration validated with preserved point IDs/vectors
 - no duplicate-active canonical identities in the V1 stage
 - Dreaming full lifecycle verified through review approval and Knowledge Evolution writeback
-- production Dream worker and MCP Reasoner services verified healthy; local `qwen3-vl:2b-thinking` fallback benchmarked 10/10
+- Dream worker routing verified with MCP-first reasoning and user-configured ordered LLM fallback routes
 - dependency-aware `/ready` probe verified for Qdrant + embedding availability
 - MCP Streamable HTTP `/mcp`, authenticated `help`, canonical tools, and temporary MeiLin compatibility aliases verified
 
@@ -57,6 +59,28 @@ Key requirements include:
 - provider-local MCP tool names with gateway-owned canonical namespacing
 - stable tool/version/error contracts
 - no credentials in source, prompts, URLs, logs, or tool results
+
+## Dreaming routes
+
+Dreaming routing is deployment-configurable and provider-neutral:
+
+```text
+MCP reasoner session
+       ↓ unfinished tasks only
+LLM provider 1: model 1A → model 1B → ...
+       ↓
+LLM provider 2: model 2A → model 2B → ...
+       ↓
+...
+```
+
+CyberBrain does not hard-code a provider, model catalog, or external routing service. Copy
+`config/dream-routes.example.json` to `config/dream-routes.json`, then define providers and
+models in the exact order you want them tried. Provider credentials are referenced by environment
+variable name through `auth_env`; secret values do not belong in the route file or Git.
+
+The `dreaming` Docker Compose profile starts the Dream worker, configured LLM route reasoner,
+and nightly scheduler from code contained in this repository.
 
 ## Project documents
 

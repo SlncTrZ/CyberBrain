@@ -122,7 +122,7 @@ def test_mark_fallback_does_not_overwrite_completed_result(tmp_path) -> None:
         ],
     )
 
-    inbox.mark_fallback("task-1", route="9router")
+    inbox.mark_fallback("task-1", route="configured-llm")
 
     state = inbox.task_state("task-1")
     assert state is not None
