@@ -15,6 +15,7 @@ prediction_record
 prediction_resolve
 prediction_observe
 prediction_pending
+calibration_observe
 dream_enqueue
 dream_status
 dream_reviews
@@ -34,6 +35,7 @@ cyberbrain.prediction_record
 cyberbrain.prediction_resolve
 cyberbrain.prediction_observe
 cyberbrain.prediction_pending
+cyberbrain.calibration_observe
 cyberbrain.dream_enqueue
 cyberbrain.dream_status
 cyberbrain.dream_reviews
@@ -165,7 +167,9 @@ Both write operations store canonical Episodic records. Outcome metadata inherit
 
 `prediction_pending` is read-only. It returns bounded unresolved Prediction records for the same filters so agents can later resolve them. When `may_be_incomplete=true`, callers must not interpret the returned items as the complete unresolved population.
 
-See `PREDICTION_LEARNING.md`.
+`calibration_observe` is read-only and consumes resolved Prediction Learning evidence. It must return `insufficient_evidence` below its configured minimum sample count and may not persist calibration labels or mutate Knowledge/Memory.
+
+See `PREDICTION_LEARNING.md` and `METACOGNITION_CALIBRATION.md`.
 
 ## Dreaming tools
 

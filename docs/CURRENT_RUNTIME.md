@@ -50,7 +50,7 @@ The first cognitive-learning mechanism stores Prediction and Outcome records ins
 
 The provider exposes `prediction_record`, `prediction_resolve`, read-only `prediction_observe`, and read-only `prediction_pending`. Prediction/Outcome metadata is stored under `context.cognition`, and Dreaming can consume it through the existing episodic evidence path. Observation and pending summaries are bounded reads and do not mutate Episodic Memory or Knowledge.
 
-Current development is in an observation period for this mechanism. Metacognition / Calibration is not yet part of the runtime contract.
+Prediction Learning remains in active observation. The runtime now also exposes read-only `calibration_observe` for sample-level confidence calibration analysis. It does not persist a self-model, alter agent behavior, or write Knowledge.
 
 ## Dreaming profile
 

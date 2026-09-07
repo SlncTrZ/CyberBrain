@@ -88,13 +88,14 @@ previous mechanism should first produce enough operational evidence to justify t
    - Use prediction error as learning evidence.
 
 2. Metacognition / Calibration
-   - Status: planned; do not implement until Prediction Learning observation evidence is reviewed.
+   - Status: initial read-only calibration analysis implemented on main; observation evidence must be reviewed before mechanism 3 begins.
    - Compare prior confidence with actual outcomes.
    - Detect recurring overconfidence, underconfidence, and reasoning failure patterns.
    - Learn about reasoning quality without granting self-assessment direct Knowledge write
      authority.
 
 3. Salience / Attention
+   - Status: planned; do not implement until calibration observation evidence is reviewed.
    - Prioritize experiences using signals such as novelty, prediction error, consequence,
      contradiction, repetition, user emphasis, and unresolved uncertainty.
    - Use salience to influence what is surfaced, retained, or scheduled for deeper Dreaming.
@@ -151,7 +152,7 @@ Normative/current guidance:
 - docs/CURRENT_RUNTIME.md
 - docs/DREAMING_ROUTING.md
 - specs/
-  - including specs/PREDICTION_LEARNING.md for the first cognitive learning mechanism.
+  - including specs/PREDICTION_LEARNING.md and specs/METACOGNITION_CALIBRATION.md for the current cognitive learning mechanisms.
 
 Historical development and migration evidence lives under docs/history/ and is non-normative.
 

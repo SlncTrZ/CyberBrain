@@ -44,7 +44,7 @@ Main now includes the first bounded cognitive-learning mechanism: Prediction / O
 
 Agents can record an explicit expected outcome and prior confidence before an action, then resolve that prediction with an observed outcome and finite assessment. CyberBrain stores both as canonical Episodic evidence and derives a transparent prediction-error signal. This does not implement metacognition or self-modeling.
 
-See specs/PREDICTION_LEARNING.md. Mechanism #1 remains in its observation period before Metacognition / Calibration begins.
+See specs/PREDICTION_LEARNING.md. Main also contains an initial read-only Metacognition / Calibration analysis over resolved Prediction Learning evidence. It does not persist self-beliefs or change agent strategy. See specs/METACOGNITION_CALIBRATION.md.
 
 ## Dreaming
 

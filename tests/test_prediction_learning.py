@@ -423,6 +423,56 @@ def test_observe_rejects_invalid_limit(learning) -> None:
         service.observe(limit=0)
 
 
+def test_calibration_samples_use_latest_outcome_and_exclude_indeterminate(
+    learning,
+) -> None:
+    service, _memory, _repository = learning
+    start = datetime(2026, 9, 7, 1, 0, tzinfo=UTC)
+
+    first = service.record_prediction(
+        expected_outcome="First prediction.",
+        confidence=0.8,
+        session_id="session-1",
+        event_time=start,
+        agent="agent-a",
+        project="Project A",
+    )
+    second = service.record_prediction(
+        expected_outcome="Second prediction.",
+        confidence=0.4,
+        session_id="session-1",
+        event_time=start + timedelta(minutes=1),
+        agent="agent-a",
+        project="Project A",
+    )
+    service.record_outcome(
+        prediction_id=first.id,
+        observed_outcome="Initial contradiction.",
+        assessment="contradicted",
+        event_time=start + timedelta(minutes=2),
+    )
+    service.record_outcome(
+        prediction_id=first.id,
+        observed_outcome="Later partial confirmation.",
+        assessment="partially_confirmed",
+        event_time=start + timedelta(minutes=3),
+    )
+    service.record_outcome(
+        prediction_id=second.id,
+        observed_outcome="Not enough evidence.",
+        assessment="indeterminate",
+        event_time=start + timedelta(minutes=4),
+    )
+
+    samples, excluded_indeterminate, may_be_incomplete = (
+        service.calibration_samples(project="Project A")
+    )
+
+    assert samples == [{"confidence": 0.8, "empirical_score": 0.5}]
+    assert excluded_indeterminate == 1
+    assert may_be_incomplete is False
+
+
 def test_pending_lists_only_unresolved_predictions_in_time_order(learning) -> None:
     service, _memory, _repository = learning
     start = datetime(2026, 9, 7, 1, 0, tzinfo=UTC)

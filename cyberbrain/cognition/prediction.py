@@ -309,6 +309,82 @@ class PredictionLearningService:
             filters=dict(filters),
         )
 
+    def calibration_samples(
+        self,
+        *,
+        limit: int = 1000,
+        session_id: str | None = None,
+        agent: str | None = None,
+        project: str | None = None,
+        topic: str | None = None,
+    ) -> tuple[list[dict[str, float]], int, bool]:
+        if not 1 <= limit <= 10000:
+            raise ValueError("calibration sample limit must be between 1 and 10000")
+
+        filters = {
+            key: value
+            for key, value in {
+                "session_id": session_id,
+                "agent": agent,
+                "project": project,
+                "topic": topic,
+            }.items()
+            if value is not None
+        }
+        predictions = self._scroll_cognition(
+            source="cognitive_prediction",
+            limit=limit,
+            filters=filters,
+        )
+        outcomes = self._scroll_cognition(
+            source="cognitive_outcome",
+            limit=limit,
+            filters=filters,
+        )
+
+        prediction_confidence = {
+            str(record.id): float(cognition["confidence"])
+            for record, cognition in predictions
+            if isinstance(cognition.get("confidence"), int | float)
+        }
+        latest_outcomes: dict[str, tuple[EpisodeRecord, dict[str, Any]]] = {}
+        for record, cognition in outcomes:
+            prediction_id = str(cognition.get("prediction_id") or "")
+            if prediction_id not in prediction_confidence:
+                continue
+            current = latest_outcomes.get(prediction_id)
+            if current is None or record.event_time > current[0].event_time:
+                latest_outcomes[prediction_id] = (record, cognition)
+
+        empirical_scores = {
+            PredictionAssessment.CONFIRMED.value: 1.0,
+            PredictionAssessment.PARTIALLY_CONFIRMED.value: 0.5,
+            PredictionAssessment.CONTRADICTED.value: 0.0,
+        }
+        samples: list[dict[str, float]] = []
+        excluded_indeterminate = 0
+        for _record, cognition in latest_outcomes.values():
+            assessment = str(cognition.get("assessment") or "")
+            if assessment == PredictionAssessment.INDETERMINATE.value:
+                excluded_indeterminate += 1
+                continue
+            empirical_score = empirical_scores.get(assessment)
+            if empirical_score is None:
+                continue
+            prediction_id = str(cognition.get("prediction_id") or "")
+            samples.append(
+                {
+                    "confidence": prediction_confidence[prediction_id],
+                    "empirical_score": empirical_score,
+                }
+            )
+
+        return (
+            samples,
+            excluded_indeterminate,
+            len(predictions) >= limit or len(outcomes) >= limit,
+        )
+
     def pending(
         self,
         *,

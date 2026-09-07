@@ -8,7 +8,7 @@ The documentation tree separates current normative guidance from historical evid
 - DREAMING_ROUTING.md — provider-neutral MCP-first Dream routing and ordered LLM route configuration.
 - ../TOOL_GUIDE.md — current MCP tool behavior.
 - ../PLAN.md — current operating mode and architectural invariants.
-- ../specs/ — canonical data, retrieval, evolution, Dreaming, Reasoner, security, tool, and cognitive-learning contracts.
+- ../specs/ — canonical data, retrieval, evolution, Dreaming, Reasoner, security, tool, Prediction Learning, and Metacognition/Calibration contracts.
 
 ## Historical evidence
 

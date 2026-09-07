@@ -176,11 +176,47 @@ PREDICTION_LEARNING = FakePredictionLearning()
 
 
 @dataclass
+class FakeCalibration:
+    def __init__(self) -> None:
+        self.calls: list[dict] = []
+
+    def observe(self, **kwargs):
+        from cyberbrain.cognition.calibration import (
+            CalibrationAssessment,
+            CalibrationReport,
+        )
+
+        self.calls.append(dict(kwargs))
+        return CalibrationReport(
+            usable_samples=25,
+            excluded_indeterminate=2,
+            minimum_samples=int(kwargs.get("minimum_samples", 20)),
+            mean_confidence=0.72,
+            mean_empirical_score=0.6,
+            calibration_bias=0.12,
+            mean_squared_calibration_error=0.08,
+            assessment=CalibrationAssessment.OVERCONFIDENT,
+            bias_threshold=float(kwargs.get("bias_threshold", 0.1)),
+            may_be_incomplete=False,
+            filters={
+                key: str(value)
+                for key, value in kwargs.items()
+                if key not in {"limit", "minimum_samples", "bias_threshold"}
+                and value is not None
+            },
+        )
+
+
+CALIBRATION = FakeCalibration()
+
+
+@dataclass
 class FakeRuntime:
     knowledge_evolution: FakeKnowledgeEvolution
     knowledge_search: FakeKnowledgeSearch
     memory: FakeMemory
     prediction_learning: FakePredictionLearning
+    metacognition_calibration: FakeCalibration
 
 
 def setup_module() -> None:
@@ -190,6 +226,7 @@ def setup_module() -> None:
             FakeKnowledgeSearch(),
             FakeMemory(),
             PREDICTION_LEARNING,
+            CALIBRATION,
         )
     )
     configure_dream_operations(FakeDreamOperations())
@@ -300,6 +337,28 @@ def test_prediction_pending_handler_returns_unresolved_predictions() -> None:
         "agent": "agent-a",
         "limit": 10,
         "scan_limit": 500,
+    }
+
+
+def test_calibration_observe_handler_returns_read_only_report() -> None:
+    result = _call(
+        "calibration_observe",
+        {
+            "agent": "agent-a",
+            "project": "CyberBrain",
+            "minimum_samples": 20,
+            "bias_threshold": 0.1,
+        },
+    )
+
+    assert result["usable_samples"] == 25
+    assert result["assessment"] == "overconfident"
+    assert result["calibration_bias"] == 0.12
+    assert CALIBRATION.calls[-1] == {
+        "agent": "agent-a",
+        "project": "CyberBrain",
+        "minimum_samples": 20,
+        "bias_threshold": 0.1,
     }
 
 

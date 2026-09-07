@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from cyberbrain.cognition.calibration import MetacognitionCalibrationService
 from cyberbrain.cognition.prediction import PredictionLearningService
 from cyberbrain.core.metrics import MetricsRegistry
 from cyberbrain.core.settings import Settings
@@ -25,6 +26,7 @@ class RuntimeServices:
     knowledge_search: KnowledgeSearchService
     memory: MemoryService
     prediction_learning: PredictionLearningService
+    metacognition_calibration: MetacognitionCalibrationService
 
 
 def build_runtime(settings: Settings) -> RuntimeServices:
@@ -72,6 +74,11 @@ def build_runtime(settings: Settings) -> RuntimeServices:
         collection=settings.episodic_collection,
         score_threshold=settings.memory_search_score_threshold,
     )
+    prediction_learning = PredictionLearningService(
+        memory=memory,
+        repository=repository,
+        episodic_collection=settings.episodic_collection,
+    )
     return RuntimeServices(
         metrics=metrics,
         repository=repository,
@@ -84,9 +91,8 @@ def build_runtime(settings: Settings) -> RuntimeServices:
             score_threshold=settings.knowledge_search_score_threshold,
         ),
         memory=memory,
-        prediction_learning=PredictionLearningService(
-            memory=memory,
-            repository=repository,
-            episodic_collection=settings.episodic_collection,
+        prediction_learning=prediction_learning,
+        metacognition_calibration=MetacognitionCalibrationService(
+            prediction_learning=prediction_learning,
         ),
     )

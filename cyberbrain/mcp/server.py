@@ -81,7 +81,7 @@ def _help_payload() -> str:
         f"schema_version: {SCHEMA_VERSION}\n"
         f"contract_hash: {contract_hash}\n"
         f"authentication: Bearer token; optional X-API-Key compatibility\n"
-        f"capabilities: knowledge, episodic-memory, dreaming\n\n"
+        f"capabilities: knowledge, episodic-memory, cognitive-learning, dreaming\n\n"
         f"{guide}"
     )
 
@@ -311,6 +311,34 @@ async def list_tools() -> list[types.Tool]:
                         "type": "integer",
                         "minimum": 1,
                         "maximum": 10000,
+                    },
+                },
+                "additionalProperties": False,
+            },
+        ),
+        types.Tool(
+            name="calibration_observe",
+            description=(
+                "Analyze confidence calibration from resolved Predictions "
+                "without mutating Memory or Knowledge."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "session_id": {"type": "string"},
+                    "agent": {"type": "string"},
+                    "project": {"type": "string"},
+                    "topic": {"type": "string"},
+                    "limit": {"type": "integer", "minimum": 1, "maximum": 10000},
+                    "minimum_samples": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 10000,
+                    },
+                    "bias_threshold": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1,
                     },
                 },
                 "additionalProperties": False,
@@ -601,6 +629,10 @@ def _dispatch_tool(name: str, args: dict) -> list[types.TextContent]:
     if name == "prediction_pending":
         pending = runtime.prediction_learning.pending(**args)
         return _json_text(pending.model_dump(mode="json"))
+
+    if name == "calibration_observe":
+        report = runtime.metacognition_calibration.observe(**args)
+        return _json_text(report.model_dump(mode="json"))
 
     if name == "tech_store":
         content = str(args.pop("content"))
