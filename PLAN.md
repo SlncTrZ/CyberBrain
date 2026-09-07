@@ -53,6 +53,92 @@ New work should be justified by one or more of:
 Do not add architecture, UI, distributed coordination, provider-specific discovery, or model policy
 only because it may become useful later.
 
+## Cognitive learning roadmap
+
+CyberBrain may evolve from a memory system into a learning substrate for agents by adding
+observable, testable cognitive mechanisms one at a time.
+
+This roadmap is not an attempt to reproduce human consciousness. It extracts useful mechanisms
+from human cognition and turns them into explicit technical primitives that can be measured,
+validated, and kept evidence-grounded.
+
+### Development rule
+
+Implement exactly one cognitive mechanism at a time.
+
+A mechanism is not considered complete until it has:
+
+- a written contract/specification;
+- explicit data ownership and lifecycle;
+- deterministic validation rules where possible;
+- tests for correctness and failure modes;
+- provenance/evidence boundaries;
+- an observation period before the next mechanism is promoted into active development.
+
+Do not start implementation of the next mechanism merely because the previous one has code. The
+previous mechanism should first produce enough operational evidence to justify the next layer.
+
+### Ordered roadmap
+
+1. Prediction / Outcome / Prediction Error
+   - Record what an agent expected before an action or decision.
+   - Record what actually happened.
+   - Derive the mismatch without treating the prediction as truth.
+   - Use prediction error as learning evidence.
+
+2. Metacognition / Calibration
+   - Compare prior confidence with actual outcomes.
+   - Detect recurring overconfidence, underconfidence, and reasoning failure patterns.
+   - Learn about reasoning quality without granting self-assessment direct Knowledge write
+     authority.
+
+3. Salience / Attention
+   - Prioritize experiences using signals such as novelty, prediction error, consequence,
+     contradiction, repetition, user emphasis, and unresolved uncertainty.
+   - Use salience to influence what is surfaced, retained, or scheduled for deeper Dreaming.
+   - Do not equate salience with truth or importance in every context.
+
+4. Concept Formation / Induction
+   - Generalize repeated evidence-backed episodes into reusable patterns or concepts.
+   - Preserve links to the source episodes and counterexamples.
+   - Require promotion/evidence gates before generalized concepts become canonical Knowledge.
+
+5. Working Memory / Active Context
+   - Maintain bounded task-local state such as current goals, active hypotheses, assumptions,
+     blockers, evidence, and open questions.
+   - Keep this state transient and distinct from Episodic Memory and canonical Knowledge.
+   - Consolidate only useful outcomes after the working context closes.
+
+6. Agent Self-Model
+   - Accumulate evidence about recurring strengths, weaknesses, strategies, calibration, and
+     failure modes for a specific agent identity.
+   - Treat self-model claims as hypotheses derived from repeated observations, not permanent truth.
+   - Prevent one failure or one success from becoming a canonical self-belief.
+
+7. Decay / Forgetting / Reconsolidation
+   - Reduce retrieval priority for stale or low-utility memories without silently erasing
+     provenance.
+   - Strengthen repeatedly useful knowledge.
+   - Reconsider knowledge when contradiction or supersession evidence appears.
+   - Add this only after real data volume demonstrates the need.
+
+### Cognitive safety invariants
+
+The roadmap must preserve these distinctions:
+
+    observation != belief
+    belief != knowledge
+    confidence != truth
+    salience != truth
+    repetition != correctness
+    self-model != identity truth
+
+No cognitive mechanism may bypass the existing evidence, review, provenance, or Knowledge Evolution
+gates.
+
+The intended long-term direction is continuity of learning for agents without requiring CyberBrain
+to modify the underlying model weights.
+
 ## Current documentation
 
 Normative/current guidance:
