@@ -10,6 +10,13 @@ from cyberbrain.dreaming.reasoner import EvidenceItem
 _TOKEN_RE = re.compile(r"[a-z0-9]+")
 _PHASE_RE = re.compile(r"\bphase[\s._-]*(\d+)\b", re.IGNORECASE)
 _IDENTIFIER_RE = re.compile(r"(?=.*[a-z])(?=.*\d)[a-z0-9]{6,}")
+_OUTCOME_CUE_RE = re.compile(
+    r"(?:\bresult\b|\bresults\b|\bconclusion\b|\bconfirmed\b|\bverified\b|"
+    r"\bresolved\b|\bready\b|\bpassed\b|\bfailed\b|\broot cause\b|"
+    r"đã rõ|kết quả|kết luận|xác nhận|hoàn tất|hoàn thành|thực chất|mấu chốt|"
+    r"tóm lại|đúng là|→|=>|=)",
+    re.IGNORECASE,
+)
 
 _GENERIC_TOPIC_TOKENS = {
     "a",
@@ -148,6 +155,8 @@ class TopicRelevanceGuard:
             return any(self._anchor_matches(anchor, tokens) for anchor in anchors)
 
         matched = [anchor for anchor in anchors if self._anchor_matches(anchor, tokens)]
+        if len(anchors) >= 5:
+            return len(matched) >= 3 or (len(matched) >= 2 and anchors[0] not in matched)
         required = 1 if len(anchors) <= 3 else 2
         return len(matched) >= required
 
@@ -159,6 +168,7 @@ class TopicRelevanceGuard:
         max_chars: int = 3600,
         context_lines: int = 3,
         max_windows: int = 4,
+        include_outcome_window: bool = False,
     ) -> str | None:
         value = text.strip()
         if not value:
@@ -213,6 +223,43 @@ class TopicRelevanceGuard:
 
         if not selected:
             return None
+
+        if include_outcome_window and len(anchors) >= 2 and len(selected) < max_windows:
+            latest_end = max(end for _start, end in selected)
+            max_outcome_gap_lines = 80
+            for _score, index in sorted(ranked, key=lambda item: (item[1], -item[0])):
+                start = max(0, index - context_lines)
+                end = min(len(lines), index + context_lines + 1)
+                if start < latest_end or start - latest_end > max_outcome_gap_lines:
+                    continue
+                overlaps = any(
+                    not (end <= prior_start or start >= prior_end)
+                    for prior_start, prior_end in selected
+                )
+                if overlaps:
+                    continue
+                window = "\n".join(lines[start:end])
+                if _OUTCOME_CUE_RE.search(window) is None:
+                    continue
+                tokens = set(_TOKEN_RE.findall(window.casefold()))
+                local_matches = [
+                    anchor for anchor in anchors if self._anchor_matches(anchor, tokens)
+                ]
+                identifier_match = bool(identifiers) and all(
+                    identifier in tokens for identifier in identifiers
+                )
+                phase_match = (
+                    topic_phase is not None
+                    and topic_phase in set(_PHASE_RE.findall(window))
+                    and bool(local_matches)
+                )
+                intent_match = len(local_matches) >= 2 and (
+                    len(anchors) < 3 or any(anchor in local_matches for anchor in anchors[2:])
+                )
+                if not (identifier_match or phase_match or intent_match):
+                    continue
+                selected.append((start, end))
+                break
 
         parts: list[str] = []
         used = 0

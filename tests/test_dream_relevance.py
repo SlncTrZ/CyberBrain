@@ -143,6 +143,63 @@ def test_topic_excerpt_stops_after_minimal_sufficient_topic_coverage() -> None:
     assert 'Gemini "Connected"' not in excerpt
 
 
+def test_direct_excerpt_can_add_one_later_outcome_window() -> None:
+    guard = TopicRelevanceGuard()
+    topic = "SlncTrZ VM patch gen multi prompt pipeline"
+    transcript = "\n".join(
+        [
+            "Anh muốn kiểm tra SlncTrZ VM patch gen chạy multi prompt để Pipeline hiện X/Y.",
+            "Em bắt đầu khảo sát source và runtime.",
+            *(f"investigation line {index}" for index in range(80)),
+            '"patch gen" thực chất là batch gen multi prompt.',
+            "Multi Prompt gửi prompts array và PipelineFooter hiển thị completed/total X/Y.",
+            "UI hỗ trợ pause stop resume cho pipeline.",
+        ]
+    )
+
+    excerpt = guard.topic_excerpt(
+        topic=topic,
+        text=transcript,
+        max_chars=1200,
+        context_lines=1,
+        include_outcome_window=True,
+    )
+
+    assert excerpt is not None
+    assert "kiểm tra SlncTrZ VM patch gen" in excerpt
+    assert "completed/total X/Y" in excerpt
+    assert len(excerpt) <= 1200
+
+
+def test_outcome_window_does_not_reopen_same_entity_intent_drift() -> None:
+    guard = TopicRelevanceGuard()
+    topic = "Gemini CLI complete removal"
+    transcript = "\n".join(
+        [
+            "Gỡ bỏ hoàn toàn Gemini CLI trên PC .171.",
+            "npm uninstall -g @google/gemini-cli và xóa .gemini.",
+            "where gemini không còn kết quả.",
+            *(f"unrelated line {index}" for index in range(120)),
+            'Gemini "Connected" nhưng backend không nhận tool schema.',
+            "Caveat này thuộc MCP tool driving.",
+            "Kết luận nhánh sau: Gemini CLI có thể cài lại để thử connector khác.",
+        ]
+    )
+
+    excerpt = guard.topic_excerpt(
+        topic=topic,
+        text=transcript,
+        max_chars=800,
+        context_lines=1,
+        include_outcome_window=True,
+    )
+
+    assert excerpt is not None
+    assert "npm uninstall" in excerpt
+    assert 'Gemini "Connected"' not in excerpt
+    assert "có thể cài lại" not in excerpt
+
+
 def test_long_historical_evidence_requires_local_topic_coverage() -> None:
     guard = TopicRelevanceGuard()
     topic = "VideoAdapter engine code presets skills"
@@ -210,6 +267,20 @@ def test_multi_anchor_claim_accepts_semantic_fact_without_entity_repetition() ->
     assert not guard.claim_relevant(
         topic=topic,
         text="Slnc_VideoAdapter migrated The Mind Shaper into the production framework.",
+    )
+
+
+def test_many_anchor_claim_rejects_entity_platform_only_drift() -> None:
+    guard = TopicRelevanceGuard()
+    topic = "Mindset YouTube long video production process"
+
+    assert guard.claim_relevant(
+        topic=topic,
+        text="Production pipeline video #1 Mindset completed all image assets.",
+    )
+    assert not guard.claim_relevant(
+        topic=topic,
+        text="YouTube Mindset content can qualify as original and authentic for monetization.",
     )
 
 

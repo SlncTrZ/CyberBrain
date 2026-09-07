@@ -153,6 +153,7 @@ class DreamingEngine:
             excerpt = self._relevance_guard.topic_excerpt(
                 topic=topic,
                 text=episode.content,
+                include_outcome_window=True,
             )
             if not excerpt:
                 continue
