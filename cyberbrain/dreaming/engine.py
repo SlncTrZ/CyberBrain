@@ -66,22 +66,30 @@ class DreamingEngine:
     ) -> DreamReasoningRequest:
         plan = self._planner.plan(episodes, topic_limit=topic_limit)
         topics = self._normalize_topics(focal_topics) if focal_topics else plan.focal_topics
+        session_project = self._stable_session_project(episodes)
         evidence: dict[str, list[EvidenceItem]] = {}
 
         for topic in topics:
             topic_evidence: list[EvidenceItem] = []
             for bucket in plan.buckets:
-                direct = self._retriever.recall(
-                    topic=topic,
-                    bucket=bucket,
-                    limit=self._per_bucket_limit,
+                direct = self._filter_project_scope(
+                    self._retriever.recall(
+                        topic=topic,
+                        bucket=bucket,
+                        limit=self._per_bucket_limit,
+                    ),
+                    session_project=session_project,
                 )
                 topic_evidence.extend(direct)
                 if self._associative_expander is not None:
+                    expanded = self._associative_expander.expand(
+                        seed=direct,
+                        bucket=bucket,
+                    )
                     topic_evidence.extend(
-                        self._associative_expander.expand(
-                            seed=direct,
-                            bucket=bucket,
+                        self._filter_project_scope(
+                            expanded,
+                            session_project=session_project,
                         )
                     )
             evidence[topic] = self._deduplicate(topic_evidence)
@@ -130,6 +138,34 @@ class DreamingEngine:
             result.append(value)
         if not result:
             raise ValueError("focal_topics override must contain at least one non-empty topic")
+        return result
+
+    @staticmethod
+    def _stable_session_project(episodes: list[EpisodeSnippet]) -> str | None:
+        projects: dict[str, str] = {}
+        for episode in episodes:
+            value = str(episode.project or "").strip()
+            if value:
+                projects.setdefault(value.casefold(), value)
+        if len(projects) != 1:
+            return None
+        return next(iter(projects.values()))
+
+    @staticmethod
+    def _filter_project_scope(
+        items: list[EvidenceItem],
+        *,
+        session_project: str | None,
+    ) -> list[EvidenceItem]:
+        if not session_project:
+            return list(items)
+        normalized_session = session_project.casefold()
+        result: list[EvidenceItem] = []
+        for item in items:
+            evidence_project = str(item.metadata.get("project") or "").strip()
+            if evidence_project and evidence_project.casefold() != normalized_session:
+                continue
+            result.append(item)
         return result
 
     @staticmethod

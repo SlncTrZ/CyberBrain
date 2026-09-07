@@ -38,6 +38,7 @@ _DEFAULT_STOPWORDS = {
 class EpisodeSnippet:
     content: str
     event_time: datetime
+    project: str | None = None
 
 
 @dataclass(frozen=True)

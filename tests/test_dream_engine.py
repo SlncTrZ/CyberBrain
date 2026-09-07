@@ -68,6 +68,82 @@ def test_dry_run_collects_deduplicated_evidence_and_candidates() -> None:
     assert result.result.candidates[0].confidence == 0.95
 
 
+def test_prepare_request_filters_explicit_cross_project_evidence() -> None:
+    class ScopedRetriever:
+        def recall(self, *, topic, bucket, limit):  # noqa: ANN001
+            del topic, limit
+            return [
+                EvidenceItem(
+                    id="matching-project",
+                    record_type="knowledge",
+                    content="matching",
+                    score=0.9,
+                    event_time=bucket.end,
+                    metadata={"project": "Slnc_Pi"},
+                ),
+                EvidenceItem(
+                    id="missing-project",
+                    record_type="knowledge",
+                    content="missing",
+                    score=0.8,
+                    event_time=bucket.end,
+                    metadata={},
+                ),
+                EvidenceItem(
+                    id="wrong-project",
+                    record_type="knowledge",
+                    content="wrong",
+                    score=0.95,
+                    event_time=bucket.end,
+                    metadata={"project": "TCDserver"},
+                ),
+            ]
+
+    class ScopedAssociative:
+        def expand(self, *, seed, bucket):  # noqa: ANN001
+            del seed
+            return [
+                EvidenceItem(
+                    id="assoc-matching",
+                    record_type="episode",
+                    content="assoc matching",
+                    score=0.85,
+                    event_time=bucket.end,
+                    metadata={"project": "Slnc_Pi"},
+                ),
+                EvidenceItem(
+                    id="assoc-wrong",
+                    record_type="episode",
+                    content="assoc wrong",
+                    score=0.99,
+                    event_time=bucket.end,
+                    metadata={"project": "pi"},
+                ),
+            ]
+
+    episodes = [
+        EpisodeSnippet(
+            content="CyberBrain Dreaming consolidates experience.",
+            event_time=datetime(2026, 9, 4, 2, 0, tzinfo=UTC),
+            project="Slnc_Pi",
+        )
+    ]
+    engine = DreamingEngine(
+        retriever=ScopedRetriever(),
+        reasoner=FakeReasoner(),
+        associative_expander=ScopedAssociative(),
+    )
+
+    request = engine.prepare_request(
+        episodes,
+        session_id="session-scoped",
+        focal_topics=["CyberBrain"],
+    )
+
+    ids = [item.id for item in request.evidence_by_topic["CyberBrain"]]
+    assert ids == ["matching-project", "missing-project", "assoc-matching"]
+
+
 def test_prepare_request_then_reason_matches_dry_run_contract() -> None:
     episodes = [
         EpisodeSnippet(

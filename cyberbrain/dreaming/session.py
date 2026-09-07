@@ -47,7 +47,14 @@ class QdrantSessionEpisodeLoader:
             event_time = self._event_time(payload.get("event_time"))
             if event_time is None:
                 continue
-            episodes.append(EpisodeSnippet(content=content, event_time=event_time))
+            project = str(payload.get("project") or "").strip() or None
+            episodes.append(
+                EpisodeSnippet(
+                    content=content,
+                    event_time=event_time,
+                    project=project,
+                )
+            )
 
         episodes.sort(key=lambda episode: episode.event_time)
         if not episodes:
