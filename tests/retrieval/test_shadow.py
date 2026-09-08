@@ -8,6 +8,7 @@ from typing import Any
 
 import pytest
 
+import cyberbrain.retrieval.lexical as lexical_module
 from cyberbrain.core.metrics import MetricsRegistry
 from cyberbrain.retrieval.literal import literal_heavy_query
 from cyberbrain.retrieval.shadow import KnowledgeLiteralShadowObserver
@@ -111,6 +112,42 @@ def test_shadow_cache_is_reused_within_ttl() -> None:
         )
 
     assert repo.scroll_calls == 1
+
+
+def test_shadow_cache_reuses_pre_tokenized_bm25_corpus(monkeypatch: pytest.MonkeyPatch) -> None:
+    repo = ShadowRepository(
+        [
+            _point("target", project=None, content="commit abc1234 exact fingerprint"),
+            _point("other", project=None, content="generic release notes"),
+        ]
+    )
+    observer = KnowledgeLiteralShadowObserver(
+        repository=repo,
+        collection="knowledge",
+        metrics=MetricsRegistry(),
+        cache_ttl_seconds=60,
+    )
+    original_tokenize = lexical_module.tokenize
+    calls: list[str] = []
+
+    def counting_tokenize(text: str) -> tuple[str, ...]:
+        calls.append(text)
+        return original_tokenize(text)
+
+    monkeypatch.setattr(lexical_module, "tokenize", counting_tokenize)
+
+    for _ in range(2):
+        observer.observe(
+            query="commit abc1234",
+            vector_rows=[{"id": "target", "content": "commit abc1234 exact fingerprint"}],
+            filters={"status": "active"},
+            limit=5,
+        )
+
+    assert repo.scroll_calls == 1
+    assert calls.count("commit abc1234 exact fingerprint") == 1
+    assert calls.count("generic release notes") == 1
+    assert calls.count("commit abc1234") == 2
 
 
 def test_shadow_fails_closed_if_corpus_exceeds_bound() -> None:

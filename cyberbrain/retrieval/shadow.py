@@ -12,7 +12,7 @@ from typing import Any
 from cyberbrain.core.metrics import MetricsRegistry
 from cyberbrain.storage.base import PointRepository
 
-from .lexical import BM25Document, BM25Scorer
+from .lexical import BM25Corpus, BM25Document
 from .literal import literal_heavy_query
 
 _LOGGER = logging.getLogger(__name__)
@@ -57,6 +57,7 @@ class KnowledgeLiteralShadowObserver:
         self._cache_lock = Lock()
         self._worker_lock = Lock()
         self._cache: tuple[_ShadowRecord, ...] = ()
+        self._corpus: BM25Corpus | None = None
         self._cache_loaded_at = 0.0
 
     def submit(
@@ -125,16 +126,18 @@ class KnowledgeLiteralShadowObserver:
         """Run one shadow observation synchronously; intended for tests and the worker."""
 
         started = monotonic()
-        records = self._eligible_records(filters)
+        records, corpus = self._eligible_records(filters)
         if not records:
             self._metrics.increment("knowledge_literal_shadow_empty_total")
             self._metrics.increment("knowledge_literal_shadow_evaluated_total")
             self._metrics.observe("knowledge_literal_shadow_seconds", monotonic() - started)
             return []
 
-        ranked = BM25Scorer(
-            [BM25Document(record.id, record.content) for record in records]
-        ).score(query)
+        scoring_started = monotonic()
+        ranked = corpus.score(query, document_ids=[record.id for record in records])
+        self._metrics.observe(
+            "knowledge_literal_shadow_scoring_seconds", monotonic() - scoring_started
+        )
         lexical_ids = [record_id for record_id, _score in ranked]
         top_k = max(1, min(limit, 50))
         vector_ids = [str(row.get("id") or "") for row in vector_rows if row.get("id")]
@@ -181,24 +184,32 @@ class KnowledgeLiteralShadowObserver:
         )
         return lexical_ids
 
-    def _eligible_records(self, filters: dict[str, Any]) -> tuple[_ShadowRecord, ...]:
-        records = self._records()
+    def _eligible_records(
+        self, filters: dict[str, Any]
+    ) -> tuple[tuple[_ShadowRecord, ...], BM25Corpus]:
+        records, corpus = self._records()
         active_filters = {
             key: value for key, value in filters.items() if value is not None
         }
         if not active_filters:
-            return records
-        return tuple(
-            record
-            for record in records
-            if all(record.payload.get(key) == value for key, value in active_filters.items())
+            return records, corpus
+        return (
+            tuple(
+                record
+                for record in records
+                if all(record.payload.get(key) == value for key, value in active_filters.items())
+            ),
+            corpus,
         )
 
-    def _records(self) -> tuple[_ShadowRecord, ...]:
+    def _records(self) -> tuple[tuple[_ShadowRecord, ...], BM25Corpus]:
         now = monotonic()
         with self._cache_lock:
-            if self._cache and now - self._cache_loaded_at < self._cache_ttl_seconds:
-                return self._cache
+            if (
+                self._corpus is not None
+                and now - self._cache_loaded_at < self._cache_ttl_seconds
+            ):
+                return self._cache, self._corpus
 
             started = monotonic()
             points = self._repository.scroll(
@@ -220,7 +231,11 @@ class KnowledgeLiteralShadowObserver:
                 for point in points
                 if point.get("id")
             )
+            corpus = BM25Corpus(
+                [BM25Document(record.id, record.content) for record in cache]
+            )
             self._cache = cache
+            self._corpus = corpus
             self._cache_loaded_at = now
             self._metrics.increment("knowledge_literal_shadow_cache_refresh_total")
             self._metrics.observe(
@@ -229,7 +244,7 @@ class KnowledgeLiteralShadowObserver:
             self._metrics.observe(
                 "knowledge_literal_shadow_cache_records", float(len(cache))
             )
-            return cache
+            return cache, corpus
 
     @staticmethod
     def _token_estimate(rows: list[dict[str, Any]]) -> int:

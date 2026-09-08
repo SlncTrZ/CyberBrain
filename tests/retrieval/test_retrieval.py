@@ -8,7 +8,7 @@ from cyberbrain.retrieval.baseline import PreRankedBaseline
 from cyberbrain.retrieval.benchmark import BenchmarkCase, BenchmarkEvaluator
 from cyberbrain.retrieval.engine import HybridRetrievalEngine
 from cyberbrain.retrieval.fusion import FusionCandidate, ReciprocalRankFusion
-from cyberbrain.retrieval.lexical import BM25Document, BM25Scorer, tokenize
+from cyberbrain.retrieval.lexical import BM25Corpus, BM25Document, BM25Scorer, tokenize
 from cyberbrain.retrieval.models import RankedHit, RetrievalHit, RetrievalIntent
 from cyberbrain.retrieval.signals import ScopeTemporalSignals
 
@@ -34,6 +34,20 @@ def test_bm25_empty_documents_and_query() -> None:
     assert BM25Scorer([]).score("anything") == []
     rows = BM25Scorer([BM25Document("a", "text")]).score("")
     assert rows == [("a", 0.0)]
+
+
+def test_bm25_reusable_corpus_preserves_filtered_subset_semantics() -> None:
+    docs = [
+        BM25Document("a", "release abc1234 exact fingerprint"),
+        BM25Document("b", "release generic notes"),
+        BM25Document("c", "abc1234 migration fingerprint"),
+    ]
+    corpus = BM25Corpus(docs)
+
+    filtered = corpus.score("abc1234 release", document_ids=["a", "c"])
+    rebuilt = BM25Scorer([docs[0], docs[2]]).score("abc1234 release")
+
+    assert filtered == rebuilt
 
 
 def test_pre_ranked_baseline_preserves_input_order() -> None:
