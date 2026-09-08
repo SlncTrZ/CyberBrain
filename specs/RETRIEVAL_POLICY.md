@@ -15,6 +15,7 @@ query validation
 → lifecycle filtering
 → ranking
 → result normalization
+→ response projection when exposed through MCP
 ```
 
 ## Collection selection
@@ -90,6 +91,30 @@ Dreaming does not issue one undifferentiated semantic query over all history.
 
 It queries normalized time buckets deliberately from older to newer evidence, then merges/reranks while retaining bucket provenance.
 
+## MCP response projection
+
+Canonical storage and internal retrieval retain the complete normalized record. Canonical MCP `knowledge_search` and `memory_search` apply a response projection after ranking so broad recall does not automatically return large payloads.
+
+`view=compact` is the default MCP view:
+
+```text
+summary present    -> recall_text = summary
+summary absent     -> recall_text = content excerpt, max 1,200 characters
+```
+
+Compact rows omit full `content` and `summary`, retain relevant metadata/score, and add:
+
+```text
+recall_text
+recall_text_source = summary | content_excerpt
+content_chars
+content_omitted = true
+```
+
+`view=full` returns the complete canonical normalized search row and is intended for focused follow-up when full detail is actually required. Projection occurs after retrieval/ranking and therefore must not alter embeddings, similarity score, lifecycle filtering, evidence provenance, or stored records.
+
+Legacy compatibility aliases may retain historical full-payload behavior; they do not define the canonical retrieval contract.
+
 ## Failure behavior
 
 Embedding failure must surface explicitly. Do not substitute a zero vector.
@@ -98,7 +123,7 @@ Storage/provider failure must return an explicit retrieval error rather than sil
 
 ## Result model
 
-Canonical retrieval results should include:
+The canonical normalized retrieval row should include:
 
 ```text
 id
@@ -112,3 +137,5 @@ event_time/session_id when episodic
 verification/confidence when available
 negative_knowledge flag when applicable
 ```
+
+MCP compact projection derives from this complete row and must preserve the row identity, score, and relevant metadata while replacing large text fields with the bounded recall fields defined above.

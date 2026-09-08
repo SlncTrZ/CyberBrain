@@ -24,6 +24,8 @@ Contract changes are versioned independently from implementation releases.
 
 Breaking MCP schema/semantic changes require an explicit contract-version increment and compatibility decision.
 
+Backward-compatible additions such as a new optional parameter may remain within the same contract version when existing calls retain their meaning. The contract hash still changes and clients/gateways must treat that fingerprint drift as a reason to re-discover/synchronize the provider schema before continuing.
+
 ## Data schema
 
 Canonical knowledge and episodic records start with:

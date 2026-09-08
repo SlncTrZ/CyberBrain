@@ -2,7 +2,7 @@
 
 CyberBrain complies with the repository integration standard in `../MCP_PROVIDER_STANDARD.md`.
 
-## Required tools
+## Canonical provider tools
 
 ```text
 help
@@ -18,39 +18,33 @@ prediction_pending
 calibration_observe
 dream_enqueue
 dream_status
+dream_reason_claim
+dream_reason_submit
 dream_reviews
 dream_review_resolve
 ```
 
-Gateway canonical namespace:
+Gateway namespacing is an integration concern. A gateway may expose these as `cyberbrain.<tool>` or another configured provider namespace without changing the provider-local contract.
+
+Compatibility aliases may also be exposed for legacy clients:
 
 ```text
-cyberbrain.help
-cyberbrain.knowledge_search
-cyberbrain.knowledge_store
-cyberbrain.knowledge_timeline
-cyberbrain.memory_search
-cyberbrain.memory_store
-cyberbrain.prediction_record
-cyberbrain.prediction_resolve
-cyberbrain.prediction_observe
-cyberbrain.prediction_pending
-cyberbrain.calibration_observe
-cyberbrain.dream_enqueue
-cyberbrain.dream_status
-cyberbrain.dream_reviews
-cyberbrain.dream_review_resolve
+tech_store
+tech_find
+ai_memory_read
+conversation_save
+conversation_recall
 ```
+
+Aliases are adapters only and do not define a second persistence or business-logic path.
 
 ## `help`
 
-Read-only, zero side effects.
-
-Returns current runtime provider contract metadata plus guide content.
+Read-only, zero side effects. Returns current provider contract/version metadata, capabilities, authentication description, contract hash, and usage guide content.
 
 ## `knowledge_search`
 
-Inputs should support:
+Inputs:
 
 ```text
 query (required)
@@ -63,10 +57,21 @@ status
 verification
 origin
 negative_knowledge
+view = compact | full
 limit
 ```
 
-Default lifecycle scope is `status=active`.
+Default lifecycle scope is `status=active`. Default response view is `compact`.
+
+Compact response projection occurs after retrieval/ranking:
+
+- use stored `summary` as `recall_text` when present;
+- otherwise use at most 1,200 characters of stored `content`;
+- omit full `content` and `summary`;
+- include `recall_text_source`, original `content_chars`, and `content_omitted=true`;
+- preserve score and relevant metadata.
+
+`view=full` returns the complete canonical normalized search row. Response projection must not change storage, embeddings, filtering, ranking, provenance, or evidence semantics.
 
 ## `knowledge_store`
 
@@ -82,7 +87,7 @@ entity_name
 
 Optional metadata follows `KNOWLEDGE_SCHEMA.md`.
 
-Returns an explicit evolution outcome:
+Returns one explicit Knowledge Evolution outcome:
 
 ```text
 insert_new
@@ -94,9 +99,7 @@ reject
 
 ## `knowledge_timeline`
 
-Requires entity identity selectors sufficient to avoid accidental cross-entity history merges.
-
-Returns ordered immutable versions plus explicit evolution links/status.
+Requires entity identity selectors sufficient to avoid accidental cross-entity history merges. Returns ordered immutable versions plus explicit status/evolution links.
 
 ## `memory_search`
 
@@ -106,7 +109,7 @@ Requires:
 query
 ```
 
-Optional filters:
+Optional inputs:
 
 ```text
 session_id
@@ -118,10 +121,11 @@ topic
 event_time_from
 event_time_to
 dream_status
+view = compact | full
 limit
 ```
 
-All advertised filters must actually be applied.
+All advertised filters must actually be applied. Default response view is `compact` and follows the same projection contract as `knowledge_search`. `view=full` returns the complete canonical normalized Episode row.
 
 ## `memory_store`
 
@@ -133,13 +137,13 @@ session_id
 event_time
 ```
 
-Optional episodic metadata follows `MEMORY_SCHEMA.md`.
+Optional episodic metadata follows `MEMORY_SCHEMA.md`. New ordinary episodes default to `dream_status=pending`.
 
-New ordinary episodes default to `dream_status=pending`.
+## Prediction Learning
 
-## Prediction learning tools
+### `prediction_record`
 
-`prediction_record` requires:
+Requires:
 
 ```text
 expected_outcome
@@ -148,9 +152,11 @@ session_id
 event_time
 ```
 
-`confidence` is bounded to 0..1 and describes the caller's prior confidence, not truth probability.
+`confidence` is bounded to 0..1 and is the caller's prior confidence, not truth probability. The record is stored as canonical Episodic evidence before the outcome is known.
 
-`prediction_resolve` requires:
+### `prediction_resolve`
+
+Requires:
 
 ```text
 prediction_id
@@ -159,35 +165,84 @@ assessment
 event_time
 ```
 
-Allowed assessment values are `confirmed`, `partially_confirmed`, `contradicted`, and `indeterminate`.
+Allowed assessments are:
 
-Both write operations store canonical Episodic records. Outcome metadata inherits the referenced Prediction's session/agent/project/topic identity. Prediction error is derived deterministically and remains learning evidence rather than Knowledge truth.
+```text
+confirmed
+partially_confirmed
+contradicted
+indeterminate
+```
 
-`prediction_observe` is read-only. It may filter by session, agent, project, and topic and returns bounded aggregate observation evidence without mutating Episodic Memory or Knowledge.
+Outcome identity context is inherited from the referenced Prediction. Prediction error is derived deterministically and remains learning evidence rather than Knowledge truth.
 
-`prediction_pending` is read-only. It returns bounded unresolved Prediction records for the same filters so agents can later resolve them. When `may_be_incomplete=true`, callers must not interpret the returned items as the complete unresolved population.
+### `prediction_observe`
 
-`calibration_observe` is read-only and consumes resolved Prediction Learning evidence. It must return `insufficient_evidence` below its configured minimum sample count and may not persist calibration labels or mutate Knowledge/Memory.
+Read-only bounded aggregate observation over Prediction/Outcome evidence. May filter by session, agent, project, and topic. It must not mutate Episodic Memory or Knowledge.
 
-See `PREDICTION_LEARNING.md` and `METACOGNITION_CALIBRATION.md`.
+### `prediction_pending`
 
-## Dreaming tools
+Read-only bounded unresolved Prediction worklist for the same identity filters. `may_be_incomplete=true` means callers must not interpret the returned rows as the complete unresolved population.
 
-Canonical V1 Dreaming operations are:
+See `PREDICTION_LEARNING.md`.
+
+## Calibration
+
+### `calibration_observe`
+
+Read-only analysis over resolved Prediction Learning evidence. Below the configured minimum sample count, assessment must remain `insufficient_evidence`. Calibration labels describe only the selected sample and may not persist self-beliefs, mutate Knowledge/Memory, or change agent strategy.
+
+See `METACOGNITION_CALIBRATION.md`.
+
+## Dreaming
+
+Canonical Dreaming operations:
 
 ```text
 dream_enqueue
 dream_status
+dream_reason_claim
+dream_reason_submit
 dream_reviews
 dream_review_resolve
 ```
 
-`dream_enqueue` schedules a completed session. `dream_status` exposes queue state. `dream_reviews` lists unresolved evidence-gated candidates, and `dream_review_resolve` records an approve/reject decision with reviewer provenance. No Dreaming tool has direct Knowledge write authority; all writes still pass CyberBrain evidence/promotion policy and Knowledge Evolution.
+### `dream_enqueue`
 
-Dream evidence selection must remain causally bounded and focal-topic scoped. The completed session itself is primary evidence and must be represented directly with original Episode provenance; long transcripts must be reduced to bounded topic-local excerpts rather than copied wholesale into reasoning prompts. A direct-session excerpt may include at most one later outcome window when that window is nearby, has an explicit result/conclusion cue, and independently preserves focal intent; this must not reopen a later same-entity but different-intent thread. Historical semantic recall is supplementary context, not a substitute for the session being dreamed. Long historical evidence must demonstrate focal relevance inside one bounded local window; keyword coverage spread across distant parts of a transcript is insufficient. Multi-anchor relevance must preserve focal intent rather than being satisfied only by entity names, hostnames, platform labels, or other structural identity tokens. Retrieval provenance such as `association_query` may be audited but must not contribute lexical relevance evidence. Runtime recall may apply a configured semantic-score floor, must reject explicit project mismatches when the session has one stable project, and must apply a deterministic topic-relevance guard before evidence reaches reasoning. Structured `Phase N` focal topics may not consolidate evidence from a different phase, and explicit identifiers such as commit hashes must match exactly. Reasoner claims must pass evidence-ID validation before advisory or topic-irrelevant claims can be dropped, so filtering cannot bypass fabricated-evidence fail-closed behavior.
+Queues a completed session for Dream processing. Optional focal topics may narrow intended consolidation scope.
 
-## Legacy aliases
+### `dream_status`
 
-Legacy client tools may be supported temporarily by a compatibility adapter, not by polluting the canonical domain API.
+Returns Dream queue/run status for a session. Read-only.
 
-Known legacy behavior bugs are not part of the new canonical contract.
+### `dream_reason_claim`
+
+Leases the next pending bounded ReasoningTask to an external MCP consumer during the common run-level claim window. Claiming a task grants no Knowledge write authority.
+
+### `dream_reason_submit`
+
+Submits structured claims for the active lease. Task identity, claim token, confidence bounds, and evidence references must validate before acceptance. Fabricated or out-of-scope evidence IDs fail closed.
+
+### `dream_reviews`
+
+Lists unresolved evidence-gated candidates requiring review.
+
+### `dream_review_resolve`
+
+Records an approve/reject decision with reviewer provenance for one existing review candidate.
+
+No Dreaming tool has direct Knowledge write authority. Reasoning results still pass evidence validation, promotion policy, optional review, and Knowledge Evolution before durable Knowledge can change.
+
+Dream evidence selection remains causally bounded and focal-topic scoped. The completed session is primary evidence; historical semantic recall is supplementary. Long transcripts must be reduced to bounded local evidence rather than copied wholesale into reasoning prompts. Explicit project mismatches, future leakage, fabricated evidence, and focal-intent violations must fail closed or be rejected before promotion.
+
+See `DREAMING_SPEC.md`, `REASONER_CONTRACT.md`, and `REASONER_MCP_PROVIDER.md`.
+
+## Compatibility aliases
+
+Legacy aliases may preserve historical response behavior when required for client compatibility. In particular, compatibility recall aliases may continue returning full payloads even though canonical `knowledge_search` and `memory_search` are compact-first.
+
+Known legacy behavior bugs are not part of the canonical contract.
+
+## Error semantics
+
+Malformed inputs return structured validation errors. Provider/storage/embedding failures must remain distinguishable from a true successful no-match result. Authentication and authorization failures fail closed according to `SECURITY.md` and `../MCP_PROVIDER_STANDARD.md`.

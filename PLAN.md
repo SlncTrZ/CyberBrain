@@ -39,6 +39,7 @@ deployment topology.
 8. Authentication fails closed when required credentials are missing.
 9. Secrets never belong in tracked configuration, prompts, logs, or tool results.
 10. Compatibility aliases are adapters only and must not become a second business-logic path.
+11. Canonical broad recall is compact-first at the MCP response boundary. Full stored content remains available only through an explicit full-view request; response projection must not change ranking, storage, provenance, or evidence semantics.
 
 ## Change policy
 

@@ -44,6 +44,18 @@ Operational Dream state is stored separately in SQLite files, including:
 
 Knowledge Evolution may use a shared filesystem lock for single-host cross-process serialization.
 
+## Recall response boundary
+
+Canonical `knowledge_search` and `memory_search` use compact-first MCP response projection. Retrieval and ranking still operate on the canonical stored record; only the returned payload is reduced for broad recall.
+
+- `view=compact` is the default.
+- Existing `summary` becomes `recall_text` when present.
+- Without a summary, `recall_text` is a bounded content excerpt of at most 1,200 characters.
+- Compact rows expose `recall_text_source`, original `content_chars`, and `content_omitted=true` while omitting full `content` and `summary`.
+- `view=full` preserves the complete canonical search row for focused follow-up.
+
+This boundary does not mutate Knowledge, Episodic Memory, embeddings, ranking, provenance, or Dreaming evidence. Compatibility aliases retain their legacy response behavior.
+
 ## Cognitive learning
 
 The first cognitive-learning mechanism stores Prediction and Outcome records inside `cyberbrain_episodic`; it does not create another durable collection.

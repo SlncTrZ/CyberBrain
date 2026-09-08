@@ -109,6 +109,8 @@ provider behavior. CyberBrain's domain model does not depend on one specific gat
 
 Current tool behavior is documented in TOOL_GUIDE.md and specs/TOOL_CONTRACT.md.
 
+Canonical `knowledge_search` and `memory_search` are compact-first at the MCP response boundary: existing summaries are returned when available, otherwise recall falls back to a bounded 1,200-character excerpt. Full stored payloads remain available explicitly through `view=full`. This projection changes response size only; it does not alter stored content, embeddings, ranking, provenance, or Dreaming evidence.
+
 ## Documentation
 
 Current guidance:
