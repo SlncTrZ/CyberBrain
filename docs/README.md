@@ -12,6 +12,7 @@ The documentation tree separates current normative guidance from historical evid
 - ../specs/TOOL_CONTRACT.md — canonical MCP tool contract, including compact-first search views.
 - ../specs/VERSIONING.md — single software/package version authority and independent contract/schema versioning.
 - ../specs/SALIENCE.md — canonical M3 Salience signals, policy, authorization boundary, benchmark, and advisory/shadow contract.
+- ../specs/CONCEPT_FORMATION.md — canonical E1/M4 evidence quality, concept candidate identity/discovery, stability, counterexamples, and fail-closed promotion contract.
 - ../specs/ — remaining canonical data, evolution, Dreaming, Reasoner, security, Prediction Learning, and Calibration contracts.
 
 ## Historical evidence
@@ -28,4 +29,4 @@ When current and historical documents differ, current guidance and canonical spe
 
 ## Source versus runtime status
 
-Current `main` contains the integrated single-owner caller authority binding, expanded tenancy domain foundations, scope-safe exact `knowledge_get` / `memory_get`, the real MCP Agent Adapter client bridge, literal/fingerprint shadow observation with a reusable BM25 corpus, completed source-level M3 Salience primitives, the tested server-owned post-storage cognition boundary, and the single software/package version authority. Normal agents recall/get/store; CyberBrain owns Dream scheduling/processing, Knowledge Evolution, promotion/review, and writeback. Caller-visible lexical promotion and broader multi-user/search/write tenancy enforcement remain pending. `CURRENT_RUNTIME.md`, `../TOOL_GUIDE.md`, and `../specs/TOOL_CONTRACT.md` describe the source-level contract; release and deployment state are independent and may differ.
+Current `main` contains the integrated single-owner caller authority binding, expanded tenancy domain foundations, scope-safe exact `knowledge_get` / `memory_get`, the real MCP Agent Adapter client bridge, literal/fingerprint shadow observation with a reusable BM25 corpus, completed source-level M3 Salience and M4 Concept Formation primitives, the tested server-owned post-storage cognition boundary, and the single software/package version authority. Normal agents recall/get/store; CyberBrain owns Dream scheduling/processing, Knowledge Evolution, promotion/review, and writeback. Caller-visible lexical promotion and broader multi-user/search/write tenancy enforcement remain pending. `CURRENT_RUNTIME.md`, `../TOOL_GUIDE.md`, and `../specs/TOOL_CONTRACT.md` describe the source-level contract; release and deployment state are independent and may differ.

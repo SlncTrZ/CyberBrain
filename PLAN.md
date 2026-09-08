@@ -145,15 +145,24 @@ linear.
    - Does not decide truth, authorization, promotion, forgetting, or Knowledge mutation.
 
 4. Concept Formation / Abstraction
-   - Status: planned.
-   - Owns: identifying recurring clusters, concept identities, and abstraction relationships across
-     evidence-backed memories and durable lessons.
+   - Status: source-level M4 complete; durable promotion remains fail-closed because the reviewed
+     historical acceptance sample lacks strong verification evidence.
+   - Owns: deterministic recurring abstraction candidates, stable concept identity, supporting
+     evidence IDs, counterexamples, evidence diversity, and shadow stability.
+   - E1 classifies historical evidence as strict-shadow eligible, review-only, or excluded before
+     Concept discovery. Legacy chunks, research evidence, mixed operational Knowledge, and migrated
+     provenance are never silently treated as clean concept truth.
+   - Default Knowledge-only discovery favors precision: broad recurrence plus entity diversity is
+     required. Multi-session/mixed evidence may use a lower support threshold when diversity is real.
+   - Salience may prioritize same-scope candidates but cannot define concept identity or truth.
+   - The promotion gate returns only review/reject and has no automatic Knowledge writer. Any future
+     durable concept must pass explicit review and existing Knowledge Evolution.
    - Dreaming remains responsible for evidence-grounded consolidation and durable lesson candidates;
-     Concept Formation must not implement a second Dream/induction engine.
-   - Concepts must retain links to supporting evidence, counterexamples, and provenance.
+     Concept Formation does not implement a second Dream/induction engine.
+   - No graph database or third durable collection is introduced.
 
 5. Working Memory / Active Context
-   - Status: planned.
+   - Status: next cognitive mechanism after M4 source acceptance.
    - Owns: a bounded transient active set for the current task: goals, hypotheses, assumptions,
      blockers, evidence, and open questions.
    - May consume Salience/Priority and task relevance, but must not redefine salience itself.
@@ -238,7 +247,7 @@ Normative/current guidance:
 - docs/CURRENT_RUNTIME.md
 - docs/DREAMING_ROUTING.md
 - specs/
-  - including specs/PREDICTION_LEARNING.md, specs/METACOGNITION_CALIBRATION.md, and specs/SALIENCE.md for the current cognitive mechanisms.
+  - including specs/PREDICTION_LEARNING.md, specs/METACOGNITION_CALIBRATION.md, specs/SALIENCE.md, and specs/CONCEPT_FORMATION.md for the current cognitive mechanisms.
 
 Historical development and migration evidence lives under docs/history/ and is non-normative.
 
