@@ -57,7 +57,7 @@ Tool-level authorization/policy may additionally be enforced by SlncTrZ-MCP. Cyb
 
 ### Tenancy/isolation source foundation
 
-`main` contains an unreleased `cyberbrain.tenancy` foundation for transport-neutral tenant/user/agent/project/session authority scopes, true subset narrowing, wildcard rejection, abstract storage filters, concrete write attribution, quota policy models, and readiness gates. This package is **not current runtime enforcement**: the deployed/provider path still uses the authentication boundary described above and has not yet mapped authenticated callers into the tenancy authority model or applied those filters to canonical storage.
+`main` contains an unreleased `cyberbrain.tenancy` foundation for transport-neutral tenant/user/agent/project/session authority scopes, true subset narrowing, wildcard rejection, abstract storage filters, concrete write attribution, quota policy models, and readiness gates. Current source now binds successfully authenticated MCP requests to an explicit `CallerAuthority` in `single_owner` mode and uses that authority for canonical exact-ID fetch. `agent_ready` and `multi_user` modes fail closed until a trusted caller-identity source and the required persisted identity fields are wired. Broader search/write paths are not yet tenancy-enforced, and the deployed production runtime may remain behind current source.
 
 Wave 2 integration must fail closed in this order:
 
@@ -71,7 +71,7 @@ authenticated caller
 → downstream ranking/context packing
 ```
 
-Exact get-by-ID must never become an authorization bypass, and retrieval ranking/similarity must never broaden caller authority. Multi-valued read authority may be narrowed for reads; durable write attribution must resolve every present identity dimension to one concrete value before persistence.
+Exact get-by-ID must never become an authorization bypass, and retrieval ranking/similarity must never broaden caller authority. Current exact fetch combines canonical ID and effective scope in the storage query; missing and out-of-scope IDs intentionally share one not-found response shape. Multi-valued read authority may be narrowed for reads; durable write attribution must resolve every present identity dimension to one concrete value before persistence.
 
 ## Logging
 

@@ -28,6 +28,8 @@ class PointRepository(Protocol):
         self,
         collection: str,
         point_id: UUID,
+        *,
+        qdrant_filter: dict[str, Any] | None = None,
     ) -> dict[str, Any] | None: ...
 
     def search(

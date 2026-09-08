@@ -119,6 +119,45 @@ def test_ensure_collection_rejects_vector_size_mismatch() -> None:
         repo.ensure_collection("knowledge", vector_size=768)
 
 
+def test_retrieve_with_scope_filter_uses_storage_side_has_id() -> None:
+    point_id = "11111111-1111-1111-1111-111111111111"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/collections/knowledge/points/scroll"
+        body = json.loads(request.content)
+        assert body == {
+            "filter": {
+                "must": [
+                    {"has_id": [point_id]},
+                    {"key": "project", "match": {"value": "alpha"}},
+                ]
+            },
+            "limit": 1,
+            "with_payload": True,
+            "with_vector": False,
+        }
+        return httpx.Response(
+            200,
+            json={
+                "status": "ok",
+                "result": {"points": [{"id": point_id, "payload": {"project": "alpha"}}]},
+            },
+            request=request,
+        )
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    repo = QdrantRepository(base_url="http://qdrant:6333", client=client)
+    from uuid import UUID
+
+    point = repo.retrieve(
+        "knowledge",
+        UUID(point_id),
+        qdrant_filter={"must": [{"key": "project", "match": {"value": "alpha"}}]},
+    )
+
+    assert point == {"id": point_id, "payload": {"project": "alpha"}}
+
+
 def test_scroll_paginates_until_requested_limit() -> None:
     offsets: list[object] = []
 

@@ -3,9 +3,19 @@
 from __future__ import annotations
 
 from typing import Any
+from uuid import UUID
 
 from cyberbrain.embedding.base import EmbeddingProvider
 from cyberbrain.storage.base import PointRepository
+from cyberbrain.storage.scoping import storage_filter_to_repository_filter
+from cyberbrain.tenancy import (
+    CallerAuthority,
+    DeploymentMode,
+    IdentityScope,
+    OperationClass,
+    ScopeAuthorizationPolicy,
+    build_storage_filter,
+)
 
 
 class KnowledgeSearchService:
@@ -25,6 +35,29 @@ class KnowledgeSearchService:
     @property
     def collection(self) -> str:
         return self._collection
+
+    def get(self, *, point_id: UUID, authority: CallerAuthority) -> dict[str, Any] | None:
+        if authority.deployment_mode is DeploymentMode.MULTI_USER:
+            return None
+        decision = ScopeAuthorizationPolicy.decide(
+            authority.grant,
+            requested_scope=IdentityScope(),
+            operation=OperationClass.READ,
+        )
+        if not decision.allow or decision.effective_scope is None:
+            return None
+        qdrant_filter = storage_filter_to_repository_filter(
+            build_storage_filter(decision.effective_scope),
+            include_fields=frozenset({"project"}),
+        )
+        point = self._repository.retrieve(
+            self._collection,
+            point_id,
+            qdrant_filter=qdrant_filter,
+        )
+        if point is None:
+            return None
+        return {"id": point["id"], **(point.get("payload") or {})}
 
     def search(
         self,

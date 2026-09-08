@@ -9,9 +9,24 @@ from uuid import UUID, uuid4
 from cyberbrain.knowledge.evolution import EvolutionOutcome, EvolutionResult
 from cyberbrain.mcp.server import call_tool, configure_dream_operations, configure_runtime
 from cyberbrain.schemas.models import EpisodeRecord, KnowledgeRecord
+from cyberbrain.tenancy import (
+    DeploymentMode,
+    IdentityScope,
+    OperationClass,
+    authority_for_authenticated_scope,
+    bind_authority,
+)
 
 
 class FakeKnowledgeSearch:
+    def get(self, **kwargs):
+        return {
+            "id": str(kwargs["point_id"]),
+            "content": "full knowledge content",
+            "summary": "knowledge summary",
+            "project": "CyberBrain",
+        }
+
     def search(self, **kwargs):
         return [
             {
@@ -55,6 +70,14 @@ class FakeDreamOperations:
 
 
 class FakeMemory:
+    def get(self, **kwargs):
+        return {
+            "id": str(kwargs["point_id"]),
+            "content": "memory full content",
+            "session_id": "s1",
+            "project": "CyberBrain",
+        }
+
     def search(self, **kwargs):
         return [
             {
@@ -248,8 +271,16 @@ def setup_module() -> None:
     configure_dream_operations(FakeDreamOperations())
 
 
+CALLER_AUTHORITY = authority_for_authenticated_scope(
+    DeploymentMode.SINGLE_OWNER,
+    scope=IdentityScope(),
+    operations=frozenset(OperationClass),
+)
+
+
 def _call(name: str, args: dict) -> dict | list:
-    result = asyncio.run(call_tool(name, args))
+    with bind_authority(CALLER_AUTHORITY):
+        result = asyncio.run(call_tool(name, args))
     return json.loads(result[0].text)
 
 
@@ -274,6 +305,14 @@ def test_knowledge_search_full_view_preserves_canonical_payload() -> None:
     assert "view" not in result[0]
 
 
+def test_knowledge_get_handler_returns_exact_full_record() -> None:
+    point_id = uuid4()
+    result = _call("knowledge_get", {"id": str(point_id)})
+    assert result["id"] == str(point_id)
+    assert result["content"] == "full knowledge content"
+    assert result["summary"] == "knowledge summary"
+
+
 def test_knowledge_store_handler() -> None:
     result = _call(
         "knowledge_store",
@@ -287,6 +326,14 @@ def test_knowledge_store_handler() -> None:
     )
     assert result["outcome"] == "insert_new"
     assert result["record"]["entity_name"] == "auth"
+
+
+def test_memory_get_handler_returns_exact_full_record() -> None:
+    point_id = uuid4()
+    result = _call("memory_get", {"id": str(point_id)})
+    assert result["id"] == str(point_id)
+    assert result["content"] == "memory full content"
+    assert result["session_id"] == "s1"
 
 
 def test_memory_store_handler_parses_datetime() -> None:

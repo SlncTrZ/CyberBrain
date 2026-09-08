@@ -29,9 +29,11 @@ The provider fails closed when authentication is required but not configured.
 ```text
 help
 knowledge_search
+knowledge_get
 knowledge_store
 knowledge_timeline
 memory_search
+memory_get
 memory_store
 prediction_record
 prediction_resolve
@@ -66,13 +68,15 @@ Read-only. Returns the running provider contract, version metadata, contract has
 
 ### Knowledge tools
 
-- `knowledge_search` searches canonical knowledge and applies advertised filters. Canonical recall defaults to `view=compact`; use `view=full` only when the complete stored content is required.
+- `knowledge_search` searches canonical knowledge and applies advertised filters. Canonical recall defaults to `view=compact`; use `view=full` only when broad search truly needs complete rows.
+- `knowledge_get` fetches one canonical Knowledge record by exact UUID and returns the full stored row only when that ID is eligible under the caller's bound authority scope. It does not perform semantic search.
 - `knowledge_store` inserts or evolves canonical knowledge with explicit evolution outcomes.
 - `knowledge_timeline` returns version history for one canonical entity identity.
 
 ### Memory tools
 
-- `memory_search` searches episodic memory and applies session/channel/role/agent/project/topic filters. Canonical recall defaults to `view=compact`; use `view=full` only when the complete stored content is required.
+- `memory_search` searches episodic memory and applies session/channel/role/agent/project/topic filters. Canonical recall defaults to `view=compact`; use `view=full` only when broad search truly needs complete rows.
+- `memory_get` fetches one canonical Episodic record by exact UUID and returns the full stored row only when that ID is eligible under the caller's bound authority scope. It does not perform semantic search.
 - `memory_store` stores one canonical episodic record with required `session_id` and `event_time`.
 
 ### Compact recall
@@ -86,6 +90,8 @@ Canonical `knowledge_search` and `memory_search` use compact-first retrieval so 
 - `view=full` preserves the complete canonical search row for focused follow-up when detail is actually needed.
 
 Search ranking still uses the stored record embedding. Compact recall changes only the MCP response projection; it does not mutate Knowledge, Episodic Memory, vectors, provenance, or Dreaming evidence.
+
+Preferred focused-recall pattern is `*_search` in compact mode → select one returned canonical ID → `knowledge_get` or `memory_get` for that exact record. Exact fetch uses storage-side ID + scope eligibility and returns the same not-found shape when the ID is absent or outside caller scope, avoiding a cross-scope enumeration signal.
 
 ### Compatibility aliases
 

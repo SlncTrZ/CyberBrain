@@ -18,6 +18,7 @@ from cyberbrain.core.runtime import RuntimeServices
 from cyberbrain.dreaming.operations import DreamOperations
 from cyberbrain.dreaming.reason_task_inbox import DreamReasonTaskInbox
 from cyberbrain.schemas.models import EpisodeRole, Origin, Verification
+from cyberbrain.tenancy import current_authority
 
 PROVIDER_NAME = "cyberbrain"
 CONTRACT_VERSION = "1"
@@ -164,6 +165,16 @@ async def list_tools() -> list[types.Tool]:
             },
         ),
         types.Tool(
+            name="knowledge_get",
+            description="Fetch one canonical Knowledge record by exact ID within caller scope.",
+            inputSchema={
+                "type": "object",
+                "properties": {"id": {"type": "string", "format": "uuid"}},
+                "required": ["id"],
+                "additionalProperties": False,
+            },
+        ),
+        types.Tool(
             name="knowledge_store",
             description="Store or evolve canonical CyberBrain knowledge.",
             inputSchema={
@@ -234,6 +245,16 @@ async def list_tools() -> list[types.Tool]:
                     "limit": {"type": "integer", "minimum": 1, "maximum": 50},
                 },
                 "required": ["query"],
+                "additionalProperties": False,
+            },
+        ),
+        types.Tool(
+            name="memory_get",
+            description="Fetch one canonical Episodic record by exact ID within caller scope.",
+            inputSchema={
+                "type": "object",
+                "properties": {"id": {"type": "string", "format": "uuid"}},
+                "required": ["id"],
                 "additionalProperties": False,
             },
         ),
@@ -588,6 +609,18 @@ def _dispatch_tool(name: str, args: dict) -> list[types.TextContent]:
         rows = runtime.knowledge_search.search(query=query, limit=limit, **args)
         return _json_text(_project_recall_rows(rows, view=view))
 
+    if name == "knowledge_get":
+        authority = current_authority()
+        if authority is None:
+            raise ConfigurationError("caller authority is not bound")
+        row = runtime.knowledge_search.get(
+            point_id=UUID(str(args.pop("id"))),
+            authority=authority,
+        )
+        if row is None:
+            return _json_text(not_found("Knowledge record not found").as_dict())
+        return _json_text(row)
+
     if name == "knowledge_store":
         verification = Verification(args.pop("verification", Verification.UNVERIFIED.value))
         origin = Origin(args.pop("origin", Origin.INGESTION.value))
@@ -638,6 +671,18 @@ def _dispatch_tool(name: str, args: dict) -> list[types.TextContent]:
         view = _recall_view(args)
         rows = runtime.memory.search(query=query, limit=limit, **args)
         return _json_text(_project_recall_rows(rows, view=view))
+
+    if name == "memory_get":
+        authority = current_authority()
+        if authority is None:
+            raise ConfigurationError("caller authority is not bound")
+        row = runtime.memory.get(
+            point_id=UUID(str(args.pop("id"))),
+            authority=authority,
+        )
+        if row is None:
+            return _json_text(not_found("Memory record not found").as_dict())
+        return _json_text(row)
 
     if name == "memory_store":
         event_time = datetime.fromisoformat(str(args.pop("event_time")).replace("Z", "+00:00"))

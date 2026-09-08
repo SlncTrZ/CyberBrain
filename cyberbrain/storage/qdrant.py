@@ -147,13 +147,36 @@ class QdrantRepository:
             json={"payload": payload, "points": [str(point_id)]},
         )
 
-    def retrieve(self, collection: str, point_id: UUID) -> dict[str, Any] | None:
+    def retrieve(
+        self,
+        collection: str,
+        point_id: UUID,
+        *,
+        qdrant_filter: dict[str, Any] | None = None,
+    ) -> dict[str, Any] | None:
+        if qdrant_filter is None:
+            data = self._request(
+                "POST",
+                f"/collections/{collection}/points",
+                json={"ids": [str(point_id)], "with_payload": True, "with_vector": False},
+            )
+            points = data.get("result", [])
+            return points[0] if points else None
+
+        scoped_filter = dict(qdrant_filter)
+        must = list(scoped_filter.get("must", []))
+        scoped_filter["must"] = [{"has_id": [str(point_id)]}, *must]
         data = self._request(
             "POST",
-            f"/collections/{collection}/points",
-            json={"ids": [str(point_id)], "with_payload": True, "with_vector": False},
+            f"/collections/{collection}/points/scroll",
+            json={
+                "filter": scoped_filter,
+                "limit": 1,
+                "with_payload": True,
+                "with_vector": False,
+            },
         )
-        points = data.get("result", [])
+        points = (data.get("result") or {}).get("points", [])
         return points[0] if points else None
 
     def search(

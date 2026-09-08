@@ -7,9 +7,11 @@ CyberBrain complies with the repository integration standard in `../MCP_PROVIDER
 ```text
 help
 knowledge_search
+knowledge_get
 knowledge_store
 knowledge_timeline
 memory_search
+memory_get
 memory_store
 prediction_record
 prediction_resolve
@@ -73,6 +75,10 @@ Compact response projection occurs after retrieval/ranking:
 
 `view=full` returns the complete canonical normalized search row. Response projection must not change storage, embeddings, filtering, ranking, provenance, or evidence semantics.
 
+## `knowledge_get`
+
+Requires one canonical UUID `id`. Returns the full canonical Knowledge row for that exact ID without performing semantic search. The storage query must combine ID eligibility with the caller's effective authorization scope. Missing and out-of-scope IDs return the same not-found shape so exact fetch cannot be used as a cross-scope existence oracle.
+
 ## `knowledge_store`
 
 Requires:
@@ -126,6 +132,10 @@ limit
 ```
 
 All advertised filters must actually be applied. Default response view is `compact` and follows the same projection contract as `knowledge_search`. `view=full` returns the complete canonical normalized Episode row.
+
+## `memory_get`
+
+Requires one canonical UUID `id`. Returns the full canonical Episode row for that exact ID without performing semantic search. Storage-side eligibility must enforce the caller's effective episodic scope before payload return. Missing and out-of-scope IDs return the same not-found shape.
 
 ## `memory_store`
 
