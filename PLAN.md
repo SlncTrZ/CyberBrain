@@ -162,14 +162,24 @@ linear.
    - No graph database or third durable collection is introduced.
 
 5. Working Memory / Active Context
-   - Status: next cognitive mechanism after M4 source acceptance.
-   - Owns: a bounded transient active set for the current task: goals, hypotheses, assumptions,
-     blockers, evidence, and open questions.
-   - May consume Salience/Priority and task relevance, but must not redefine salience itself.
-   - Active context remains distinct from Episodic Memory and canonical Knowledge.
+   - Status: source-level M5 complete; production/runtime activation remains intentionally inactive
+     until shared read-path authorization and an explicit integration gate are complete.
+   - Owns: an exact scope/session/task transient active set for goals, subgoals, assumptions,
+     hypotheses, evidence, Concept/memory references, blockers, open questions, and recent decisions.
+   - Selection is task relevance → Salience → duplicate suppression → Token Governor budget.
+     Relevance and Salience remain separate signals and neither broadens authorization.
+   - Hard defaults bound candidates, item count, per-item tokens, total tokens, and TTL.
+   - `WorkingMemoryEmissionLedger` suppresses unchanged reinjection while changed revisions emit again.
+   - Closeout/expiry removes transient state only; no automatic Episode or Knowledge persistence exists.
+   - The controlled 4-task/16-step benchmark improves required-context coverage from 67.35% to 100%
+     while reducing context tokens 1045→458, recall calls 16→4, and exact fetches 12→4; stale
+     contamination and cross-task leakage are zero. This is source benchmark evidence, not an LLM
+     quality or production-success claim.
+   - No third collection, graph database, public Working Memory MCP tool, or retrieval reranking is
+     introduced.
 
 6. Agent Self-Model
-   - Status: planned.
+   - Status: next cognitive mechanism after M5 source acceptance.
    - Owns: evidence-backed, agent-scoped hypotheses about recurring capabilities, limitations,
      operating tendencies, and strategy constraints.
    - Calibration is one input, not the Self-Model itself.

@@ -1,0 +1,690 @@
+{
+  "version": 1,
+  "description": "Reviewed deterministic multi-step M5 context-continuity fixtures. Coverage is a proxy for task-state availability, not an LLM quality score.",
+  "tasks": [
+    {
+      "task_id": "patch_regression",
+      "session_id": "session-patch",
+      "scope_marker": "fixture:project-alpha",
+      "candidates": [
+        {
+          "id": "patch.goal",
+          "kind": "goal",
+          "text": "Fix the regression while preserving the existing public contract.",
+          "relevance": 1.0,
+          "salience": {
+            "consequence": 0.9
+          }
+        },
+        {
+          "id": "patch.constraint",
+          "kind": "assumption",
+          "text": "Do not change runtime configuration or deployment behavior in this source slice.",
+          "relevance": 0.95,
+          "salience": {
+            "consequence": 0.8
+          }
+        },
+        {
+          "id": "patch.memory",
+          "kind": "selected_memory_reference",
+          "reference_id": "memory:regression-root",
+          "text": "Prior verified evidence identifies the parser boundary as the likely regression source.",
+          "relevance": 0.9,
+          "salience": {
+            "recurrence": 0.8,
+            "consequence": 0.7
+          }
+        },
+        {
+          "id": "patch.hypothesis",
+          "kind": "hypothesis",
+          "text": "The parser drops an explicit empty value before validation.",
+          "relevance": 0.88,
+          "salience": {
+            "unresolvedness": 0.9
+          }
+        },
+        {
+          "id": "patch.decision",
+          "kind": "recent_decision",
+          "text": "Patch only normalization and keep the transport contract unchanged.",
+          "relevance": 0.92,
+          "salience": {
+            "user_emphasis": 0.8
+          }
+        },
+        {
+          "id": "patch.blocker",
+          "kind": "blocker",
+          "text": "The regression test must distinguish missing from explicitly empty input.",
+          "relevance": 0.84,
+          "salience": {
+            "consequence": 0.7
+          }
+        },
+        {
+          "id": "patch.stale",
+          "kind": "hypothesis",
+          "text": "A transport timeout might be the cause.",
+          "relevance": 0.25,
+          "salience": {
+            "novelty": 0.8
+          }
+        }
+      ],
+      "steps": [
+        {
+          "active_ids": [
+            "patch.goal",
+            "patch.constraint",
+            "patch.memory",
+            "patch.hypothesis"
+          ],
+          "required_ids": [
+            "patch.goal",
+            "patch.constraint",
+            "patch.memory",
+            "patch.hypothesis"
+          ],
+          "baseline_ids": [
+            "patch.goal",
+            "patch.memory",
+            "patch.hypothesis",
+            "patch.stale"
+          ],
+          "stale_ids": [
+            "patch.stale"
+          ],
+          "exact_fetch_ids": [
+            "patch.memory"
+          ]
+        },
+        {
+          "active_ids": [
+            "patch.goal",
+            "patch.constraint",
+            "patch.memory",
+            "patch.hypothesis",
+            "patch.blocker"
+          ],
+          "required_ids": [
+            "patch.constraint",
+            "patch.hypothesis",
+            "patch.blocker"
+          ],
+          "baseline_ids": [
+            "patch.memory",
+            "patch.hypothesis",
+            "patch.blocker",
+            "patch.stale"
+          ],
+          "stale_ids": [
+            "patch.stale"
+          ],
+          "exact_fetch_ids": [
+            "patch.memory"
+          ]
+        },
+        {
+          "active_ids": [
+            "patch.goal",
+            "patch.constraint",
+            "patch.memory",
+            "patch.decision",
+            "patch.blocker"
+          ],
+          "required_ids": [
+            "patch.constraint",
+            "patch.decision",
+            "patch.blocker"
+          ],
+          "baseline_ids": [
+            "patch.constraint",
+            "patch.memory",
+            "patch.blocker"
+          ],
+          "stale_ids": [
+            "patch.hypothesis",
+            "patch.stale"
+          ],
+          "exact_fetch_ids": [
+            "patch.memory"
+          ]
+        },
+        {
+          "active_ids": [
+            "patch.goal",
+            "patch.constraint",
+            "patch.decision"
+          ],
+          "required_ids": [
+            "patch.goal",
+            "patch.constraint",
+            "patch.decision"
+          ],
+          "baseline_ids": [
+            "patch.goal",
+            "patch.constraint",
+            "patch.memory"
+          ],
+          "stale_ids": [
+            "patch.hypothesis",
+            "patch.stale"
+          ],
+          "exact_fetch_ids": []
+        }
+      ]
+    },
+    {
+      "task_id": "schema_migration",
+      "session_id": "session-migration",
+      "scope_marker": "fixture:project-alpha",
+      "candidates": [
+        {
+          "id": "migration.goal",
+          "kind": "goal",
+          "text": "Migrate records without inventing historical causal evidence.",
+          "relevance": 1.0,
+          "salience": {
+            "consequence": 1.0
+          }
+        },
+        {
+          "id": "migration.rule",
+          "kind": "recent_decision",
+          "text": "Prediction evidence is valid only when prediction and prior confidence existed before outcome.",
+          "relevance": 0.98,
+          "salience": {
+            "user_emphasis": 1.0,
+            "consequence": 1.0
+          }
+        },
+        {
+          "id": "migration.memory",
+          "kind": "selected_memory_reference",
+          "reference_id": "memory:causal-order",
+          "text": "Canonical historical audit notes that retrospective prediction reconstruction is forbidden.",
+          "relevance": 0.92,
+          "salience": {
+            "recurrence": 0.9
+          }
+        },
+        {
+          "id": "migration.question",
+          "kind": "open_question",
+          "text": "Which ambiguous legacy rows should remain review-only rather than normalized automatically?",
+          "relevance": 0.9,
+          "salience": {
+            "unresolvedness": 0.9
+          }
+        },
+        {
+          "id": "migration.evidence",
+          "kind": "evidence",
+          "source_record_id": "evidence:census",
+          "text": "The census contains migrated provenance and ambiguous historical metadata that must remain distinguishable.",
+          "relevance": 0.87,
+          "salience": {
+            "consequence": 0.8
+          }
+        },
+        {
+          "id": "migration.decision",
+          "kind": "recent_decision",
+          "text": "Persist no backfill when the causal preconditions are not proven.",
+          "relevance": 0.94,
+          "salience": {
+            "consequence": 0.9
+          }
+        },
+        {
+          "id": "migration.stale",
+          "kind": "assumption",
+          "text": "Every legacy statement can be converted into a prediction pair.",
+          "relevance": 0.22,
+          "salience": {
+            "novelty": 0.7
+          }
+        }
+      ],
+      "steps": [
+        {
+          "active_ids": [
+            "migration.goal",
+            "migration.rule",
+            "migration.memory",
+            "migration.question"
+          ],
+          "required_ids": [
+            "migration.goal",
+            "migration.rule",
+            "migration.question"
+          ],
+          "baseline_ids": [
+            "migration.goal",
+            "migration.rule",
+            "migration.memory",
+            "migration.stale"
+          ],
+          "stale_ids": [
+            "migration.stale"
+          ],
+          "exact_fetch_ids": [
+            "migration.memory"
+          ]
+        },
+        {
+          "active_ids": [
+            "migration.goal",
+            "migration.rule",
+            "migration.memory",
+            "migration.question",
+            "migration.evidence"
+          ],
+          "required_ids": [
+            "migration.rule",
+            "migration.question",
+            "migration.evidence"
+          ],
+          "baseline_ids": [
+            "migration.memory",
+            "migration.question",
+            "migration.evidence",
+            "migration.stale"
+          ],
+          "stale_ids": [
+            "migration.stale"
+          ],
+          "exact_fetch_ids": [
+            "migration.memory"
+          ]
+        },
+        {
+          "active_ids": [
+            "migration.goal",
+            "migration.rule",
+            "migration.memory",
+            "migration.evidence",
+            "migration.decision"
+          ],
+          "required_ids": [
+            "migration.rule",
+            "migration.evidence",
+            "migration.decision"
+          ],
+          "baseline_ids": [
+            "migration.rule",
+            "migration.memory",
+            "migration.evidence"
+          ],
+          "stale_ids": [
+            "migration.question",
+            "migration.stale"
+          ],
+          "exact_fetch_ids": [
+            "migration.memory"
+          ]
+        },
+        {
+          "active_ids": [
+            "migration.goal",
+            "migration.rule",
+            "migration.decision"
+          ],
+          "required_ids": [
+            "migration.goal",
+            "migration.rule",
+            "migration.decision"
+          ],
+          "baseline_ids": [
+            "migration.goal",
+            "migration.rule",
+            "migration.memory"
+          ],
+          "stale_ids": [
+            "migration.question",
+            "migration.stale"
+          ],
+          "exact_fetch_ids": []
+        }
+      ]
+    },
+    {
+      "task_id": "service_diagnosis",
+      "session_id": "session-diagnosis",
+      "scope_marker": "fixture:project-beta",
+      "candidates": [
+        {
+          "id": "diag.goal",
+          "kind": "goal",
+          "text": "Diagnose the failing service without changing unrelated infrastructure.",
+          "relevance": 1.0,
+          "salience": {
+            "consequence": 0.9
+          }
+        },
+        {
+          "id": "diag.memory",
+          "kind": "selected_memory_reference",
+          "reference_id": "memory:service-topology",
+          "text": "Verified topology identifies the service dependency chain and health boundary.",
+          "relevance": 0.91,
+          "salience": {
+            "recurrence": 0.8
+          }
+        },
+        {
+          "id": "diag.hypothesis",
+          "kind": "hypothesis",
+          "text": "The failure is caused by a stale dependency endpoint rather than process startup.",
+          "relevance": 0.89,
+          "salience": {
+            "unresolvedness": 0.9
+          }
+        },
+        {
+          "id": "diag.evidence",
+          "kind": "evidence",
+          "source_record_id": "evidence:health",
+          "text": "Health output shows the process is running while the downstream dependency is unreachable.",
+          "relevance": 0.94,
+          "salience": {
+            "contradiction": 0.8,
+            "consequence": 0.8
+          }
+        },
+        {
+          "id": "diag.blocker",
+          "kind": "blocker",
+          "text": "Do not restart production before confirming the dependency endpoint.",
+          "relevance": 0.96,
+          "salience": {
+            "consequence": 1.0
+          }
+        },
+        {
+          "id": "diag.decision",
+          "kind": "recent_decision",
+          "text": "Change only the dependency endpoint after validation and preserve rollback evidence.",
+          "relevance": 0.95,
+          "salience": {
+            "user_emphasis": 0.8
+          }
+        },
+        {
+          "id": "diag.stale",
+          "kind": "hypothesis",
+          "text": "The process is not running at all.",
+          "relevance": 0.24,
+          "salience": {
+            "novelty": 0.7
+          }
+        }
+      ],
+      "steps": [
+        {
+          "active_ids": [
+            "diag.goal",
+            "diag.memory",
+            "diag.hypothesis",
+            "diag.blocker"
+          ],
+          "required_ids": [
+            "diag.goal",
+            "diag.hypothesis",
+            "diag.blocker"
+          ],
+          "baseline_ids": [
+            "diag.goal",
+            "diag.memory",
+            "diag.hypothesis",
+            "diag.stale"
+          ],
+          "stale_ids": [
+            "diag.stale"
+          ],
+          "exact_fetch_ids": [
+            "diag.memory"
+          ]
+        },
+        {
+          "active_ids": [
+            "diag.goal",
+            "diag.memory",
+            "diag.hypothesis",
+            "diag.evidence",
+            "diag.blocker"
+          ],
+          "required_ids": [
+            "diag.hypothesis",
+            "diag.evidence",
+            "diag.blocker"
+          ],
+          "baseline_ids": [
+            "diag.memory",
+            "diag.hypothesis",
+            "diag.evidence",
+            "diag.stale"
+          ],
+          "stale_ids": [
+            "diag.stale"
+          ],
+          "exact_fetch_ids": [
+            "diag.memory"
+          ]
+        },
+        {
+          "active_ids": [
+            "diag.goal",
+            "diag.memory",
+            "diag.evidence",
+            "diag.blocker",
+            "diag.decision"
+          ],
+          "required_ids": [
+            "diag.evidence",
+            "diag.blocker",
+            "diag.decision"
+          ],
+          "baseline_ids": [
+            "diag.memory",
+            "diag.evidence",
+            "diag.blocker"
+          ],
+          "stale_ids": [
+            "diag.hypothesis",
+            "diag.stale"
+          ],
+          "exact_fetch_ids": [
+            "diag.memory"
+          ]
+        },
+        {
+          "active_ids": [
+            "diag.goal",
+            "diag.blocker",
+            "diag.decision"
+          ],
+          "required_ids": [
+            "diag.goal",
+            "diag.blocker",
+            "diag.decision"
+          ],
+          "baseline_ids": [
+            "diag.goal",
+            "diag.blocker",
+            "diag.memory"
+          ],
+          "stale_ids": [
+            "diag.hypothesis",
+            "diag.stale"
+          ],
+          "exact_fetch_ids": []
+        }
+      ]
+    },
+    {
+      "task_id": "concept_consumer",
+      "session_id": "session-concept",
+      "scope_marker": "fixture:project-beta",
+      "candidates": [
+        {
+          "id": "concept.goal",
+          "kind": "goal",
+          "text": "Use an accepted concept as task context without treating it as truth or copying all evidence.",
+          "relevance": 1.0,
+          "salience": {
+            "consequence": 0.8
+          }
+        },
+        {
+          "id": "concept.ref",
+          "kind": "concept_reference",
+          "reference_id": "concept:bounded-abstraction",
+          "text": "Relevant concept reference: bounded abstraction candidate.",
+          "relevance": 0.9,
+          "salience": {
+            "recurrence": 0.9
+          }
+        },
+        {
+          "id": "concept.memory",
+          "kind": "selected_memory_reference",
+          "reference_id": "memory:concept-evidence",
+          "text": "One selected canonical evidence record supports the current task decision.",
+          "relevance": 0.89,
+          "salience": {
+            "consequence": 0.7
+          }
+        },
+        {
+          "id": "concept.question",
+          "kind": "open_question",
+          "text": "Does the current task contain a counterexample that weakens this abstraction?",
+          "relevance": 0.93,
+          "salience": {
+            "contradiction": 0.9,
+            "unresolvedness": 0.8
+          }
+        },
+        {
+          "id": "concept.decision",
+          "kind": "recent_decision",
+          "text": "Use the concept only as a reference and inspect selected evidence before acting.",
+          "relevance": 0.96,
+          "salience": {
+            "user_emphasis": 0.9
+          }
+        },
+        {
+          "id": "concept.stale",
+          "kind": "assumption",
+          "text": "The concept label alone is sufficient evidence for action.",
+          "relevance": 0.2,
+          "salience": {
+            "novelty": 0.8
+          }
+        }
+      ],
+      "steps": [
+        {
+          "active_ids": [
+            "concept.goal",
+            "concept.ref",
+            "concept.memory",
+            "concept.question"
+          ],
+          "required_ids": [
+            "concept.goal",
+            "concept.ref",
+            "concept.question"
+          ],
+          "baseline_ids": [
+            "concept.goal",
+            "concept.ref",
+            "concept.memory",
+            "concept.stale"
+          ],
+          "stale_ids": [
+            "concept.stale"
+          ],
+          "exact_fetch_ids": [
+            "concept.memory"
+          ]
+        },
+        {
+          "active_ids": [
+            "concept.goal",
+            "concept.ref",
+            "concept.memory",
+            "concept.question"
+          ],
+          "required_ids": [
+            "concept.ref",
+            "concept.memory",
+            "concept.question"
+          ],
+          "baseline_ids": [
+            "concept.ref",
+            "concept.memory",
+            "concept.stale"
+          ],
+          "stale_ids": [
+            "concept.stale"
+          ],
+          "exact_fetch_ids": [
+            "concept.memory"
+          ]
+        },
+        {
+          "active_ids": [
+            "concept.goal",
+            "concept.ref",
+            "concept.memory",
+            "concept.question",
+            "concept.decision"
+          ],
+          "required_ids": [
+            "concept.ref",
+            "concept.question",
+            "concept.decision"
+          ],
+          "baseline_ids": [
+            "concept.ref",
+            "concept.memory",
+            "concept.question"
+          ],
+          "stale_ids": [
+            "concept.stale"
+          ],
+          "exact_fetch_ids": [
+            "concept.memory"
+          ]
+        },
+        {
+          "active_ids": [
+            "concept.goal",
+            "concept.ref",
+            "concept.decision"
+          ],
+          "required_ids": [
+            "concept.goal",
+            "concept.ref",
+            "concept.decision"
+          ],
+          "baseline_ids": [
+            "concept.goal",
+            "concept.ref",
+            "concept.memory"
+          ],
+          "stale_ids": [
+            "concept.question",
+            "concept.stale"
+          ],
+          "exact_fetch_ids": []
+        }
+      ]
+    }
+  ]
+}

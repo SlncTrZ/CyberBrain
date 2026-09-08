@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from cyberbrain.agent_adapter.models import ContextItem, ContextLedger, ContextPack, RecallCandidate
+from cyberbrain.core.token_budget import DeterministicTokenCounter
 
 
 @dataclass(frozen=True, slots=True)
@@ -32,22 +33,13 @@ class TokenBudgetPolicy:
 class TokenGovernor:
     def __init__(self, policy: TokenBudgetPolicy | None = None) -> None:
         self.policy = policy or TokenBudgetPolicy()
+        self._counter = DeterministicTokenCounter(self.policy.chars_per_token)
 
     def estimate_tokens(self, text: str) -> int:
-        if not text:
-            return 0
-        chars = len(text)
-        return max(1, (chars + self.policy.chars_per_token - 1) // self.policy.chars_per_token)
+        return self._counter.estimate_tokens(text)
 
     def clip_to_tokens(self, text: str, budget_tokens: int) -> str:
-        if budget_tokens <= 0:
-            return ""
-        max_chars = budget_tokens * self.policy.chars_per_token
-        if len(text) <= max_chars:
-            return text
-        if max_chars <= 1:
-            return text[:max_chars]
-        return text[: max_chars - 1].rstrip() + "…"
+        return self._counter.clip_to_tokens(text, budget_tokens)
 
     def select(
         self,
