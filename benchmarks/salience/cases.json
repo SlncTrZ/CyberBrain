@@ -1,0 +1,258 @@
+{
+  "schema_version": 1,
+  "fixture_kind": "synthetic bounded-signal pairwise review cases",
+  "cases": [
+    {
+      "case_id": "prediction-error-01",
+      "family": "prediction_error_vs_routine_success",
+      "candidate_a": {"candidate_id": "unexpected-failure", "scope_marker": "project:alpha", "signals": {"prediction_error": 1.0, "consequence": 0.7, "recency": 0.7}},
+      "candidate_b": {"candidate_id": "routine-success", "scope_marker": "project:alpha", "signals": {"prediction_error": 0.0, "consequence": 0.2, "recency": 0.8}},
+      "expected": "a_higher",
+      "rationale_category": "prediction_error",
+      "rationale": "A surprising failed expectation should outrank a routine success in the same scope."
+    },
+    {
+      "case_id": "prediction-error-02",
+      "family": "prediction_error_vs_routine_success",
+      "candidate_a": {"candidate_id": "routine-pass", "scope_marker": "project:alpha", "signals": {"prediction_error": 0.0, "consequence": 0.2, "recency": 0.9}},
+      "candidate_b": {"candidate_id": "unexpected-regression", "scope_marker": "project:alpha", "signals": {"prediction_error": 0.9, "consequence": 0.6, "recency": 0.6}},
+      "expected": "b_higher",
+      "rationale_category": "prediction_error",
+      "rationale": "Input order must not determine priority when B carries the prediction error."
+    },
+    {
+      "case_id": "prediction-error-03",
+      "family": "prediction_error_vs_routine_success",
+      "candidate_a": {"candidate_id": "mild-surprise", "scope_marker": "project:alpha", "signals": {"prediction_error": 0.6, "consequence": 0.3, "recency": 0.5}},
+      "candidate_b": {"candidate_id": "routine-confirmation", "scope_marker": "project:alpha", "signals": {"prediction_error": 0.0, "consequence": 0.3, "recency": 1.0}},
+      "expected": "a_higher",
+      "rationale_category": "prediction_error",
+      "rationale": "A bounded surprise remains more review-worthy than a newer but fully expected confirmation."
+    },
+    {
+      "case_id": "blocker-01",
+      "family": "unresolved_blocker_vs_resolved_routine",
+      "candidate_a": {"candidate_id": "open-blocker", "scope_marker": "project:beta", "signals": {"unresolved": 1.0, "consequence": 0.8, "recency": 0.6}},
+      "candidate_b": {"candidate_id": "resolved-maintenance", "scope_marker": "project:beta", "signals": {"unresolved": 0.0, "consequence": 0.2, "recency": 0.9}},
+      "expected": "a_higher",
+      "rationale_category": "unresolved_state",
+      "rationale": "An unresolved blocker should remain salient over a resolved routine event."
+    },
+    {
+      "case_id": "blocker-02",
+      "family": "unresolved_blocker_vs_resolved_routine",
+      "candidate_a": {"candidate_id": "resolved-check", "scope_marker": "project:beta", "signals": {"unresolved": 0.0, "consequence": 0.2, "recency": 1.0}},
+      "candidate_b": {"candidate_id": "open-dependency", "scope_marker": "project:beta", "signals": {"unresolved": 0.9, "consequence": 0.7, "recency": 0.5}},
+      "expected": "b_higher",
+      "rationale_category": "unresolved_state",
+      "rationale": "The unresolved dependency outranks the newer resolved check."
+    },
+    {
+      "case_id": "blocker-03",
+      "family": "unresolved_blocker_vs_resolved_routine",
+      "candidate_a": {"candidate_id": "open-low-impact", "scope_marker": "project:beta", "signals": {"unresolved": 0.8, "consequence": 0.4, "recency": 0.4}},
+      "candidate_b": {"candidate_id": "closed-low-impact", "scope_marker": "project:beta", "signals": {"unresolved": 0.0, "consequence": 0.4, "recency": 0.8}},
+      "expected": "a_higher",
+      "rationale_category": "unresolved_state",
+      "rationale": "Equal consequence leaves unresolved state as the bounded differentiator."
+    },
+    {
+      "case_id": "contradiction-01",
+      "family": "contradiction_vs_consistent_fact",
+      "candidate_a": {"candidate_id": "explicit-conflict", "scope_marker": "project:gamma", "signals": {"contradiction": 1.0, "recurrence": 0.2, "recency": 0.6}},
+      "candidate_b": {"candidate_id": "repeated-consistent", "scope_marker": "project:gamma", "signals": {"contradiction": 0.0, "recurrence": 0.9, "recency": 0.8}},
+      "expected": "a_higher",
+      "rationale_category": "contradiction",
+      "rationale": "An explicit contradiction is more review-critical than another consistent repetition."
+    },
+    {
+      "case_id": "contradiction-02",
+      "family": "contradiction_vs_consistent_fact",
+      "candidate_a": {"candidate_id": "consistent-repeat", "scope_marker": "project:gamma", "signals": {"contradiction": 0.0, "recurrence": 1.0, "recency": 0.9}},
+      "candidate_b": {"candidate_id": "conflicting-observation", "scope_marker": "project:gamma", "signals": {"contradiction": 0.9, "recurrence": 0.1, "recency": 0.5}},
+      "expected": "b_higher",
+      "rationale_category": "contradiction",
+      "rationale": "B must win despite weaker recurrence because it challenges the current belief."
+    },
+    {
+      "case_id": "contradiction-03",
+      "family": "contradiction_vs_consistent_fact",
+      "candidate_a": {"candidate_id": "moderate-conflict", "scope_marker": "project:gamma", "signals": {"contradiction": 0.6, "consequence": 0.5}},
+      "candidate_b": {"candidate_id": "ordinary-confirmation", "scope_marker": "project:gamma", "signals": {"contradiction": 0.0, "consequence": 0.5}},
+      "expected": "a_higher",
+      "rationale_category": "contradiction",
+      "rationale": "With consequence held equal, contradiction is the intended review signal."
+    },
+    {
+      "case_id": "emphasis-01",
+      "family": "user_emphasis_vs_ordinary_detail",
+      "candidate_a": {"candidate_id": "user-highlighted", "scope_marker": "project:delta", "signals": {"user_emphasis": 1.0, "consequence": 0.5, "recency": 0.5}},
+      "candidate_b": {"candidate_id": "ordinary-detail", "scope_marker": "project:delta", "signals": {"user_emphasis": 0.1, "consequence": 0.5, "recency": 0.7}},
+      "expected": "a_higher",
+      "rationale_category": "user_emphasis",
+      "rationale": "Explicit user emphasis should be preserved when other importance signals are equal."
+    },
+    {
+      "case_id": "emphasis-02",
+      "family": "user_emphasis_vs_ordinary_detail",
+      "candidate_a": {"candidate_id": "background-note", "scope_marker": "project:delta", "signals": {"user_emphasis": 0.0, "consequence": 0.4, "recency": 0.9}},
+      "candidate_b": {"candidate_id": "explicit-priority", "scope_marker": "project:delta", "signals": {"user_emphasis": 0.9, "consequence": 0.4, "recency": 0.5}},
+      "expected": "b_higher",
+      "rationale_category": "user_emphasis",
+      "rationale": "The explicit priority should outrank a newer background note."
+    },
+    {
+      "case_id": "emphasis-03",
+      "family": "user_emphasis_vs_ordinary_detail",
+      "candidate_a": {"candidate_id": "strong-request", "scope_marker": "project:delta", "signals": {"user_emphasis": 0.8, "consequence": 0.3}},
+      "candidate_b": {"candidate_id": "incidental-detail", "scope_marker": "project:delta", "signals": {"user_emphasis": 0.2, "consequence": 0.3}},
+      "expected": "a_higher",
+      "rationale_category": "user_emphasis",
+      "rationale": "Equal consequence isolates user emphasis as the expected priority signal."
+    },
+    {
+      "case_id": "consequence-01",
+      "family": "high_vs_low_consequence",
+      "candidate_a": {"candidate_id": "high-impact-change", "scope_marker": "project:epsilon", "signals": {"consequence": 1.0, "recency": 0.5}},
+      "candidate_b": {"candidate_id": "cosmetic-change", "scope_marker": "project:epsilon", "signals": {"consequence": 0.1, "recency": 0.9}},
+      "expected": "a_higher",
+      "rationale_category": "consequence",
+      "rationale": "High consequence should outrank a newer low-impact detail."
+    },
+    {
+      "case_id": "consequence-02",
+      "family": "high_vs_low_consequence",
+      "candidate_a": {"candidate_id": "minor-note", "scope_marker": "project:epsilon", "signals": {"consequence": 0.2, "recency": 1.0}},
+      "candidate_b": {"candidate_id": "critical-decision", "scope_marker": "project:epsilon", "signals": {"consequence": 0.9, "recency": 0.4}},
+      "expected": "b_higher",
+      "rationale_category": "consequence",
+      "rationale": "The critical decision outranks a recent minor note."
+    },
+    {
+      "case_id": "consequence-03",
+      "family": "high_vs_low_consequence",
+      "candidate_a": {"candidate_id": "material-risk", "scope_marker": "project:epsilon", "signals": {"consequence": 0.8, "user_emphasis": 0.4}},
+      "candidate_b": {"candidate_id": "small-cleanup", "scope_marker": "project:epsilon", "signals": {"consequence": 0.2, "user_emphasis": 0.4}},
+      "expected": "a_higher",
+      "rationale_category": "consequence",
+      "rationale": "Equal emphasis leaves consequence as the intended differentiator."
+    },
+    {
+      "case_id": "novel-low-01",
+      "family": "novel_low_consequence_item",
+      "candidate_a": {"candidate_id": "novel-trivia", "scope_marker": "project:zeta", "signals": {"novelty": 1.0, "consequence": 0.1, "recency": 0.8}},
+      "candidate_b": {"candidate_id": "known-material-fact", "scope_marker": "project:zeta", "signals": {"novelty": 0.1, "consequence": 0.8, "recency": 0.5}},
+      "expected": "b_higher",
+      "rationale_category": "novelty_not_sufficient",
+      "rationale": "Novelty alone should not dominate a materially consequential item."
+    },
+    {
+      "case_id": "novel-low-02",
+      "family": "novel_low_consequence_item",
+      "candidate_a": {"candidate_id": "novel-small-detail", "scope_marker": "project:zeta", "signals": {"novelty": 0.9, "consequence": 0.2, "recency": 0.7}},
+      "candidate_b": {"candidate_id": "recurrent-small-detail", "scope_marker": "project:zeta", "signals": {"novelty": 0.1, "consequence": 0.2, "recurrence": 0.7, "recency": 0.7}},
+      "expected": "ambiguous",
+      "rationale_category": "intentional_ambiguity",
+      "rationale": "Novelty and recurrence trade off at equal consequence, so the fixture intentionally avoids false ground truth."
+    },
+    {
+      "case_id": "recurrence-01",
+      "family": "recurrence_vs_one_off",
+      "candidate_a": {"candidate_id": "recurring-problem", "scope_marker": "project:eta", "signals": {"recurrence": 1.0, "consequence": 0.5, "recency": 0.6}},
+      "candidate_b": {"candidate_id": "one-off-problem", "scope_marker": "project:eta", "signals": {"recurrence": 0.1, "consequence": 0.5, "recency": 0.7}},
+      "expected": "a_higher",
+      "rationale_category": "recurrence",
+      "rationale": "Repeated recurrence should outrank a comparable one-off event."
+    },
+    {
+      "case_id": "recurrence-02",
+      "family": "recurrence_vs_one_off",
+      "candidate_a": {"candidate_id": "isolated-warning", "scope_marker": "project:eta", "signals": {"recurrence": 0.0, "consequence": 0.4, "recency": 0.9}},
+      "candidate_b": {"candidate_id": "repeated-warning", "scope_marker": "project:eta", "signals": {"recurrence": 0.8, "consequence": 0.4, "recency": 0.5}},
+      "expected": "b_higher",
+      "rationale_category": "recurrence",
+      "rationale": "Repeated evidence should outrank an otherwise comparable isolated warning."
+    },
+    {
+      "case_id": "older-consequence-01",
+      "family": "recent_routine_vs_older_high_consequence",
+      "candidate_a": {"candidate_id": "older-critical", "scope_marker": "project:theta", "signals": {"consequence": 0.9, "recency": 0.3}},
+      "candidate_b": {"candidate_id": "recent-routine", "scope_marker": "project:theta", "signals": {"consequence": 0.2, "recency": 1.0}},
+      "expected": "a_higher",
+      "rationale_category": "recency_not_sufficient",
+      "rationale": "Recency alone should not erase older high-consequence evidence."
+    },
+    {
+      "case_id": "older-consequence-02",
+      "family": "recent_routine_vs_older_high_consequence",
+      "candidate_a": {"candidate_id": "fresh-check", "scope_marker": "project:theta", "signals": {"consequence": 0.1, "recency": 1.0}},
+      "candidate_b": {"candidate_id": "older-decision", "scope_marker": "project:theta", "signals": {"consequence": 0.8, "recency": 0.2}},
+      "expected": "b_higher",
+      "rationale_category": "recency_not_sufficient",
+      "rationale": "The older material decision remains more salient than a fresh routine check."
+    },
+    {
+      "case_id": "older-consequence-03",
+      "family": "recent_routine_vs_older_high_consequence",
+      "candidate_a": {"candidate_id": "older-material", "scope_marker": "project:theta", "signals": {"consequence": 0.7, "recency": 0.4}},
+      "candidate_b": {"candidate_id": "newer-low-impact", "scope_marker": "project:theta", "signals": {"consequence": 0.3, "recency": 0.9}},
+      "expected": "a_higher",
+      "rationale_category": "recency_not_sufficient",
+      "rationale": "A moderate age gap should not invert a clear consequence gap."
+    },
+    {
+      "case_id": "neutral-tie-01",
+      "family": "all_neutral_tie",
+      "candidate_a": {"candidate_id": "neutral-a", "scope_marker": "project:iota", "signals": {}},
+      "candidate_b": {"candidate_id": "neutral-b", "scope_marker": "project:iota", "signals": {}},
+      "expected": "tie",
+      "rationale_category": "neutral_tie",
+      "rationale": "With no bounded evidence differentiating candidates, the benchmark expects a tie."
+    },
+    {
+      "case_id": "neutral-tie-02",
+      "family": "all_neutral_tie",
+      "candidate_a": {"candidate_id": "equal-a", "scope_marker": "project:iota", "signals": {"recency": 0.5, "consequence": 0.5, "user_emphasis": 0.5}},
+      "candidate_b": {"candidate_id": "equal-b", "scope_marker": "project:iota", "signals": {"recency": 0.5, "consequence": 0.5, "user_emphasis": 0.5}},
+      "expected": "tie",
+      "rationale_category": "neutral_tie",
+      "rationale": "Exactly equal bounded signals must not be broken by unstable ordering."
+    },
+    {
+      "case_id": "missing-signal-01",
+      "family": "missing_signal_robustness",
+      "candidate_a": {"candidate_id": "sparse-a", "scope_marker": "project:kappa", "signals": {"consequence": 0.7}},
+      "candidate_b": {"candidate_id": "sparse-b", "scope_marker": "project:kappa", "signals": {}},
+      "expected": "a_higher",
+      "rationale_category": "missing_signal",
+      "rationale": "Missing optional signals must remain bounded and not crash evaluation; supplied consequence still differentiates A."
+    },
+    {
+      "case_id": "missing-signal-02",
+      "family": "missing_signal_robustness",
+      "candidate_a": {"candidate_id": "sparse-neutral-a", "scope_marker": "project:kappa", "signals": {"novelty": 0.5}},
+      "candidate_b": {"candidate_id": "sparse-neutral-b", "scope_marker": "project:kappa", "signals": {"recurrence": 0.5}},
+      "expected": "ambiguous",
+      "rationale_category": "intentional_ambiguity",
+      "rationale": "Different sparse signals without an agreed weighting are intentionally left ambiguous."
+    },
+    {
+      "case_id": "scope-boundary-01",
+      "family": "scope_separated_not_comparable",
+      "candidate_a": {"candidate_id": "alpha-critical", "scope_marker": "project:alpha", "signals": {"consequence": 1.0, "user_emphasis": 1.0}},
+      "candidate_b": {"candidate_id": "beta-routine", "scope_marker": "project:beta", "signals": {"consequence": 0.1, "user_emphasis": 0.1}},
+      "expected": "not_comparable",
+      "rationale_category": "authority_boundary",
+      "rationale": "Signals must never authorize cross-scope priority comparison."
+    },
+    {
+      "case_id": "scope-boundary-02",
+      "family": "scope_separated_not_comparable",
+      "candidate_a": {"candidate_id": "tenant-one-routine", "scope_marker": "tenant:one", "signals": {"recency": 1.0}},
+      "candidate_b": {"candidate_id": "tenant-two-critical", "scope_marker": "tenant:two", "signals": {"consequence": 1.0}},
+      "expected": "not_comparable",
+      "rationale_category": "authority_boundary",
+      "rationale": "A stronger signal in another tenant scope is still outside the comparison boundary."
+    }
+  ]
+}
