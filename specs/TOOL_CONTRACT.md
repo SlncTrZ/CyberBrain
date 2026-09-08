@@ -161,6 +161,8 @@ Optional episodic metadata follows `MEMORY_SCHEMA.md`. New ordinary episodes def
 
 ## Prediction Learning
 
+When one server-configured trusted agent identity is bound after successful MCP authentication, Prediction Learning is narrowed to that agent. Caller-supplied `agent` values cannot substitute another identity: record/observe/pending/calibration operations force the trusted agent, and resolution verifies that the referenced Prediction belongs to it before Outcome persistence. Without trusted identity binding, existing `single_owner` behavior remains unchanged.
+
 ### `prediction_record`
 
 Requires:
@@ -210,7 +212,7 @@ See `PREDICTION_LEARNING.md`.
 
 ### `calibration_observe`
 
-Read-only analysis over resolved Prediction Learning evidence. Below the configured minimum sample count, assessment must remain `insufficient_evidence`. Calibration labels describe only the selected sample and may not persist self-beliefs, mutate Knowledge/Memory, or change agent strategy.
+Read-only analysis over resolved Prediction Learning evidence. Below the configured minimum sample count, assessment must remain `insufficient_evidence`. Under trusted agent binding, the observation sample is forcibly narrowed to that agent. Calibration labels describe only the selected sample and may not persist self-beliefs, mutate Knowledge/Memory, or change agent strategy.
 
 See `METACOGNITION_CALIBRATION.md`.
 

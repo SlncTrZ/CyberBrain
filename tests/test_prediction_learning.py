@@ -190,6 +190,37 @@ def test_outcome_derives_confidence_weighted_prediction_error(
     assert cognition["confidence_weighted_error"] == error_value
 
 
+def test_outcome_required_agent_must_match_prediction_identity(learning) -> None:
+    service, _memory, _repository = learning
+    prediction = service.record_prediction(
+        expected_outcome="The task completes.",
+        confidence=0.65,
+        session_id="session-trusted-agent",
+        event_time=datetime(2026, 9, 7, 1, 0, tzinfo=UTC),
+        agent="agent-a",
+        project="CyberBrain",
+        topic="trusted-agent",
+    )
+
+    with pytest.raises(ValueError, match="does not match required trusted agent"):
+        service.record_outcome(
+            prediction_id=prediction.id,
+            observed_outcome="The task completed.",
+            assessment=PredictionAssessment.CONFIRMED,
+            event_time=datetime(2026, 9, 7, 1, 5, tzinfo=UTC),
+            required_agent="agent-b",
+        )
+
+    outcome = service.record_outcome(
+        prediction_id=prediction.id,
+        observed_outcome="The task completed.",
+        assessment=PredictionAssessment.CONFIRMED,
+        event_time=datetime(2026, 9, 7, 1, 5, tzinfo=UTC),
+        required_agent="agent-a",
+    )
+    assert outcome.agent == "agent-a"
+
+
 def test_outcome_inherits_prediction_identity_context(learning) -> None:
     service, _memory, _repository = learning
     prediction = service.record_prediction(

@@ -19,6 +19,7 @@ from cyberbrain.tenancy import (
     OperationClass,
     authority_for_authenticated_scope,
     current_authority,
+    current_trusted_identity,
 )
 
 
@@ -125,6 +126,71 @@ def test_authenticated_request_binds_single_owner_authority() -> None:
     assert response.status_code == 200
     assert response.json() == {"ok": True}
     assert current_authority() is None
+
+
+@pytest.mark.parametrize(
+    ("headers", "expected_source"),
+    [
+        ({"Authorization": "Bearer secret"}, "mcp_bearer"),
+        ({"X-API-Key": "secret"}, "mcp_x_api_key"),
+    ],
+)
+def test_authenticated_boundary_binds_server_configured_trusted_agent_identity(
+    headers: dict[str, str],
+    expected_source: str,
+) -> None:
+    authority = authority_for_authenticated_scope(
+        DeploymentMode.SINGLE_OWNER,
+        scope=IdentityScope(),
+        operations=frozenset(OperationClass),
+    )
+
+    async def probe(_request):  # noqa: ANN001, ANN202
+        active = current_trusted_identity()
+        assert active is not None
+        assert active.scope.agent == frozenset({"agent-a"})
+        assert active.authentication_source == expected_source
+        return JSONResponse({"ok": True})
+
+    app = RequireAuthMiddleware(
+        Starlette(routes=[Route("/", endpoint=probe, methods=["GET"])]),
+        "secret",
+        authority,
+        trusted_agent_id="agent-a",
+    )
+    request_headers = dict(headers)
+    request_headers["X-Agent-Id"] = "attacker-supplied-agent"
+    with TestClient(app) as client:
+        response = client.get("/", headers=request_headers)
+
+    assert response.status_code == 200
+    assert current_trusted_identity() is None
+
+
+def test_failed_auth_never_binds_trusted_identity() -> None:
+    authority = authority_for_authenticated_scope(
+        DeploymentMode.SINGLE_OWNER,
+        scope=IdentityScope(),
+        operations=frozenset(OperationClass),
+    )
+    reached = []
+
+    async def probe(_request):  # noqa: ANN001, ANN202
+        reached.append(True)
+        return JSONResponse({"ok": True})
+
+    app = RequireAuthMiddleware(
+        Starlette(routes=[Route("/", endpoint=probe, methods=["GET"])]),
+        "secret",
+        authority,
+        trusted_agent_id="agent-a",
+    )
+    with TestClient(app) as client:
+        response = client.get("/", headers={"Authorization": "Bearer wrong"})
+
+    assert response.status_code == 401
+    assert reached == []
+    assert current_trusted_identity() is None
 
 
 def test_mcp_rejects_missing_auth() -> None:

@@ -57,7 +57,7 @@ Tool-level authorization/policy may additionally be enforced by SlncTrZ-MCP. Cyb
 
 ### Tenancy/isolation source foundation
 
-`main` contains the `cyberbrain.tenancy` foundation for transport-neutral tenant/user/agent/project/session authority scopes, true subset narrowing, wildcard rejection, abstract storage filters, concrete write attribution, quota policy models, and readiness gates. Current source binds successfully authenticated MCP requests to an explicit `CallerAuthority` in `single_owner` mode and uses that authority for canonical exact-ID fetch. `agent_ready` and `multi_user` modes fail closed until a trusted caller-identity source and the required persisted identity fields are wired. Broader search/write paths are not yet tenancy-enforced. Release and deployment state are separate from this source security contract.
+`main` contains the `cyberbrain.tenancy` foundation for transport-neutral tenant/user/agent/project/session authority scopes, true subset narrowing, wildcard rejection, abstract storage filters, concrete write attribution, quota policy models, and readiness gates. Current source binds successfully authenticated MCP requests to an explicit `CallerAuthority` in `single_owner` mode and uses that authority for canonical exact-ID fetch. It can additionally bind one server-configured trusted agent identity only after Bearer/X-API-Key verification; arbitrary caller headers or tool arguments cannot create trusted identity. When such identity is bound, Prediction Learning record/read/calibration operations are narrowed to that agent and Prediction resolution verifies the referenced Prediction agent before Outcome persistence. `agent_ready` and `multi_user` remain fail-closed until full read/write/background enforcement and persisted identity requirements are complete. Broader search/write paths are not yet tenancy-enforced. Release and deployment state are separate from this source security contract.
 
 Wave 2 integration must fail closed in this order:
 
@@ -77,7 +77,7 @@ Salience follows the same rule. `SalienceAdvisor` accepts only already-authorize
 
 Concept Formation and Working Memory remain downstream of this boundary. Concept discovery may only examine evidence already admitted to its same-scope candidate set. Working Memory additionally requires exact `scope_marker + session_id + task_id` identity and rejects candidates from another working-set identity. That exact task identity is defense-in-depth against local mixing; it is **not** a substitute for trusted caller identity or full P3 read-path enforcement.
 
-Persistent or influential Agent Self-Model behavior is not authorized merely because M5 is complete. It requires trusted agent identity/P3 isolation plus repeated prospective outcome evidence; insufficient evidence must fail safely rather than produce durable identity claims.
+Persistent or influential Agent Self-Model behavior is not authorized merely because M5 is complete. M6.0 now has an explicit fail-closed readiness contract: exact trusted agent match, at least 20 resolved prospective outcomes, at least 3 sessions, at least 3 topics, and a complete evidence scan. Passing it authorizes only read-only evaluation; hypothesis persistence or behavioral influence still requires broader P3 isolation and separate review. Insufficient evidence must fail safely rather than produce durable identity claims.
 
 ## Logging
 

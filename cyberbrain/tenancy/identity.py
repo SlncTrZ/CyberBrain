@@ -2,10 +2,18 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
 
 from .auth import CallerAuthority, DeploymentMode, authority_for_authenticated_scope
 from .models import IdentityScope, OperationClass
+
+_current_trusted_identity: ContextVar[TrustedIdentityEvidence | None] = ContextVar(
+    "cyberbrain_current_trusted_identity",
+    default=None,
+)
 
 
 @dataclass(frozen=True, slots=True, init=False)
@@ -56,6 +64,21 @@ class TrustedIdentityEvidence:
             scope=self.scope,
             operations=operations,
         )
+
+
+def current_trusted_identity() -> TrustedIdentityEvidence | None:
+    return _current_trusted_identity.get()
+
+
+@contextmanager
+def bind_trusted_identity(identity: TrustedIdentityEvidence) -> Iterator[None]:
+    if not isinstance(identity, TrustedIdentityEvidence):
+        raise TypeError("trusted authenticated identity evidence is required")
+    token = _current_trusted_identity.set(identity)
+    try:
+        yield
+    finally:
+        _current_trusted_identity.reset(token)
 
 
 def authority_from_trusted_identity(

@@ -12,7 +12,12 @@ from .auth import (
 )
 from .enforcement import EnforcementPlan, TenancyOperation, plan_enforcement
 from .filters import FilterCondition, StorageFilter, build_storage_filter
-from .identity import TrustedIdentityEvidence, authority_from_trusted_identity
+from .identity import (
+    TrustedIdentityEvidence,
+    authority_from_trusted_identity,
+    bind_trusted_identity,
+    current_trusted_identity,
+)
 from .models import (
     AuthorityGrant,
     AuthorizationDecision,
@@ -70,9 +75,11 @@ __all__ = [
     "authority_for_authenticated_scope",
     "authority_from_trusted_identity",
     "bind_authority",
+    "bind_trusted_identity",
     "build_storage_filter",
     "build_write_attribution",
     "current_authority",
+    "current_trusted_identity",
     "deployment_identity_profile",
     "derive_quota_scope_key",
     "evaluate_quota",

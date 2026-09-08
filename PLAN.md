@@ -28,7 +28,7 @@ Normal external agents are memory consumers/producers. Their stable responsibili
 
 Wave 1 of the Level 8+ product/infrastructure track and the shared Wave 2 integration are complete on current `main`:
 
-- authenticated MCP source requests bind to explicit `CallerAuthority` in `single_owner` mode; future identity-bearing modes remain fail-closed until a trusted identity source exists;
+- authenticated MCP source requests bind to explicit `CallerAuthority` in `single_owner` mode; source can additionally bind a server-configured trusted agent identity only after credential verification, while `agent_ready`/`multi_user` remain fail-closed until full P3 read/write/background isolation and persisted identity requirements are complete;
 - canonical `knowledge_get(id)` and `memory_get(id)` perform exact full fetch with storage-side scope eligibility and indistinguishable absent/out-of-scope not-found behavior;
 - `cyberbrain.agent_adapter` has a real MCP Streamable HTTP client bridge over the canonical tool contract;
 - M3 Salience and M4 Concept Formation are source-level complete under their bounded advisory/evidence contracts;
@@ -50,7 +50,7 @@ authenticated caller
 → server-owned post-storage cognition
 ```
 
-The scope/auth, exact-fetch, real Agent Adapter client bridge, real retrieval benchmark, shadow literal-routing instrumentation, reusable BM25 shadow corpus, server-owned post-storage cognition contract/tests, M3 Salience, M4 Concept Formation, M5 Working Memory, and single software/package version authority are implemented on source `main`. The benchmark decision remains **do not promote global hybrid retrieval**. The shadow path is disabled by default in source and, when enabled by a deployment, evaluates only literal/fingerprint-heavy Knowledge queries in a non-blocking worker; the vector result remains caller-visible and unchanged. Its cache is bounded/TTL-controlled, explicit metadata filters are reapplied before BM25, and failures are fail-open to the canonical search path. The next retrieval gate is larger organic relevance/reliability evidence, not another performance fix. There is no remaining goal to make Agent Adapter orchestrate Dreaming or other background cognition. The immediate cognitive frontier is M6 readiness evidence, not automatic Self-Model activation: repeated prospective outcomes, evidence diversity, and trusted agent identity/P3 isolation must be demonstrated first.
+The scope/auth, exact-fetch, real Agent Adapter client bridge, real retrieval benchmark, shadow literal-routing instrumentation, reusable BM25 shadow corpus, server-owned post-storage cognition contract/tests, M3 Salience, M4 Concept Formation, M5 Working Memory, P3.1 trusted-agent binding foundation, E2 prospective-outcome census, M6 readiness contracts, and single software/package version authority are implemented on source `main`. The benchmark decision remains **do not promote global hybrid retrieval**. The shadow path is disabled by default in source and, when enabled by a deployment, evaluates only literal/fingerprint-heavy Knowledge queries in a non-blocking worker; the vector result remains caller-visible and unchanged. Its cache is bounded/TTL-controlled, explicit metadata filters are reapplied before BM25, and failures are fail-open to the canonical search path. The next retrieval gate is larger organic relevance/reliability evidence, not another performance fix. There is no remaining goal to make Agent Adapter orchestrate Dreaming or other background cognition. The immediate cognitive frontier remains M6 evidence maturity, not automatic Self-Model activation: M6.0 now fails closed on missing trusted identity, fewer than 20 resolved prospective outcomes, insufficient session/topic diversity, or incomplete scans; broader P3 isolation remains separately required before persistent influence.
 
 ## Current architectural invariants
 
@@ -182,7 +182,7 @@ linear.
      introduced.
 
 6. Agent Self-Model
-   - Status: readiness-gated after M5 source acceptance; read-only hypothesis work may begin only after repeated real outcome evidence and trusted agent identity/P3 prerequisites are reviewed. Persistent influence is not yet authorized.
+   - Status: M6.0 readiness foundation implemented; hypothesis generation remains gated. The default read-only entry gate requires exact trusted agent identity, at least 20 resolved prospective outcomes, at least 3 sessions, at least 3 topics, and a complete evidence scan. Persistent influence is not authorized.
    - Owns: evidence-backed, agent-scoped hypotheses about recurring capabilities, limitations,
      operating tendencies, and strategy constraints.
    - Calibration is one input, not the Self-Model itself.
@@ -260,7 +260,7 @@ Normative/current guidance:
 - docs/CURRENT_RUNTIME.md
 - docs/DREAMING_ROUTING.md
 - specs/
-  - including specs/PREDICTION_LEARNING.md, specs/METACOGNITION_CALIBRATION.md, specs/SALIENCE.md, specs/CONCEPT_FORMATION.md, specs/WORKING_MEMORY.md, and specs/SECURITY.md for the current cognitive and authority boundaries.
+  - including specs/PREDICTION_LEARNING.md, specs/METACOGNITION_CALIBRATION.md, specs/SALIENCE.md, specs/CONCEPT_FORMATION.md, specs/WORKING_MEMORY.md, specs/AGENT_SELF_MODEL.md, and specs/SECURITY.md for the current cognitive and authority boundaries.
 
 Historical development and migration evidence lives under docs/history/ and is non-normative.
 

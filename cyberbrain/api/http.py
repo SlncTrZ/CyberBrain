@@ -21,8 +21,10 @@ from cyberbrain.tenancy import (
     CallerAuthority,
     IdentityScope,
     OperationClass,
+    TrustedIdentityEvidence,
     authority_for_authenticated_scope,
     bind_authority,
+    bind_trusted_identity,
 )
 
 
@@ -42,32 +44,45 @@ def _header_value(scope: Scope, name: bytes) -> str | None:
     return None
 
 
-def _authorized(scope: Scope, token: str) -> bool:
+def _authentication_source(scope: Scope, token: str) -> str | None:
     api_key = _header_value(scope, b"x-api-key")
-    auth_header = _header_value(scope, b"authorization")
-
-    provided: str | None = None
     if api_key is not None:
-        provided = api_key
-    elif auth_header is not None and auth_header.lower().startswith("bearer "):
+        return "mcp_x_api_key" if api_key == token else None
+
+    auth_header = _header_value(scope, b"authorization")
+    if auth_header is not None and auth_header.lower().startswith("bearer "):
         provided = auth_header[7:].strip()
-    return provided == token
+        return "mcp_bearer" if provided == token else None
+    return None
+
+
+def _authorized(scope: Scope, token: str) -> bool:
+    return _authentication_source(scope, token) is not None
 
 
 class RequireAuthMiddleware:
-    def __init__(self, app: ASGIApp, token: str, authority: CallerAuthority):
+    def __init__(
+        self,
+        app: ASGIApp,
+        token: str,
+        authority: CallerAuthority,
+        *,
+        trusted_agent_id: str | None = None,
+    ):
         if not token.strip():
             raise ConfigurationError("auth token must not be empty")
         self._app = app
         self._token = token
         self._authority = authority
+        self._trusted_agent_id = trusted_agent_id.strip() if trusted_agent_id else None
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
             await self._app(scope, receive, send)
             return
 
-        if not _authorized(scope, self._token):
+        authentication_source = _authentication_source(scope, self._token)
+        if authentication_source is None:
             body = json.dumps(
                 ErrorEnvelope(
                     ErrorType.AUTHENTICATION,
@@ -90,7 +105,15 @@ class RequireAuthMiddleware:
             return
 
         with bind_authority(self._authority):
-            await self._app(scope, receive, send)
+            if self._trusted_agent_id is None:
+                await self._app(scope, receive, send)
+                return
+            identity = TrustedIdentityEvidence.from_authentication_boundary(
+                scope=IdentityScope.from_values(agent=self._trusted_agent_id),
+                authentication_source=authentication_source,
+            )
+            with bind_trusted_identity(identity):
+                await self._app(scope, receive, send)
 
 
 class BindAuthorityMiddleware:
@@ -118,7 +141,12 @@ def create_app(
         operations=frozenset(OperationClass),
     )
     protected_mcp: ASGIApp = (
-        RequireAuthMiddleware(raw_mcp, settings.mcp_auth_token or "", caller_authority)
+        RequireAuthMiddleware(
+            raw_mcp,
+            settings.mcp_auth_token or "",
+            caller_authority,
+            trusted_agent_id=settings.trusted_agent_id,
+        )
         if settings.require_auth
         else BindAuthorityMiddleware(raw_mcp, caller_authority)
     )

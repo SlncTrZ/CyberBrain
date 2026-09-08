@@ -13,6 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from cyberbrain.memory.service import MemoryService
 from cyberbrain.schemas.models import EpisodeRecord
 from cyberbrain.storage.base import PointRepository
+from cyberbrain.tenancy import normalize_identifier
 
 
 class PredictionAssessment(StrEnum):
@@ -180,6 +181,7 @@ class PredictionLearningService:
         observed_outcome: str,
         assessment: PredictionAssessment | str,
         event_time: datetime,
+        required_agent: str | None = None,
     ) -> EpisodeRecord:
         data = OutcomeInput(
             observed_outcome=observed_outcome,
@@ -187,6 +189,10 @@ class PredictionLearningService:
         )
         prediction = self._load_prediction(prediction_id)
         prediction_cognition = self._prediction_cognition(prediction)
+        if required_agent is not None:
+            expected_agent = normalize_identifier(required_agent)
+            if prediction.agent is None or normalize_identifier(prediction.agent) != expected_agent:
+                raise ValueError("prediction agent does not match required trusted agent")
         if event_time.tzinfo is None or event_time.utcoffset() is None:
             raise ValueError("outcome event_time must include a timezone")
         if event_time < prediction.event_time:

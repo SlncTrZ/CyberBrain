@@ -18,7 +18,7 @@ from cyberbrain.core.runtime import RuntimeServices
 from cyberbrain.dreaming.operations import DreamOperations
 from cyberbrain.dreaming.reason_task_inbox import DreamReasonTaskInbox
 from cyberbrain.schemas.models import EpisodeRole, Origin, Verification
-from cyberbrain.tenancy import current_authority
+from cyberbrain.tenancy import current_authority, current_trusted_identity, normalize_identifier
 
 PROVIDER_NAME = "cyberbrain"
 CONTRACT_VERSION = "1"
@@ -598,6 +598,26 @@ async def call_tool(name: str, arguments: dict | None) -> list[types.TextContent
         return _error_text(exc)
 
 
+def _current_trusted_prediction_agent() -> str | None:
+    identity = current_trusted_identity()
+    if identity is None:
+        return None
+    if len(identity.scope.agent) != 1:
+        raise ConfigurationError("trusted caller identity must resolve exactly one agent")
+    return next(iter(identity.scope.agent))
+
+
+def _apply_trusted_prediction_agent(args: dict) -> str | None:
+    trusted_agent = _current_trusted_prediction_agent()
+    if trusted_agent is None:
+        return None
+    requested_agent = args.get("agent")
+    if requested_agent is not None and normalize_identifier(str(requested_agent)) != trusted_agent:
+        raise ConfigurationError("prediction agent does not match trusted caller identity")
+    args["agent"] = trusted_agent
+    return trusted_agent
+
+
 def _dispatch_tool(name: str, args: dict) -> list[types.TextContent]:
     runtime = _require_runtime()
 
@@ -702,6 +722,7 @@ def _dispatch_tool(name: str, args: dict) -> list[types.TextContent]:
 
     if name == "prediction_record":
         event_time = datetime.fromisoformat(str(args.pop("event_time")).replace("Z", "+00:00"))
+        _apply_trusted_prediction_agent(args)
         record = runtime.prediction_learning.record_prediction(
             event_time=event_time,
             **args,
@@ -711,22 +732,27 @@ def _dispatch_tool(name: str, args: dict) -> list[types.TextContent]:
     if name == "prediction_resolve":
         event_time = datetime.fromisoformat(str(args.pop("event_time")).replace("Z", "+00:00"))
         prediction_id = UUID(str(args.pop("prediction_id")))
+        trusted_agent = _current_trusted_prediction_agent()
         record = runtime.prediction_learning.record_outcome(
             prediction_id=prediction_id,
             event_time=event_time,
+            required_agent=trusted_agent,
             **args,
         )
         return _json_text(record.model_dump(mode="json"))
 
     if name == "prediction_observe":
+        _apply_trusted_prediction_agent(args)
         observation = runtime.prediction_learning.observe(**args)
         return _json_text(observation.model_dump(mode="json"))
 
     if name == "prediction_pending":
+        _apply_trusted_prediction_agent(args)
         pending = runtime.prediction_learning.pending(**args)
         return _json_text(pending.model_dump(mode="json"))
 
     if name == "calibration_observe":
+        _apply_trusted_prediction_agent(args)
         report = runtime.metacognition_calibration.observe(**args)
         return _json_text(report.model_dump(mode="json"))
 

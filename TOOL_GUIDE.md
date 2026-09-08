@@ -22,7 +22,7 @@ Optional compatibility:
 X-API-Key: <token>
 ```
 
-The provider fails closed when authentication is required but not configured.
+The provider fails closed when authentication is required but not configured. An optional server-side `CYBERBRAIN_TRUSTED_AGENT_ID` may bind one trusted agent only after Bearer/X-API-Key verification; caller headers or tool payloads cannot create trusted identity, and this setting does not enable `agent_ready` or `multi_user` deployment modes.
 
 ## Canonical tools
 
@@ -122,10 +122,10 @@ These aliases may be retired after dependent clients have migrated to canonical 
 
 ### Prediction learning
 
-- `prediction_record` stores an explicit expected outcome and prior confidence as canonical Episodic Memory before an action or decision is evaluated.
-- `prediction_resolve` stores an observed outcome linked to a prior Prediction and derives a deterministic prediction-error class plus confidence-weighted error signal.
-- `prediction_observe` is read-only and summarizes the current observation sample: prediction/outcome counts, resolved/unresolved predictions, duplicate outcomes, assessment/error distributions, and mean confidence/error signals.
-- `prediction_pending` is read-only and lists unresolved Predictions so an agent can return later and close the learning loop with `prediction_resolve`. Results are bounded and include `may_be_incomplete` when the configured scan limit is reached.
+- `prediction_record` stores an explicit expected outcome and prior confidence as canonical Episodic Memory before an action or decision is evaluated. When trusted agent identity is bound, the record is attributed to that agent and a conflicting payload `agent` is rejected.
+- `prediction_resolve` stores an observed outcome linked to a prior Prediction and derives a deterministic prediction-error class plus confidence-weighted error signal. Under trusted agent binding, the referenced Prediction must belong to that agent before Outcome persistence.
+- `prediction_observe` is read-only and summarizes the current observation sample: prediction/outcome counts, resolved/unresolved predictions, duplicate outcomes, assessment/error distributions, and mean confidence/error signals. Under trusted agent binding, the `agent` filter is forced to the trusted agent and substitution is rejected.
+- `prediction_pending` is read-only and lists unresolved Predictions so an agent can return later and close the learning loop with `prediction_resolve`. Results are bounded and include `may_be_incomplete` when the configured scan limit is reached. Under trusted agent binding, the worklist is limited to that agent.
 - Prediction/Outcome records remain Episodic evidence. Neither prior confidence nor outcome assessment has direct Knowledge write authority.
 - Outcome identity context is inherited from the referenced Prediction so callers cannot silently relabel the learning event.
 
@@ -133,7 +133,7 @@ Prediction operations are an explicit causal-learning surface, not a required or
 
 ### Calibration
 
-- `calibration_observe` is read-only and analyzes resolved Prediction Learning evidence.
+- `calibration_observe` is read-only and analyzes resolved Prediction Learning evidence. Under trusted agent binding, its sample is forced to the trusted agent.
 - It reports sample count, excluded indeterminate outcomes, mean prior confidence, mean empirical score, calibration bias, squared calibration error, bounded/incomplete status, and a sample-level assessment.
 - Below `minimum_samples`, assessment is always `insufficient_evidence` even if the numerical bias is large. Reaching the configured minimum makes the sample reviewable; it does not automatically activate any downstream mechanism.
 - With enough samples, bias above the configured threshold is labeled `overconfident`, below the negative threshold `underconfident`, otherwise `roughly_calibrated`.

@@ -29,6 +29,8 @@ changes. Those are separate roadmap stages.
 - Dreaming may use these Episodes as evidence through the existing provenance and promotion gates.
 - Prediction evidence must exist before the outcome is known. CyberBrain must never fabricate a prior Prediction retrospectively from a post-outcome summary.
 - Prediction operations are an explicit causal-learning surface, not a required ordinary-agent memory read/write loop.
+- When the authenticated runtime binds one trusted agent identity, Prediction record/read/calibration operations are forcibly scoped to that agent and a conflicting caller-supplied `agent` value fails closed.
+- Under trusted agent binding, `prediction_resolve` must verify that the referenced Prediction belongs to the trusted agent before persisting the Outcome.
 
 ## Prediction record
 
@@ -65,7 +67,7 @@ and contains:
     context.cognition.expected_outcome = <expected outcome>
     context.cognition.confidence = <0..1>
 
-Optional action/rationale values remain inside the same cognition context.
+Optional action/rationale values remain inside the same cognition context. When one trusted agent identity is bound by the authenticated runtime, stored `agent` attribution is taken from that trusted boundary; a conflicting payload value is rejected rather than used.
 
 ## Outcome record
 
@@ -88,7 +90,9 @@ Allowed assessment values:
     indeterminate
 
 The referenced Episode must be a valid canonical Prediction. Resolving an arbitrary Episode as a
-Prediction fails explicitly.
+Prediction fails explicitly. When trusted agent identity is bound, the Prediction's persisted `agent`
+must match that trusted agent before Outcome persistence; the resolve payload does not get to provide
+or override agent identity.
 
 The stored Outcome Episode uses:
 
@@ -172,7 +176,7 @@ The observation summary reports:
 
 When more than one Outcome references the same Prediction, observation metrics use the latest Outcome for assessment/error distributions so calibration-like signals are not double-counted. Extra Outcomes are reported separately through duplicate_outcomes.
 
-The summary is descriptive only. It does not classify an agent as overconfident/underconfident and does not write Knowledge.
+The summary is descriptive only. It does not classify an agent as overconfident/underconfident and does not write Knowledge. Under trusted agent binding, the `agent` filter is forced to the trusted agent and cross-agent substitution fails closed.
 
 ## Pending prediction interface
 
@@ -197,7 +201,7 @@ The implementation scans bounded Prediction and Outcome samples. If either scan 
 
 Callers must then treat the list as a partial view rather than the complete unresolved population.
 
-This tool does not create reminders, change prediction state, or infer an Outcome.
+This tool does not create reminders, change prediction state, or infer an Outcome. Under trusted agent binding, the unresolved worklist is forcibly narrowed to the trusted agent.
 
 Explicit causal-integration loop:
 

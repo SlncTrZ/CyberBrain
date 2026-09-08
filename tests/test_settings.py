@@ -22,14 +22,42 @@ def test_auth_can_be_explicitly_disabled_for_local_test_mode() -> None:
     "mode",
     [DeploymentMode.AGENT_READY, DeploymentMode.MULTI_USER],
 )
-def test_non_single_owner_mode_requires_trusted_identity_source(mode: DeploymentMode) -> None:
+def test_non_single_owner_mode_remains_disabled_until_full_p3_integration(
+    mode: DeploymentMode,
+) -> None:
     settings = Settings(
         mcp_auth_token="secret",
         require_auth=True,
         deployment_mode=mode,
     )
-    with pytest.raises(ConfigurationError, match="trusted caller identity source"):
+    with pytest.raises(ConfigurationError, match="full P3 read/write/background isolation"):
         settings.validate_runtime()
+
+
+def test_trusted_agent_identity_requires_authenticated_transport() -> None:
+    with pytest.raises(ConfigurationError, match="requires authenticated MCP transport"):
+        Settings(
+            mcp_auth_token=None,
+            require_auth=False,
+            trusted_agent_id="agent-a",
+        ).validate_runtime()
+
+
+def test_trusted_agent_identity_rejects_wildcard_like_value() -> None:
+    with pytest.raises(ConfigurationError, match="TRUSTED_AGENT_ID is invalid"):
+        Settings(
+            mcp_auth_token="secret",
+            require_auth=True,
+            trusted_agent_id="agent-*",
+        ).validate_runtime()
+
+
+def test_single_owner_can_configure_trusted_agent_identity_without_enabling_agent_ready() -> None:
+    Settings(
+        mcp_auth_token="secret",
+        require_auth=True,
+        trusted_agent_id="agent-a",
+    ).validate_runtime()
 
 
 def test_literal_shadow_bounds_must_be_positive() -> None:

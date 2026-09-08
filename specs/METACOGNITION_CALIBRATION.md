@@ -47,6 +47,8 @@ Optional filters:
     minimum_samples
     bias_threshold
 
+When the authenticated runtime binds one trusted agent identity, the effective `agent` filter is forced to that agent and a conflicting caller-supplied agent fails closed. This narrows the evidence sample; it does not turn Calibration into an identity system.
+
 Default policy:
 
     limit = 1000

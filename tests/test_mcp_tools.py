@@ -13,8 +13,10 @@ from cyberbrain.tenancy import (
     DeploymentMode,
     IdentityScope,
     OperationClass,
+    TrustedIdentityEvidence,
     authority_for_authenticated_scope,
     bind_authority,
+    bind_trusted_identity,
 )
 
 
@@ -126,21 +128,36 @@ class FakePredictionLearning:
             },
         )
 
-    def record_outcome(self, **kwargs):
+    def record_outcome(
+        self,
+        *,
+        prediction_id,
+        observed_outcome,
+        assessment,
+        event_time,
+        required_agent=None,
+    ):
+        kwargs = {
+            "prediction_id": prediction_id,
+            "observed_outcome": observed_outcome,
+            "assessment": assessment,
+            "event_time": event_time,
+            "required_agent": required_agent,
+        }
         self.outcome_calls.append(dict(kwargs))
         return EpisodeRecord(
             id=uuid4(),
-            content=f"Outcome: {kwargs['observed_outcome']}",
+            content=f"Outcome: {observed_outcome}",
             session_id="s-prediction",
-            event_time=kwargs["event_time"],
+            event_time=event_time,
             content_hash="3" * 64,
             source="cognitive_outcome",
             context={
                 "cognition": {
                     "kind": "outcome",
-                    "prediction_id": str(kwargs["prediction_id"]),
-                    "observed_outcome": kwargs["observed_outcome"],
-                    "assessment": kwargs["assessment"],
+                    "prediction_id": str(prediction_id),
+                    "observed_outcome": observed_outcome,
+                    "assessment": assessment,
                 }
             },
         )
@@ -284,6 +301,16 @@ def _call(name: str, args: dict) -> dict | list:
     return json.loads(result[0].text)
 
 
+def _call_trusted(name: str, args: dict, *, agent: str = "agent-a") -> dict | list:
+    identity = TrustedIdentityEvidence.from_authentication_boundary(
+        scope=IdentityScope.from_values(agent=agent),
+        authentication_source="unit-test-auth-boundary",
+    )
+    with bind_authority(CALLER_AUTHORITY), bind_trusted_identity(identity):
+        result = asyncio.run(call_tool(name, args))
+    return json.loads(result[0].text)
+
+
 def test_help_describes_agent_memory_boundary_and_automatic_dream_lifecycle() -> None:
     text = asyncio.run(call_tool("help", {}))[0].text
 
@@ -397,6 +424,50 @@ def test_prediction_record_handler_parses_datetime_and_confidence() -> None:
     assert cognition["kind"] == "prediction"
     assert cognition["confidence"] == 0.75
     assert PREDICTION_LEARNING.prediction_calls[-1]["project"] == "CyberBrain"
+
+
+def test_prediction_record_uses_trusted_agent_and_rejects_payload_substitution() -> None:
+    base = {
+        "expected_outcome": "Trusted attribution is retained.",
+        "confidence": 0.8,
+        "session_id": "s-trusted",
+        "event_time": datetime.now(UTC).isoformat(),
+    }
+
+    _call_trusted("prediction_record", dict(base))
+    assert PREDICTION_LEARNING.prediction_calls[-1]["agent"] == "agent-a"
+
+    rejected = _call_trusted("prediction_record", {**base, "agent": "agent-b"})
+    assert rejected["error"]["type"] == "configuration_error"
+    assert "does not match trusted caller identity" in rejected["error"]["message"]
+
+
+def test_prediction_reads_are_narrowed_to_trusted_agent() -> None:
+    _call_trusted("prediction_observe", {"project": "CyberBrain", "limit": 50})
+    assert PREDICTION_LEARNING.observe_calls[-1]["agent"] == "agent-a"
+
+    _call_trusted("prediction_pending", {"project": "CyberBrain", "limit": 10})
+    assert PREDICTION_LEARNING.pending_calls[-1]["agent"] == "agent-a"
+
+    _call_trusted("calibration_observe", {"project": "CyberBrain"})
+    assert CALIBRATION.calls[-1]["agent"] == "agent-a"
+
+    rejected = _call_trusted("prediction_observe", {"agent": "agent-b"})
+    assert rejected["error"]["type"] == "configuration_error"
+
+
+def test_prediction_resolve_passes_required_trusted_agent() -> None:
+    prediction_id = uuid4()
+    _call_trusted(
+        "prediction_resolve",
+        {
+            "prediction_id": str(prediction_id),
+            "observed_outcome": "done",
+            "assessment": "confirmed",
+            "event_time": datetime.now(UTC).isoformat(),
+        },
+    )
+    assert PREDICTION_LEARNING.outcome_calls[-1]["required_agent"] == "agent-a"
 
 
 def test_prediction_observe_handler_returns_read_only_summary() -> None:

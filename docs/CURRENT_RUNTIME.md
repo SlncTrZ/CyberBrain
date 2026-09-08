@@ -29,7 +29,7 @@ Network-visible MCP access is authenticated when authentication is enabled.
 
 Current source has satisfied the Level-8.0 source-engineering gate without changing the caller-visible retrieval backend; M5 remains an internal source capability whose runtime activation is separately gated:
 
-- authenticated MCP requests are bound to explicit `CallerAuthority` in `single_owner` mode; `agent_ready` and `multi_user` modes fail closed until a trusted caller-identity source is wired;
+- authenticated MCP requests are bound to explicit `CallerAuthority` in `single_owner` mode. When `CYBERBRAIN_TRUSTED_AGENT_ID` is configured, successful Bearer/X-API-Key authentication also binds `TrustedIdentityEvidence` for that server-configured agent; caller headers/tool arguments cannot create or substitute trusted identity. `agent_ready` and `multi_user` remain fail-closed until broader P3 isolation/persistence requirements are complete;
 - canonical `knowledge_get` and `memory_get` perform exact full-record fetch with storage-side ID + scope eligibility;
 - `cyberbrain.agent_adapter.MCPAgentClient` bridges the transport-neutral Agent Adapter contract to the canonical MCP Streamable HTTP tools;
 - source-level Salience M3 provides a deterministic reviewed policy, same-scope advisory seam, and metrics-only shadow observer, but is not connected to caller-visible search/ranking;
@@ -87,7 +87,7 @@ Source `main` also contains completed M4 Concept Formation primitives. The E1 ce
 
 Source `main` also contains completed M5 Working Memory primitives. `WorkingMemoryService` maintains process-memory state keyed by exact scope/session/task identity, applies explicit task relevance before Salience, suppresses duplicates before token packing, enforces bounded candidate/item/token/TTL limits, and removes state on closeout or expiry. `WorkingMemoryEmissionLedger` suppresses unchanged reinjection for an ongoing consumer context. M5 does not persist its scratch state, add a third canonical collection, or add a public MCP tool. Broader runtime activation remains deferred until shared read-path authorization and a separately reviewed integration path are complete.
 
-Together, M3 + M4 + M5 satisfy the current Level-8.0 **source** gate. This statement does not imply that any particular deployed runtime includes those source-level mechanisms. Agent Self-Model M6 remains readiness-gated on repeated prospective outcomes, evidence diversity, and trusted agent identity/P3 isolation; no persistent self-model influence is part of the current runtime contract.
+Together, M3 + M4 + M5 satisfy the current Level-8.0 **source** gate. This statement does not imply that any particular deployed runtime includes those source-level mechanisms. Source now also contains the M6.0 readiness contract and E2 prospective-outcome census. Trusted-agent-bound Prediction operations cannot substitute another agent, and M6.0 returns only `insufficient_evidence` or `ready_read_only` under a conservative 20-outcome / 3-session / 3-topic complete-scan gate. No hypothesis generator, persistence, or persistent self-model influence is part of the current runtime contract.
 
 ## Dreaming profile
 
@@ -126,7 +126,7 @@ than V1 acceptance requirements.
 The current runtime is configured through environment variables consumed by Pydantic Settings and
 through explicit route JSON for Dream fallback providers.
 
-Core environment variables use the CYBERBRAIN_ prefix.
+Core environment variables use the CYBERBRAIN_ prefix. `CYBERBRAIN_TRUSTED_AGENT_ID` is optional and only meaningful when MCP authentication is enabled; it binds a trusted agent context after credential verification but does not enable `agent_ready` or `multi_user` deployment modes.
 
 The Dream fallback route service reads either:
 
