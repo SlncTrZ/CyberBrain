@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
 
+import asyncio
 import json
 
 import mcp.types as types
@@ -44,8 +45,9 @@ def test_transport_rejects_provider_error_envelope() -> None:
         ]
     )
 
-    with pytest.raises(ProviderResponseError, match="validation_error: bad task"):
+    with pytest.raises(ProviderResponseError, match="validation_error: bad task") as exc_info:
         MCPStreamableHTTPInvoker._parse_result(result)
+    assert exc_info.value.error_type == "validation_error"
 
 
 def test_transport_rejects_non_json_content() -> None:
@@ -55,6 +57,21 @@ def test_transport_rejects_non_json_content() -> None:
 
     with pytest.raises(ProviderResponseError, match="JSON object"):
         MCPStreamableHTTPInvoker._parse_result(result)
+
+
+def test_async_transport_invocation_reuses_parser() -> None:
+    class FakeInvoker(MCPStreamableHTTPInvoker):
+        async def _call_tool(self, tool, arguments):  # noqa: ANN001, ANN201
+            assert tool == "knowledge_get"
+            assert arguments == {"id": "k1"}
+            return types.CallToolResult(
+                content=[types.TextContent(type="text", text=json.dumps({"id": "k1"}))]
+            )
+
+    invoker = FakeInvoker(url="http://cyberbrain.test/mcp")
+    result = asyncio.run(invoker.invoke_async(tool="knowledge_get", arguments={"id": "k1"}))
+
+    assert result == {"id": "k1"}
 
 
 def test_transport_wraps_connection_failure_without_exposing_credentials() -> None:

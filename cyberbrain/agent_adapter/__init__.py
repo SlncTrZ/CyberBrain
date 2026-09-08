@@ -3,6 +3,7 @@
 from cyberbrain.agent_adapter.adapter import BootstrapResult, UniversalAgentAdapter
 from cyberbrain.agent_adapter.budgeting import TokenBudgetPolicy, TokenGovernor
 from cyberbrain.agent_adapter.contracts import CyberBrainClient
+from cyberbrain.agent_adapter.mcp_client import MCPAgentClient
 from cyberbrain.agent_adapter.models import (
     AgentScope,
     Consequence,
@@ -36,6 +37,7 @@ __all__ = [
     "DreamEnqueuePolicy",
     "DreamSignals",
     "LifecyclePolicy",
+    "MCPAgentClient",
     "Observation",
     "OutcomeMatch",
     "OutcomeMatchPolicy",

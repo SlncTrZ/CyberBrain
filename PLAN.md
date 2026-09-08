@@ -25,15 +25,15 @@ CyberBrain provides:
 CyberBrain remains independent from any single AI client, model provider, routing product, or
 deployment topology.
 
-### Unreleased source foundations
+### Unreleased integration state
 
-Wave 1 of the Level 8+ product/infrastructure track is complete on `main`. Three source-only foundations are merged and fully regression-tested:
+Wave 1 of the Level 8+ product/infrastructure track is complete on `main`. Wave 2 has now integrated the first shared slices:
 
-- Agent Integration & Token Efficiency (`cyberbrain/agent_adapter/`);
-- Retrieval & Memory Intelligence (`cyberbrain/retrieval/`);
-- Platform Safety & Productization (`cyberbrain/tenancy/`).
+- authenticated MCP source requests bind to explicit `CallerAuthority` in `single_owner` mode; future identity-bearing modes remain fail-closed until a trusted identity source exists;
+- canonical `knowledge_get(id)` and `memory_get(id)` perform exact full fetch with storage-side scope eligibility and indistinguishable absent/out-of-scope not-found behavior;
+- `cyberbrain.agent_adapter` has a real MCP Streamable HTTP client bridge over the canonical tool contract.
 
-They are deliberately not part of the current runtime/tool contract yet. No current MCP tool, storage schema, production search path, auth middleware, or deployed service behavior changed when these foundations merged.
+The retrieval benchmark/fusion foundation remains unconnected to production search. Automatic Agent Adapter lifecycle hooks and broader tenancy enforcement across existing search/write paths are also still pending. These changes are unreleased and do not alter an older deployed runtime automatically.
 
 ### Current engineering phase — Wave 2 shared integration
 
@@ -47,7 +47,7 @@ authenticated caller
 → Agent Adapter context packing
 ```
 
-Immediate integration work should therefore establish authenticated scope enforcement and scope-safe exact get-by-ID before exposing hybrid retrieval or automatic Agent Adapter behavior through current runtime paths. Hybrid retrieval must first be measured against the real current vector baseline; the Wave 1 structural benchmark is promising evidence, not production acceptance.
+The scope/auth, exact-fetch, and real Agent Adapter client bridge slices are now implemented on source `main`. The next engineering gate is a read-only benchmark against the real current vector baseline. Hybrid retrieval must advance only if that benchmark shows a durable improvement in ranking/recall without unacceptable scope contamination, token cost, or latency. Automatic Agent Adapter lifecycle activation remains later than this measurement gate.
 
 ## Current architectural invariants
 

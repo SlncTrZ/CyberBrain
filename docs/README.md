@@ -26,4 +26,4 @@ When current and historical documents differ, current guidance and canonical spe
 
 ## Source versus runtime status
 
-Current `main` contains unreleased Agent Adapter, hybrid-retrieval benchmark/fusion, and tenancy/isolation foundations. They are intentionally not yet wired into the current provider runtime. `CURRENT_RUNTIME.md`, `../TOOL_GUIDE.md`, and `../specs/TOOL_CONTRACT.md` therefore continue to describe the live/canonical runtime behavior, while `../PLAN.md` and `../README.md` also describe the newer source-only foundation status and the next serialized integration phase.
+Current `main` contains unreleased Wave 2 integration for single-owner caller authority binding, scope-safe exact `knowledge_get` / `memory_get`, and the real MCP Agent Adapter client bridge. Hybrid retrieval, automatic Agent Adapter lifecycle activation, and broader multi-user/search/write tenancy enforcement remain pending. `CURRENT_RUNTIME.md`, `../TOOL_GUIDE.md`, and `../specs/TOOL_CONTRACT.md` describe the current source-level contract; deployment may remain on an older explicitly managed source until a separate release/deployment decision.

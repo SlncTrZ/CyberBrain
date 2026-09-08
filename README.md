@@ -40,15 +40,15 @@ CyberBrain intentionally keeps exactly two canonical durable Qdrant collections:
 Dreaming is a process, not a third collection. Queue, audit, and reason-task coordination state are
 operational state stored separately from canonical Knowledge and Episodic Memory.
 
-## Unreleased Level 8+ source foundations
+## Unreleased Level 8+ integration
 
-`main` now contains three independently tested foundations that are intentionally **not yet wired into the current MCP/runtime/search/storage paths**:
+Wave 1 foundations remain on `main`, and Wave 2 has begun wiring them through shared paths:
 
-- `cyberbrain/agent_adapter/` — transport-neutral lifecycle routing, token budgeting, duplicate-context suppression, bounded exact-fetch policy, Prediction/Outcome orchestration policy, session closeout, and selective Dream enqueue policy;
-- `cyberbrain/retrieval/` — backend-neutral retrieval benchmark primitives, dependency-free BM25 scoring, deterministic reciprocal-rank fusion, and scope/status/temporal eligibility helpers;
-- `cyberbrain/tenancy/` — transport-neutral tenant/user/agent/project/session authority scopes, fail-closed narrowing, abstract storage-filter/write-attribution contracts, quota policy models, and readiness gates.
+- `cyberbrain/agent_adapter/` now includes a real MCP Streamable HTTP client bridge while preserving transport-neutral lifecycle policy, token budgeting, duplicate-context suppression, bounded exact-fetch policy, Prediction/Outcome orchestration, session closeout, and selective Dream enqueue policy;
+- `cyberbrain/retrieval/` remains benchmark/fusion infrastructure pending a real current-vector baseline before any production retrieval change;
+- `cyberbrain/tenancy/` now binds authenticated source requests to explicit caller authority in `single_owner` mode and supplies storage-side eligibility for canonical exact fetch. `agent_ready` and `multi_user` modes fail closed until trusted caller identity and the required persisted identity fields are wired.
 
-These packages are source foundations, not a claim that hybrid retrieval, multi-user tenancy, exact get-by-ID, or automatic Agent Adapter behavior is live. The current provider/tool contract remains the one documented in `TOOL_GUIDE.md`, `specs/TOOL_CONTRACT.md`, and `docs/CURRENT_RUNTIME.md`. Shared Wave 2 integration must preserve hard authorization before exact fetch/retrieval/context packing.
+Current source exposes scope-safe `knowledge_get` and `memory_get` and supports the preferred compact-search → selected-ID → exact-full-fetch flow. Automatic Agent Adapter lifecycle hooks, broader tenancy enforcement on all search/write paths, and hybrid retrieval are still not active runtime behavior. These source changes are unreleased and do not imply that an older deployed runtime has changed.
 
 ## Learning primitives
 
@@ -121,7 +121,7 @@ provider behavior. CyberBrain's domain model does not depend on one specific gat
 
 Current tool behavior is documented in TOOL_GUIDE.md and specs/TOOL_CONTRACT.md.
 
-Canonical `knowledge_search` and `memory_search` are compact-first at the MCP response boundary: existing summaries are returned when available, otherwise recall falls back to a bounded 1,200-character excerpt. Full stored payloads remain available explicitly through `view=full`. This projection changes response size only; it does not alter stored content, embeddings, ranking, provenance, or Dreaming evidence.
+Canonical `knowledge_search` and `memory_search` are compact-first at the MCP response boundary: existing summaries are returned when available, otherwise recall falls back to a bounded 1,200-character excerpt. Current source also exposes scope-safe `knowledge_get` and `memory_get` so a client can fetch one selected full record without repeating semantic search. Broad-search `view=full` remains available when explicitly required. None of these response paths alter stored content, embeddings, ranking, provenance, or Dreaming evidence.
 
 ## Documentation
 

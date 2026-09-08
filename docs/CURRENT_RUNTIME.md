@@ -27,11 +27,15 @@ The provider exposes:
 
 Network-visible MCP access is authenticated when authentication is enabled.
 
-## Unwired source foundations
+## Wave 2 source integration
 
-The current source tree also contains `cyberbrain.agent_adapter`, `cyberbrain.retrieval`, and `cyberbrain.tenancy` foundation packages. They are not yet connected to the runtime paths described in this document. In particular, the current provider does not yet expose canonical exact get-by-ID tools, does not yet replace vector search with the Wave 1 hybrid engine, and does not yet enforce the new tenancy scope model in MCP/API/storage paths.
+Current source has integrated three Wave 2 building blocks without changing the retrieval backend or implying deployment:
 
-Those capabilities become part of this runtime contract only after explicit Wave 2 integration, end-to-end authorization/regression testing, tool/spec updates where required, and a later release/deployment decision.
+- authenticated MCP requests are bound to explicit `CallerAuthority` in `single_owner` mode; `agent_ready` and `multi_user` modes fail closed until a trusted caller-identity source is wired;
+- canonical `knowledge_get` and `memory_get` perform exact full-record fetch with storage-side ID + scope eligibility;
+- `cyberbrain.agent_adapter.MCPAgentClient` bridges the transport-neutral Agent Adapter contract to the canonical MCP Streamable HTTP tools.
+
+The current vector search path is still the canonical retrieval backend. The Wave 1 hybrid engine is not active. Automatic Agent Adapter lifecycle hooks are not attached to arbitrary external agents, and broader tenancy enforcement over all existing search/write paths remains pending. Release/deployment state may therefore be behind this source-level contract until an explicit release/deployment decision is made.
 
 ## Canonical data
 
@@ -60,7 +64,7 @@ Canonical `knowledge_search` and `memory_search` use compact-first MCP response 
 - Compact rows expose `recall_text_source`, original `content_chars`, and `content_omitted=true` while omitting full `content` and `summary`.
 - `view=full` preserves the complete canonical search row for focused follow-up.
 
-This boundary does not mutate Knowledge, Episodic Memory, embeddings, ranking, provenance, or Dreaming evidence. Compatibility aliases retain their legacy response behavior.
+This boundary does not mutate Knowledge, Episodic Memory, embeddings, ranking, provenance, or Dreaming evidence. For focused follow-up, `knowledge_get(id)` and `memory_get(id)` return one selected full record without a second semantic search; ID and effective scope are combined at the storage query before payload return. Compatibility aliases retain their legacy response behavior.
 
 ## Cognitive learning
 

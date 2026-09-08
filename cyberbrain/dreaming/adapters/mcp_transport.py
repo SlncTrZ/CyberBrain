@@ -40,14 +40,22 @@ class MCPStreamableHTTPInvoker:
         self._metrics = metrics
 
     def invoke(self, *, tool: str, arguments: dict[str, Any]) -> Any:
+        return anyio.run(self._invoke_from_sync, tool, dict(arguments))
+
+    async def _invoke_from_sync(self, tool: str, arguments: dict[str, Any]) -> Any:
+        return await self.invoke_async(tool=tool, arguments=arguments)
+
+    async def invoke_async(self, *, tool: str, arguments: dict[str, Any]) -> Any:
         if not tool.strip():
             raise ValueError("tool must not be empty")
         started = monotonic()
         try:
-            result = anyio.run(self._call_tool, tool, dict(arguments))
+            result = await self._call_tool(tool, dict(arguments))
+            parsed = self._parse_result(result)
             if self._metrics is not None:
                 self._metrics.increment("reasoner_calls_total")
                 self._metrics.observe("reasoner_call_seconds", monotonic() - started)
+            return parsed
         except ProviderResponseError:
             if self._metrics is not None:
                 self._metrics.increment("reasoner_response_failures_total")
@@ -60,7 +68,6 @@ class MCPStreamableHTTPInvoker:
             raise ProviderUnavailableError(
                 f"MCP provider unavailable for tool {tool!r}: {type(exc).__name__}"
             ) from exc
-        return self._parse_result(result)
 
     async def _call_tool(self, tool: str, arguments: dict[str, Any]) -> types.CallToolResult:
         headers: dict[str, str] = {}
@@ -125,5 +132,8 @@ class MCPStreamableHTTPInvoker:
             if isinstance(error, dict):
                 error_type = str(error.get("type") or error_type)
                 message = str(error.get("message") or message)
-            raise ProviderResponseError(f"{error_type}: {message}")
+            raise ProviderResponseError(
+                f"{error_type}: {message}",
+                error_type=error_type,
+            )
         return payload
