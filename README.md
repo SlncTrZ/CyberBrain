@@ -9,9 +9,9 @@ evidence-grounded Dreaming with traceable reasoning and explicit promotion/revie
 
 ## Status
 
-Latest tagged release: v0.1.7.
+Current software/package version is defined only in `cyberbrain/_version.py`. Git tags, build metadata, runtime providers, CI, and release automation derive from that canonical value.
 
-Current development version on `main`: 0.1.7.
+For the latest published release, use the repository's GitHub Releases page rather than a duplicated version literal in this README.
 
 Wave 1 integration checkpoint on `main`: `e855816`. Later Wave 2 source work remains unreleased unless explicitly tagged. Deployment state is managed separately from the source plan and should be verified from the actual runtime rather than inferred from this README.
 

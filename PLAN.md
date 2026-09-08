@@ -1,7 +1,7 @@
 # CyberBrain — Current Plan
 
 > Status: Current project guidance.
-> Release baseline: v0.1.7.
+> Software/package version authority: `cyberbrain/_version.py`; release tags derive from it.
 > Wave 1 integration checkpoint: `e855816` (unreleased foundations).
 > Deployment state is managed separately from source guidance; verify the actual runtime before making deployment claims.
 

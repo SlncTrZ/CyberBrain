@@ -10,6 +10,7 @@ import mcp.types as types
 from mcp.server import Server
 from pydantic import ValidationError
 
+from cyberbrain import __version__
 from cyberbrain.reasoner_provider.backend import MicroReasoningBackend, ReasoningBackend
 from cyberbrain.reasoner_provider.contracts import (
     ReasonRequest,
@@ -21,7 +22,6 @@ from cyberbrain.reasoner_provider.contracts import (
 )
 
 PROVIDER_NAME = "reasoner"
-PROVIDER_VERSION = "0.1.0"
 CONTRACT_VERSION = "1"
 
 server = Server(PROVIDER_NAME)
@@ -60,7 +60,7 @@ def _help_text() -> str:
     digest = hashlib.sha256(guide.encode("utf-8")).hexdigest()
     return (
         f"provider_name: {PROVIDER_NAME}\n"
-        f"provider_version: {PROVIDER_VERSION}\n"
+        f"provider_version: {__version__}\n"
         f"contract_version: {CONTRACT_VERSION}\n"
         f"contract_hash: {digest}\n"
         f"capabilities: reasoning, micro-reasoning\n\n"

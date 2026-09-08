@@ -12,11 +12,11 @@ schema version
 
 Use semantic versioning once the first public/stable release exists.
 
-Initial development starts at:
+`cyberbrain/_version.py` is the **single software/package version authority**. Do not duplicate the current software version in `pyproject.toml`, provider modules, CI, release workflows, README status text, or deployment scripts.
 
-```text
-0.1.0
-```
+The Python build reads its dynamic version from that file. `cyberbrain.__version__`, MCP provider help, the bundled Reasoner provider, CI package metadata checks, and the expected Git release tag all derive from the same canonical value.
+
+Historical release/version references in documentation or test fixtures are evidence/examples only; they are not version authorities.
 
 ## Tool contract
 

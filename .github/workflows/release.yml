@@ -27,18 +27,17 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e ".[dev]" build
 
-      - name: Verify tag matches package version
+      - name: Verify tag matches canonical package version
         run: |
           python - <<'PY'
           import os
-          import tomllib
+          from importlib.metadata import version
           import cyberbrain
 
+          installed_version = version("cyberbrain")
+          assert installed_version == cyberbrain.__version__
           tag = os.environ["GITHUB_REF_NAME"]
-          with open("pyproject.toml", "rb") as handle:
-              project_version = tomllib.load(handle)["project"]["version"]
-          expected = f"v{project_version}"
-          assert cyberbrain.__version__ == project_version
+          expected = f"v{cyberbrain.__version__}"
           assert tag == expected, f"tag {tag!r} does not match {expected!r}"
           print(expected)
           PY

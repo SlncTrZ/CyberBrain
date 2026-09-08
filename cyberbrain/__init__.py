@@ -1,3 +1,5 @@
 # SPDX-License-Identifier: MPL-2.0
 
-__version__ = "0.1.7"
+from cyberbrain._version import __version__
+
+__all__ = ["__version__"]

@@ -41,16 +41,15 @@ jobs:
       - name: Build Python distributions
         run: python -m build
 
-      - name: Verify package version agreement
+      - name: Verify package version authority
         run: |
           python - <<'PY'
-          import tomllib
+          from importlib.metadata import version
           import cyberbrain
 
-          with open("pyproject.toml", "rb") as handle:
-              project_version = tomllib.load(handle)["project"]["version"]
-          assert cyberbrain.__version__ == project_version
-          print(project_version)
+          installed_version = version("cyberbrain")
+          assert installed_version == cyberbrain.__version__
+          print(cyberbrain.__version__)
           PY
 
       - name: Validate Compose
