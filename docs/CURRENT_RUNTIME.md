@@ -25,15 +25,15 @@ The provider exposes:
 
 Network-visible MCP access is authenticated when authentication is enabled.
 
-## Wave 2 source integration
+## Current source integration
 
-Current source has integrated three Wave 2 building blocks without changing the retrieval backend or implying deployment:
+Current source integrates the Wave 2 building blocks without changing the caller-visible retrieval backend:
 
 - authenticated MCP requests are bound to explicit `CallerAuthority` in `single_owner` mode; `agent_ready` and `multi_user` modes fail closed until a trusted caller-identity source is wired;
 - canonical `knowledge_get` and `memory_get` perform exact full-record fetch with storage-side ID + scope eligibility;
 - `cyberbrain.agent_adapter.MCPAgentClient` bridges the transport-neutral Agent Adapter contract to the canonical MCP Streamable HTTP tools.
 
-The current vector search path is still the canonical retrieval backend. A reviewed 28-case real-current-baseline benchmark rejected always-on global hybrid fusion because the Recall@5 gain came with a small MRR loss and rank regressions. Source now includes disabled-by-default shadow instrumentation for the better-performing deterministic literal/fingerprint route. When enabled in the current `single_owner` source runtime, literal-heavy Knowledge queries submit a non-blocking BM25 observation over a bounded TTL cache of active Knowledge, with the same explicit equality filters reapplied before lexical scoring. The caller still receives the unchanged vector result; shadow failures only affect shadow metrics/logging. The Agent Adapter remains optional foreground convenience for compact context use rather than an owner of background cognition; broader tenancy enforcement over all existing search/write paths remains pending. Release/deployment state may therefore be behind this source-level contract until an explicit release/deployment decision is made.
+The current vector search path is still the canonical retrieval backend. A reviewed 28-case real-current-baseline benchmark rejected always-on global hybrid fusion because the Recall@5 gain came with a small MRR loss and rank regressions. Source includes disabled-by-default shadow instrumentation for the better-performing deterministic literal/fingerprint route. When enabled in `single_owner` mode, literal-heavy Knowledge queries submit a non-blocking BM25 observation over a bounded TTL cache of active Knowledge, with the same explicit equality filters reapplied before lexical scoring. The reusable pre-tokenized BM25 corpus avoids rebuilding document statistics on every shadow query; live observation has cleared the earlier recurring scoring-cost blocker. The caller still receives the unchanged vector result, and lexical promotion remains gated on larger relevance/reliability evidence. The Agent Adapter remains optional foreground convenience for compact context use rather than an owner of background cognition; broader tenancy enforcement over all existing search/write paths remains pending. Release and deployment state remain separate from this source-level contract.
 
 ## Canonical data
 
@@ -106,6 +106,10 @@ Dream outputs remain subject to the existing review/promotion boundary. Further 
 re-dream semantics, candidate compression, and richer observability are deferred improvements rather
 than V1 acceptance requirements.
 
+## Software version
+
+`cyberbrain/_version.py` is the single software/package version authority. Hatch build metadata, `cyberbrain.__version__`, bundled provider version reporting, CI metadata checks, and expected release tags derive from that value. Contract versions and schema versions remain independent.
+
 ## Configuration
 
 The current runtime is configured through environment variables consumed by Pydantic Settings and
@@ -123,7 +127,7 @@ remain runtime-only.
 
 ## Retrieval shadow instrumentation
 
-The literal/fingerprint shadow observer is source-only observation infrastructure and is disabled by default.
+The literal/fingerprint shadow observer is optional observation infrastructure and is disabled by default in source configuration. A deployment may enable it without changing caller-visible retrieval.
 
 ```text
 CYBERBRAIN_RETRIEVAL_LITERAL_SHADOW_ENABLED=false

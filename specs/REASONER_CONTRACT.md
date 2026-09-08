@@ -154,4 +154,4 @@ Initial contract:
 reasoner_contract_version = 1
 ```
 
-Adapters may support provider-specific protocol versions internally, but they must normalize into the canonical CyberBrain contract.
+Adapters may support provider-specific protocol versions internally, but they must normalize into the canonical CyberBrain contract. The bundled Reasoner provider software version derives from the CyberBrain package version authority in `cyberbrain/_version.py`; that software version is distinct from `reasoner_contract_version`.

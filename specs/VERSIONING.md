@@ -16,7 +16,7 @@ Use semantic versioning once the first public/stable release exists.
 
 The Python build reads its dynamic version from that file. `cyberbrain.__version__`, MCP provider help, the bundled Reasoner provider, CI package metadata checks, and the expected Git release tag all derive from the same canonical value.
 
-Historical release/version references in documentation or test fixtures are evidence/examples only; they are not version authorities.
+Current normative documentation must not duplicate a SemVer release literal. Historical release/version references belong under `docs/history/`; test fixtures may use version-shaped sample text only when the exact value is not treated as product state or authority.
 
 ## Tool contract
 

@@ -2,14 +2,11 @@
 
 > Status: Current project guidance.
 > Software/package version authority: `cyberbrain/_version.py`; release tags derive from it.
-> Wave 1 integration checkpoint: `e855816` (unreleased foundations).
 > Deployment state is managed separately from source guidance; verify the actual runtime before making deployment claims.
 
 ## Operating mode
 
-CyberBrain is in a use-and-observe phase. Dreaming V1 historical replay acceptance is complete in
-v0.1.7. The project should prefer evidence-driven fixes and measured improvements over speculative
-expansion.
+CyberBrain is in a use-and-observe phase. Dreaming V1 historical replay acceptance is complete. The project should prefer evidence-driven fixes and measured improvements over speculative expansion.
 
 ## Current product boundary
 
@@ -26,17 +23,17 @@ CyberBrain remains independent from any single AI client, model provider, routin
 
 Normal external agents are memory consumers/producers. Their stable responsibility is recall/get/store. CyberBrain owns post-storage cognition: normalization, validation, embedding, Knowledge Evolution, Episodic pending-state processing, automatic Dream scheduling/processing, promotion/review, and Knowledge writeback. Prediction Learning preserves causal order and may use a thin pre-action/outcome event bridge where a runtime genuinely exposes those events; it must not be reconstructed retrospectively.
 
-### Unreleased integration state
+### Current integration state
 
-Wave 1 of the Level 8+ product/infrastructure track is complete on `main`. Wave 2 has now integrated the first shared slices:
+Wave 1 of the Level 8+ product/infrastructure track and the shared Wave 2 integration are complete on current `main`:
 
 - authenticated MCP source requests bind to explicit `CallerAuthority` in `single_owner` mode; future identity-bearing modes remain fail-closed until a trusted identity source exists;
 - canonical `knowledge_get(id)` and `memory_get(id)` perform exact full fetch with storage-side scope eligibility and indistinguishable absent/out-of-scope not-found behavior;
 - `cyberbrain.agent_adapter` has a real MCP Streamable HTTP client bridge over the canonical tool contract.
 
-The retrieval benchmark/fusion foundation remains observational rather than caller-visible, but its real-current-baseline gate is complete. A 28-case reviewed benchmark against the current vector path rejected always-on global hybrid fusion: it improved Recall@5 but slightly reduced MRR and introduced rank regressions. A deterministic literal/fingerprint router that uses lexical retrieval only for literal-heavy queries while retaining vector retrieval elsewhere improved Recall@5 and MRR with no observed rank regressions in the reviewed set; this is a **conditional shadow candidate**, not production approval. Source now reuses a pre-tokenized BM25 shadow corpus to remove repeated document-tokenization cost while preserving ranking semantics. The Agent Adapter remains optional foreground convenience rather than a cognitive lifecycle owner. Broader tenancy enforcement across existing search/write paths is still pending. These source changes remain unreleased until an explicit release decision.
+The retrieval benchmark/fusion foundation remains observational rather than caller-visible. A 28-case reviewed benchmark against the current vector path rejected always-on global hybrid fusion: it improved Recall@5 but slightly reduced MRR and introduced rank regressions. A deterministic literal/fingerprint router that uses lexical retrieval only for literal-heavy queries while retaining vector retrieval elsewhere improved Recall@5 and MRR with no observed rank regressions in the reviewed set. Shadow observation is implemented and the reusable pre-tokenized BM25 corpus has cleared the earlier recurring scoring-cost blocker, but lexical output remains **SHADOW ONLY** until larger live relevance/reliability evidence is reviewed. The Agent Adapter remains optional foreground convenience rather than a cognitive lifecycle owner. Broader tenancy enforcement across existing search/write paths is still pending. Public release packaging remains a separate explicit decision.
 
-### Current engineering phase — Wave 2 shared integration
+### Current engineering phase — observation and product-boundary hardening
 
 Shared integration is serialized rather than parallel. The security/order invariant is:
 
@@ -49,7 +46,7 @@ authenticated caller
 → server-owned post-storage cognition
 ```
 
-The scope/auth, exact-fetch, real Agent Adapter client bridge, read-only real retrieval benchmark, shadow literal-routing instrumentation, reusable BM25 shadow corpus, and server-owned post-storage cognition contract/tests are implemented on source `main`. The benchmark decision remains **do not promote global hybrid retrieval**. The source shadow path is disabled by default and evaluates only literal/fingerprint-heavy Knowledge queries in a non-blocking worker; the current vector result remains caller-visible and unchanged. Its cache is bounded/TTL-controlled, explicit metadata filters are reapplied before BM25, and failures are fail-open to the canonical search path. The next retrieval gate is real observation after an explicitly authorized runtime update, not a caller-visible retrieval change. There is no remaining goal to make Agent Adapter orchestrate Dreaming or other background cognition.
+The scope/auth, exact-fetch, real Agent Adapter client bridge, real retrieval benchmark, shadow literal-routing instrumentation, reusable BM25 shadow corpus, server-owned post-storage cognition contract/tests, and single software/package version authority are implemented on source `main`. The benchmark decision remains **do not promote global hybrid retrieval**. The shadow path is disabled by default in source and, when enabled by a deployment, evaluates only literal/fingerprint-heavy Knowledge queries in a non-blocking worker; the vector result remains caller-visible and unchanged. Its cache is bounded/TTL-controlled, explicit metadata filters are reapplied before BM25, and failures are fail-open to the canonical search path. The next retrieval gate is larger organic relevance/reliability evidence, not another performance fix. There is no remaining goal to make Agent Adapter orchestrate Dreaming or other background cognition.
 
 ## Current architectural invariants
 
@@ -122,13 +119,13 @@ The numbering preserves roadmap continuity; it does not imply that every depende
 linear.
 
 1. Prediction Learning
-   - Status: implemented and released in v0.1.6; observation remains active.
+   - Status: implemented; observation remains active.
    - Owns: explicit Prediction → observed Outcome → deterministic Prediction Error.
    - Produces learning evidence; it does not decide what is salient, what becomes a concept, or how
      the agent should describe itself.
 
 2. Calibration
-   - Status: initial read-only analysis released in v0.1.6; observation remains active.
+   - Status: initial read-only analysis implemented; observation remains active.
    - Owns: epistemic performance statistics over resolved predictions, including confidence bias
      and calibration error.
    - Calibration labels describe evidence samples only. They must not become persistent self-beliefs
@@ -230,6 +227,7 @@ to modify the underlying model weights.
 Normative/current guidance:
 
 - README.md
+- specs/VERSIONING.md
 - TOOL_GUIDE.md
 - MCP_PROVIDER_STANDARD.md
 - docs/CURRENT_RUNTIME.md

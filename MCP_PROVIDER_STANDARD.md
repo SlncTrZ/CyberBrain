@@ -340,7 +340,7 @@ provider/tool contract
 schema/data model when applicable
 ```
 
-Do not assume software version and tool contract version are the same concept.
+Do not assume software version and tool contract version are the same concept. A provider SHOULD maintain one canonical software-version authority and derive package/build metadata and runtime version reporting from it rather than duplicating the current version across files.
 
 Breaking changes require an explicit compatibility decision.
 

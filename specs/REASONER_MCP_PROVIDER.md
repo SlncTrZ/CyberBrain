@@ -22,7 +22,7 @@ reasoner.reason
 reasoner.reason_task
 ```
 
-Alternative provider ids are allowed. CyberBrain treats the configured tool name as runtime configuration.
+Alternative provider ids are allowed. CyberBrain treats the configured tool name as runtime configuration. The bundled Reasoner provider reports the same CyberBrain software/package version derived from `cyberbrain/_version.py`; it does not maintain an independent software-version literal. Its contract version remains independent.
 
 ## Mandatory tools
 

@@ -50,7 +50,7 @@ Prediction Learning is causally different: Prediction evidence must be captured 
 
 ## `help`
 
-Read-only, zero side effects. Returns current provider contract/version metadata, capabilities, authentication description, contract hash, and usage guide content.
+Read-only, zero side effects. Returns current provider contract/version metadata, capabilities, authentication description, contract hash, and usage guide content. Provider software version derives from `cyberbrain/_version.py`; tool-contract and schema versions are independently governed by `VERSIONING.md`.
 
 ## `knowledge_search`
 

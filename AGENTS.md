@@ -18,6 +18,7 @@
 14. Fail closed on unknown schema, incompatible embeddings, invalid auth, or insufficient evidence.
 15. Tests must verify intent and migration safety, not only implementation details.
 16. Checkpoint after each implementation slice: changed / verified / remaining.
+17. `cyberbrain/_version.py` is the only current software/package version authority. Do not copy the current version into `pyproject.toml`, provider modules, CI/release scripts, current-status docs, or deployment scripts; derive it instead.
 
 ## Implementation sequence
 

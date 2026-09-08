@@ -93,11 +93,11 @@ Observed benchmark decision:
 - always-on hybrid RRF: Recall@5 1.000000, MRR@5 0.892857, with two rank regressions;
 - deterministic literal/fingerprint router (lexical only for strong commit/version/model/port-style lexical signals, vector otherwise): Recall@5 1.000000, MRR@5 0.934524, no observed rank regressions in the reviewed set, and lower mean returned-token estimate than vector.
 
-Therefore always-on hybrid fusion is **not promoted**. The literal/fingerprint route is only a **conditional shadow candidate** until it survives production-like shadow observation. The canonical Knowledge/Memory search backend remains vector retrieval.
+Therefore always-on hybrid fusion is **not promoted**. The literal/fingerprint route remains **SHADOW ONLY**: live observation has cleared the recurring shadow-scoring performance blocker, but caller-visible promotion still requires a larger reviewed relevance/reliability sample with zero scope leakage and no material reliability regression. The canonical Knowledge/Memory search backend remains vector retrieval.
 
 ### Literal/fingerprint shadow contract
 
-Source `main` includes disabled-by-default shadow instrumentation for Knowledge search. It is observational only:
+Source `main` includes disabled-by-default shadow instrumentation for Knowledge search. Deployments may enable it for observation, but it remains caller-invisible:
 
 ```text
 literal-heavy query detected
@@ -107,7 +107,7 @@ literal-heavy query detected
 → numeric metrics + content-free query/record fingerprints only
 ```
 
-The observer uses a bounded TTL cache of `status=active` Knowledge payloads and reapplies the same explicit equality filters before BM25 scoring. Missing metadata is ineligible. Non-active status searches are skipped. Cache overflow, storage errors, worker contention, or any other shadow failure must not alter or fail the canonical vector response.
+The observer uses a bounded TTL cache of `status=active` Knowledge payloads plus a reusable pre-tokenized BM25 corpus and reapplies the same explicit equality filters before scoring. Missing metadata is ineligible. Non-active status searches are skipped. Cache overflow, storage errors, worker contention, or any other shadow failure must not alter or fail the canonical vector response.
 
 The existing metrics registry records shadow detection/evaluation/failure counts, cache refresh/size, worker-busy skips, top-1 agreement/change counts, overlap@K, vector-top1 lexical rank, compact-token estimates, and shadow/cache timings. Raw query text and stored content are not metrics labels or log fields; logs use a truncated SHA-256 query fingerprint and record IDs only.
 

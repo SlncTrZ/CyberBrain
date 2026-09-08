@@ -57,7 +57,7 @@ Tool-level authorization/policy may additionally be enforced by SlncTrZ-MCP. Cyb
 
 ### Tenancy/isolation source foundation
 
-`main` contains an unreleased `cyberbrain.tenancy` foundation for transport-neutral tenant/user/agent/project/session authority scopes, true subset narrowing, wildcard rejection, abstract storage filters, concrete write attribution, quota policy models, and readiness gates. Current source now binds successfully authenticated MCP requests to an explicit `CallerAuthority` in `single_owner` mode and uses that authority for canonical exact-ID fetch. `agent_ready` and `multi_user` modes fail closed until a trusted caller-identity source and the required persisted identity fields are wired. Broader search/write paths are not yet tenancy-enforced, and the deployed production runtime may remain behind current source.
+`main` contains the `cyberbrain.tenancy` foundation for transport-neutral tenant/user/agent/project/session authority scopes, true subset narrowing, wildcard rejection, abstract storage filters, concrete write attribution, quota policy models, and readiness gates. Current source binds successfully authenticated MCP requests to an explicit `CallerAuthority` in `single_owner` mode and uses that authority for canonical exact-ID fetch. `agent_ready` and `multi_user` modes fail closed until a trusted caller-identity source and the required persisted identity fields are wired. Broader search/write paths are not yet tenancy-enforced. Release and deployment state are separate from this source security contract.
 
 Wave 2 integration must fail closed in this order:
 

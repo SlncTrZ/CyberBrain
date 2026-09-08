@@ -10,6 +10,7 @@ The documentation tree separates current normative guidance from historical evid
 - ../PLAN.md — current operating mode and architectural invariants.
 - ../specs/RETRIEVAL_POLICY.md — canonical retrieval/ranking rules plus compact/full MCP response projection.
 - ../specs/TOOL_CONTRACT.md — canonical MCP tool contract, including compact-first search views.
+- ../specs/VERSIONING.md — single software/package version authority and independent contract/schema versioning.
 - ../specs/ — remaining canonical data, evolution, Dreaming, Reasoner, security, Prediction Learning, and Calibration contracts.
 
 ## Historical evidence
@@ -26,4 +27,4 @@ When current and historical documents differ, current guidance and canonical spe
 
 ## Source versus runtime status
 
-Current `main` contains unreleased Wave 2 integration for single-owner caller authority binding, scope-safe exact `knowledge_get` / `memory_get`, the real MCP Agent Adapter client bridge, literal/fingerprint shadow observation with a reusable BM25 corpus, and a tested server-owned post-storage cognition boundary. Normal agents recall/get/store; CyberBrain owns Dream scheduling/processing, Knowledge Evolution, promotion/review, and writeback. Caller-visible lexical promotion and broader multi-user/search/write tenancy enforcement remain pending. `CURRENT_RUNTIME.md`, `../TOOL_GUIDE.md`, and `../specs/TOOL_CONTRACT.md` describe the current source-level contract; deployment may differ until a separate release/deployment decision.
+Current `main` contains the integrated single-owner caller authority binding, scope-safe exact `knowledge_get` / `memory_get`, the real MCP Agent Adapter client bridge, literal/fingerprint shadow observation with a reusable BM25 corpus, the tested server-owned post-storage cognition boundary, and the single software/package version authority. Normal agents recall/get/store; CyberBrain owns Dream scheduling/processing, Knowledge Evolution, promotion/review, and writeback. Caller-visible lexical promotion and broader multi-user/search/write tenancy enforcement remain pending. `CURRENT_RUNTIME.md`, `../TOOL_GUIDE.md`, and `../specs/TOOL_CONTRACT.md` describe the source-level contract; release and deployment state are independent and may differ.

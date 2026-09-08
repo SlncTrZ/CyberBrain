@@ -79,7 +79,7 @@ These aliases are retained only for legacy client compatibility. They adapt into
 
 ### `help`
 
-Read-only. Returns the running provider contract, version metadata, contract hash, authentication description, capabilities, and current usage guide.
+Read-only. Returns the running provider contract, software version metadata, contract hash, authentication description, capabilities, and current usage guide. The software/package version derives from the canonical `cyberbrain/_version.py` source; contract/schema versions remain independent.
 
 ### Knowledge tools
 

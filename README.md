@@ -13,7 +13,7 @@ Current software/package version is defined only in `cyberbrain/_version.py`. Gi
 
 For the latest published release, use the repository's GitHub Releases page rather than a duplicated version literal in this README.
 
-Wave 1 integration checkpoint on `main`: `e855816`. Later Wave 2 source work remains unreleased unless explicitly tagged. Deployment state is managed separately from the source plan and should be verified from the actual runtime rather than inferred from this README.
+Current `main` includes the integrated Level 8+ infrastructure completed through the server-owned post-storage cognition and single-version-authority work. Public release state and deployed runtime state are separate from source state; verify them independently rather than inferring either from this README.
 
 The repository is in use-and-observe mode: changes should be driven by reproducible defects,
 operational evidence, security/privacy needs, or portability gaps rather than speculative feature
@@ -41,15 +41,15 @@ CyberBrain intentionally keeps exactly two canonical durable Qdrant collections:
 Dreaming is a process, not a third collection. Queue, audit, and reason-task coordination state are
 operational state stored separately from canonical Knowledge and Episodic Memory.
 
-## Unreleased Level 8+ integration
+## Current Level 8+ integration
 
-Wave 1 foundations remain on `main`, and Wave 2 has begun wiring them through shared paths:
+The current source integrates the completed Wave 1 foundations and the shared Wave 2 wiring:
 
 - `cyberbrain/agent_adapter/` includes a real MCP Streamable HTTP client bridge for optional foreground convenience such as token budgeting, duplicate-context suppression, compact recall, and bounded exact fetch. It is not the owner of Dreaming, Knowledge Evolution, Calibration, or other background cognition;
-- `cyberbrain/retrieval/` now includes a reproducible real-snapshot benchmark harness. The reviewed 28-case current-vector comparison rejects always-on global hybrid fusion and identifies a deterministic literal/fingerprint lexical route as a conditional shadow candidate only;
+- `cyberbrain/retrieval/` includes a reproducible real-snapshot benchmark harness. The reviewed 28-case current-vector comparison rejects always-on global hybrid fusion; the deterministic literal/fingerprint lexical route remains SHADOW ONLY pending larger reviewed relevance/reliability evidence;
 - `cyberbrain/tenancy/` now binds authenticated source requests to explicit caller authority in `single_owner` mode and supplies storage-side eligibility for canonical exact fetch. `agent_ready` and `multi_user` modes fail closed until trusted caller identity and the required persisted identity fields are wired.
 
-Current source exposes scope-safe `knowledge_get` and `memory_get` and supports the preferred compact-search → selected-ID → exact-full-fetch flow. Normal external agents are memory consumers/producers: they recall/get/store while CyberBrain owns normalization, Knowledge Evolution, the Episodic pending lifecycle, automatic Dream scheduling/processing, promotion/review, and Knowledge writeback. The canonical retrieval backend remains vector search: the real benchmark did **not** justify replacing it with always-on hybrid fusion. Source also includes disabled-by-default literal/fingerprint shadow instrumentation with a reusable pre-tokenized BM25 corpus so repeated shadow queries do not rebuild lexical document statistics. The caller still receives the unchanged vector result. Broader tenancy enforcement on all search/write paths remains pending. These source changes are unreleased until an explicit release decision.
+Current source exposes scope-safe `knowledge_get` and `memory_get` and supports the preferred compact-search → selected-ID → exact-full-fetch flow. Normal external agents are memory consumers/producers: they recall/get/store while CyberBrain owns normalization, Knowledge Evolution, the Episodic pending lifecycle, automatic Dream scheduling/processing, promotion/review, and Knowledge writeback. The canonical retrieval backend remains vector search: the real benchmark did **not** justify replacing it with always-on hybrid fusion. Source also includes disabled-by-default literal/fingerprint shadow instrumentation with a reusable pre-tokenized BM25 corpus so repeated shadow queries do not rebuild lexical document statistics. Live observation has cleared the earlier recurring shadow-scoring performance blocker, but caller-visible lexical routing remains unpromoted pending larger relevance/reliability evidence. Broader tenancy enforcement on all search/write paths remains pending. Public release packaging remains a separate explicit decision.
 
 ## Learning primitives
 
@@ -61,7 +61,7 @@ See specs/PREDICTION_LEARNING.md. Main also contains an initial read-only Calibr
 
 ## Dreaming
 
-Dreaming is evidence-grounded consolidation. Dreaming V1 historical replay acceptance is complete in v0.1.7 and the mechanism is in use-and-observe mode.
+Dreaming is evidence-grounded consolidation. Dreaming V1 historical replay acceptance is complete and the mechanism is in use-and-observe mode.
 
 A reasoning result cannot write Knowledge directly. It must pass contract validation, evidence-ID
 validation, promotion policy, and review/writeback rules before canonical Knowledge changes.
@@ -130,6 +130,7 @@ Current guidance:
 
 - PLAN.md — current project operating mode and architectural invariants.
 - TOOL_GUIDE.md — current MCP tool behavior.
+- specs/VERSIONING.md — single software/package version authority and independent contract/schema versioning.
 - docs/CURRENT_RUNTIME.md — deployment-neutral runtime contract.
 - docs/DREAMING_ROUTING.md — provider-neutral Dream fallback routing.
 - specs/ — canonical data, retrieval, evolution, Dreaming, security, Reasoner, and tool contracts.
