@@ -6,7 +6,7 @@
 
 ## Operating mode
 
-CyberBrain is in a use-and-observe phase. Dreaming V1 historical replay acceptance is complete. The project should prefer evidence-driven fixes and measured improvements over speculative expansion.
+CyberBrain has satisfied the Level-8.0 source-engineering gate and remains in a use-and-observe / product-safety phase. Dreaming V1, M3 Salience, M4 Concept Formation, and M5 Working Memory are source-level accepted. Production activation, broader tenancy, and downstream cognitive authority remain separately gated. The project should prefer evidence-driven fixes and measured improvements over speculative expansion.
 
 ## Current product boundary
 
@@ -17,7 +17,8 @@ CyberBrain provides:
 - evidence-grounded Dreaming with review/promotion gates;
 - authenticated MCP/API access;
 - provider-neutral Dream fallback routing;
-- backup, migration, and compatibility tooling.
+- backup, migration, and compatibility tooling;
+- bounded source-level Salience, Concept Formation, and transient Working Memory primitives.
 
 CyberBrain remains independent from any single AI client, model provider, routing product, or deployment topology.
 
@@ -29,11 +30,14 @@ Wave 1 of the Level 8+ product/infrastructure track and the shared Wave 2 integr
 
 - authenticated MCP source requests bind to explicit `CallerAuthority` in `single_owner` mode; future identity-bearing modes remain fail-closed until a trusted identity source exists;
 - canonical `knowledge_get(id)` and `memory_get(id)` perform exact full fetch with storage-side scope eligibility and indistinguishable absent/out-of-scope not-found behavior;
-- `cyberbrain.agent_adapter` has a real MCP Streamable HTTP client bridge over the canonical tool contract.
+- `cyberbrain.agent_adapter` has a real MCP Streamable HTTP client bridge over the canonical tool contract;
+- M3 Salience and M4 Concept Formation are source-level complete under their bounded advisory/evidence contracts;
+- M5 Working Memory is source-level complete as exact scope/session/task transient state with relevance → Salience → dedupe → token-budget selection, TTL/closeout, and delta emission;
+- the Level-8.0 source gate is satisfied, while production M5 activation remains intentionally unwired until shared authorization/integration review is complete.
 
 The retrieval benchmark/fusion foundation remains observational rather than caller-visible. A 28-case reviewed benchmark against the current vector path rejected always-on global hybrid fusion: it improved Recall@5 but slightly reduced MRR and introduced rank regressions. A deterministic literal/fingerprint router that uses lexical retrieval only for literal-heavy queries while retaining vector retrieval elsewhere improved Recall@5 and MRR with no observed rank regressions in the reviewed set. Shadow observation is implemented and the reusable pre-tokenized BM25 corpus has cleared the earlier recurring scoring-cost blocker, but lexical output remains **SHADOW ONLY** until larger live relevance/reliability evidence is reviewed. The Agent Adapter remains optional foreground convenience rather than a cognitive lifecycle owner. Broader tenancy enforcement across existing search/write paths is still pending. Public release packaging remains a separate explicit decision.
 
-### Current engineering phase — observation and product-boundary hardening
+### Current engineering phase — Level-8 source accepted; readiness and product-boundary hardening
 
 Shared integration is serialized rather than parallel. The security/order invariant is:
 
@@ -46,7 +50,7 @@ authenticated caller
 → server-owned post-storage cognition
 ```
 
-The scope/auth, exact-fetch, real Agent Adapter client bridge, real retrieval benchmark, shadow literal-routing instrumentation, reusable BM25 shadow corpus, server-owned post-storage cognition contract/tests, and single software/package version authority are implemented on source `main`. The benchmark decision remains **do not promote global hybrid retrieval**. The shadow path is disabled by default in source and, when enabled by a deployment, evaluates only literal/fingerprint-heavy Knowledge queries in a non-blocking worker; the vector result remains caller-visible and unchanged. Its cache is bounded/TTL-controlled, explicit metadata filters are reapplied before BM25, and failures are fail-open to the canonical search path. The next retrieval gate is larger organic relevance/reliability evidence, not another performance fix. There is no remaining goal to make Agent Adapter orchestrate Dreaming or other background cognition.
+The scope/auth, exact-fetch, real Agent Adapter client bridge, real retrieval benchmark, shadow literal-routing instrumentation, reusable BM25 shadow corpus, server-owned post-storage cognition contract/tests, M3 Salience, M4 Concept Formation, M5 Working Memory, and single software/package version authority are implemented on source `main`. The benchmark decision remains **do not promote global hybrid retrieval**. The shadow path is disabled by default in source and, when enabled by a deployment, evaluates only literal/fingerprint-heavy Knowledge queries in a non-blocking worker; the vector result remains caller-visible and unchanged. Its cache is bounded/TTL-controlled, explicit metadata filters are reapplied before BM25, and failures are fail-open to the canonical search path. The next retrieval gate is larger organic relevance/reliability evidence, not another performance fix. There is no remaining goal to make Agent Adapter orchestrate Dreaming or other background cognition. The immediate cognitive frontier is M6 readiness evidence, not automatic Self-Model activation: repeated prospective outcomes, evidence diversity, and trusted agent identity/P3 isolation must be demonstrated first.
 
 ## Current architectural invariants
 
@@ -139,8 +143,7 @@ linear.
      consequence, explicit user emphasis, and recency.
    - The reviewed policy makes material evidence stronger than novelty/recency and is validated
      against the fixed Salience benchmark; the generic scorer remains independently configurable.
-   - `SalienceAdvisor` is the bounded integration seam for future Concept Formation, Working Memory,
-     and Lifecycle work; `SalienceShadowObserver` changes no caller-visible ordering.
+   - `SalienceAdvisor` is the bounded integration seam already consumed by Concept Formation and Working Memory and available to future Lifecycle work; `SalienceShadowObserver` changes no caller-visible ordering.
    - Does not select or persist the active task context; that belongs to Working Memory.
    - Does not decide truth, authorization, promotion, forgetting, or Knowledge mutation.
 
@@ -179,7 +182,7 @@ linear.
      introduced.
 
 6. Agent Self-Model
-   - Status: next cognitive mechanism after M5 source acceptance.
+   - Status: readiness-gated after M5 source acceptance; read-only hypothesis work may begin only after repeated real outcome evidence and trusted agent identity/P3 prerequisites are reviewed. Persistent influence is not yet authorized.
    - Owns: evidence-backed, agent-scoped hypotheses about recurring capabilities, limitations,
      operating tendencies, and strategy constraints.
    - Calibration is one input, not the Self-Model itself.
@@ -257,7 +260,7 @@ Normative/current guidance:
 - docs/CURRENT_RUNTIME.md
 - docs/DREAMING_ROUTING.md
 - specs/
-  - including specs/PREDICTION_LEARNING.md, specs/METACOGNITION_CALIBRATION.md, specs/SALIENCE.md, and specs/CONCEPT_FORMATION.md for the current cognitive mechanisms.
+  - including specs/PREDICTION_LEARNING.md, specs/METACOGNITION_CALIBRATION.md, specs/SALIENCE.md, specs/CONCEPT_FORMATION.md, specs/WORKING_MEMORY.md, and specs/SECURITY.md for the current cognitive and authority boundaries.
 
 Historical development and migration evidence lives under docs/history/ and is non-normative.
 

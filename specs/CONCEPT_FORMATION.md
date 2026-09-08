@@ -207,6 +207,10 @@ Salience must not:
 
 Concept discovery remains deterministic regardless of Salience ordering.
 
+## Relationship to Working Memory
+
+M5 Working Memory may consume a Concept candidate/ID only as an already-authorized, task-relevant reference. Concept Formation does not decide Working Memory membership, and Working Memory does not copy the entire supporting historical evidence set merely because a concept reference is selected. Salience may prioritize within the same authorized scope, but neither mechanism changes Concept identity, formation confidence, or verification status.
+
 ## Shadow registry
 
 `ConceptShadowRegistry` is in-memory observation state only.

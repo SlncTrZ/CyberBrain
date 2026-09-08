@@ -13,7 +13,7 @@ Current software/package version is defined only in `cyberbrain/_version.py`. Gi
 
 For the latest published release, use the repository's GitHub Releases page rather than a duplicated version literal in this README.
 
-Current `main` includes the integrated Level 8+ infrastructure completed through the server-owned post-storage cognition and single-version-authority work. Public release state and deployed runtime state are separate from source state; verify them independently rather than inferring either from this README.
+Current `main` has satisfied the Level-8.0 source-engineering gate: M3 Salience, M4 Concept Formation, and M5 Working Memory are source-level accepted alongside the server-owned post-storage cognition and single-version-authority foundations. This is not a production-activation claim. Public release state and deployed runtime state are separate from source state; verify them independently rather than inferring either from this README.
 
 The repository is in use-and-observe mode: changes should be driven by reproducible defects,
 operational evidence, security/privacy needs, or portability gaps rather than speculative feature
@@ -67,6 +67,8 @@ Salience / Priority M3 is now complete at the source level. The scorer is determ
 Concept Formation / Abstraction M4 is also complete at the source level. A read-only E1 census separates clean shadow evidence from review-only or excluded historical evidence before concept discovery. The accepted high-precision policy requires broad recurrence for Knowledge-only clusters, retains evidence IDs and counterexamples, rejects same-entity repetition as insufficient abstraction, and records candidate stability without durable persistence. Reviewed historical candidates currently fail durable promotion because they lack strong verification, so no automatic concept Knowledge write exists. See specs/CONCEPT_FORMATION.md.
 
 Working Memory / Active Context M5 is complete at the source level. `WorkingMemoryService` keeps exact scope/session/task transient state only; candidate selection is explicit task relevance → Salience → duplicate suppression → token budget, with hard limits, TTL, closeout, and unchanged-context emission suppression. A controlled 4-task/16-step benchmark improves required-context coverage from 67.35% to 100% while lowering context tokens from 1045 to 458, recall calls from 16 to 4, and exact fetches from 12 to 4, with zero stale contamination or cross-task leakage in the fixture. This does not activate a production Working Memory path or claim LLM task-quality improvement. See specs/WORKING_MEMORY.md.
+
+The next cognitive mechanism, Agent Self-Model M6, is readiness-gated rather than automatically active. Repeated prospective outcome evidence, sufficient diversity, and trusted agent identity/P3 isolation must be demonstrated before persistent or influential self-model behavior. `insufficient_evidence` / read-only pause is a valid outcome.
 
 ## Dreaming
 

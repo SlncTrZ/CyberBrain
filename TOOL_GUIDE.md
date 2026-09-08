@@ -63,6 +63,8 @@ CyberBrain owns what happens after storage: normalization, validation, embedding
 
 `dream_enqueue`, Prediction operations, Calibration observation, Dream reason-task operations, and review operations remain available as explicit advanced/control surfaces. Their presence in the MCP catalog does not make them part of the normal agent read/write loop.
 
+M3 Salience, M4 Concept Formation, and M5 Working Memory are internal source-level cognitive mechanisms, not additional public MCP tools. In particular, M5 transient state is not exposed as a caller-managed durable scratchpad; any future runtime integration remains behind the existing authorization boundary.
+
 Prediction Learning is the causal exception to fully post-storage processing: a valid Prediction must exist before its outcome is known. Do not fabricate a Prediction retrospectively from a completed-action summary. A runtime with a genuine pre-action/outcome event seam may bridge those events into Prediction Learning without exposing the subsystem to the acting agent.
 
 ## Compatibility aliases

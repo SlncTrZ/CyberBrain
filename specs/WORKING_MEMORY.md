@@ -283,6 +283,10 @@ The exact `scope_marker/session_id/task_id` boundary prevents accidental local c
 
 Therefore source-level M5 completion does not enable multi-user operation and does not authorize broader candidate visibility.
 
+## Relationship to Agent Self-Model
+
+Working Memory state is transient task context, not evidence that an agent has a durable capability, limitation, or operating tendency. M6 must not infer identity claims merely from an item remaining active, being repeatedly emitted, or appearing in several task revisions. Self-Model readiness requires separate repeated prospective outcome evidence plus trusted agent identity/P3 isolation.
+
 ## Non-goals
 
 M5 V1 does not add:

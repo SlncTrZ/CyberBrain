@@ -75,6 +75,10 @@ Exact get-by-ID must never become an authorization bypass, and retrieval ranking
 
 Salience follows the same rule. `SalienceAdvisor` accepts only already-authorized candidates and fails closed if one advisory set crosses a scope marker. Salience score, reason codes, or advisory priority can never make an unauthorized record visible or widen an effective scope.
 
+Concept Formation and Working Memory remain downstream of this boundary. Concept discovery may only examine evidence already admitted to its same-scope candidate set. Working Memory additionally requires exact `scope_marker + session_id + task_id` identity and rejects candidates from another working-set identity. That exact task identity is defense-in-depth against local mixing; it is **not** a substitute for trusted caller identity or full P3 read-path enforcement.
+
+Persistent or influential Agent Self-Model behavior is not authorized merely because M5 is complete. It requires trusted agent identity/P3 isolation plus repeated prospective outcome evidence; insufficient evidence must fail safely rather than produce durable identity claims.
+
 ## Logging
 
 Logs may include:

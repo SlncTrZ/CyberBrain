@@ -115,6 +115,8 @@ Authorization/scope eligibility must be applied before candidate data can become
 
 Salience is not part of canonical retrieval ranking in the current source contract. Future use must happen only after authorization/data eligibility, through the bounded Salience advisory contract in `SALIENCE.md`; a Salience score can prioritize an already-eligible candidate but cannot create retrieval eligibility or override a hard filter.
 
+The same rule applies when retrieval output later feeds M5 Working Memory: task relevance, Salience, duplicate suppression, and token packing operate only on candidates already admitted by hard authorization/data eligibility. Working Memory does not make retrieval broader and is not part of the caller-visible search contract; any runtime integration remains separately gated.
+
 ## Temporal recall for Dreaming
 
 Dreaming does not issue one undifferentiated semantic query over all history.

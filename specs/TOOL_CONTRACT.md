@@ -48,6 +48,8 @@ CyberBrain owns normalization/validation, embedding, Knowledge Evolution, the Ep
 
 Prediction Learning is causally different: Prediction evidence must be captured before its outcome is known. Implementations must not synthesize prior predictions retrospectively. A client/runtime may supply a thin pre-action/outcome event bridge when it has a genuine causal event seam.
 
+M3 Salience, M4 Concept Formation, and M5 Working Memory are internal cognition contracts and do not add provider-local MCP tools in the current contract. Working Memory is transient task state, not a caller-managed durable store; future integration must remain downstream of trusted authority and hard candidate eligibility.
+
 ## `help`
 
 Read-only, zero side effects. Returns current provider contract/version metadata, capabilities, authentication description, contract hash, and usage guide content. Provider software version derives from `cyberbrain/_version.py`; tool-contract and schema versions are independently governed by `VERSIONING.md`.

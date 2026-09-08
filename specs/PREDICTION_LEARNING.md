@@ -253,3 +253,5 @@ During ongoing Prediction Learning and Calibration observation, real usage shoul
 - whether duplicate or long-horizon outcomes need stronger lifecycle rules.
 
 Any schema expansion should be driven by those observations rather than added speculatively.
+
+For M6 Agent Self-Model readiness, only prospectively valid Prediction/Outcome evidence with preserved identity and causal order may contribute to recurring capability/limitation hypotheses. Historical prose must not be converted into synthetic prior confidence to increase Self-Model sample count.

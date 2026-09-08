@@ -27,7 +27,7 @@ Network-visible MCP access is authenticated when authentication is enabled.
 
 ## Current source integration
 
-Current source integrates the Wave 2 building blocks without changing the caller-visible retrieval backend:
+Current source has satisfied the Level-8.0 source-engineering gate without changing the caller-visible retrieval backend; M5 remains an internal source capability whose runtime activation is separately gated:
 
 - authenticated MCP requests are bound to explicit `CallerAuthority` in `single_owner` mode; `agent_ready` and `multi_user` modes fail closed until a trusted caller-identity source is wired;
 - canonical `knowledge_get` and `memory_get` perform exact full-record fetch with storage-side ID + scope eligibility;
@@ -86,6 +86,8 @@ Source `main` also contains completed M3 Salience primitives. `SalienceScorer` c
 Source `main` also contains completed M4 Concept Formation primitives. The E1 census is read-only and explicitly excludes or requires review for low-quality historical evidence. `ConceptDiscoveryEngine` forms deterministic same-scope candidates only after recurrence and abstraction-breadth gates; `ConceptShadowRegistry` observes identity/support stability in memory; Salience may reprioritize candidates without changing their identity; and `ConceptPromotionGate` can only reject or request review. There is no graph database, third collection, LLM concept synthesizer, or automatic Knowledge write path.
 
 Source `main` also contains completed M5 Working Memory primitives. `WorkingMemoryService` maintains process-memory state keyed by exact scope/session/task identity, applies explicit task relevance before Salience, suppresses duplicates before token packing, enforces bounded candidate/item/token/TTL limits, and removes state on closeout or expiry. `WorkingMemoryEmissionLedger` suppresses unchanged reinjection for an ongoing consumer context. M5 does not persist its scratch state, add a third canonical collection, or add a public MCP tool. Broader runtime activation remains deferred until shared read-path authorization and a separately reviewed integration path are complete.
+
+Together, M3 + M4 + M5 satisfy the current Level-8.0 **source** gate. This statement does not imply that any particular deployed runtime includes those source-level mechanisms. Agent Self-Model M6 remains readiness-gated on repeated prospective outcomes, evidence diversity, and trusted agent identity/P3 isolation; no persistent self-model influence is part of the current runtime contract.
 
 ## Dreaming profile
 

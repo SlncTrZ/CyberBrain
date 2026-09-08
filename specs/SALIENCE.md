@@ -121,7 +121,7 @@ authentication
 → candidate construction
 → task relevance where applicable
 → Salience advisory
-→ future bounded context/priority use
+→ bounded downstream Concept/Working-Memory/Lifecycle use
 ```
 
 Salience score must never broaden scope or turn an ineligible record into an eligible one.
@@ -142,8 +142,7 @@ separate product-safety gate.
 
 ## Bounded integration seam
 
-`SalienceAdvisor` is the accepted M3 integration point for future mechanisms such as Concept
-Formation, Working Memory, and Memory Lifecycle.
+`SalienceAdvisor` is the accepted M3 integration point. Concept Formation and Working Memory now consume this bounded same-scope advisory seam; Memory Lifecycle may consume it later under its own contract.
 
 It may provide an advisory priority order over an already-authorized candidate set. Downstream
 mechanisms must keep their own decision semantics:

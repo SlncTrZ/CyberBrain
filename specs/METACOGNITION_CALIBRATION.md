@@ -177,4 +177,6 @@ During ongoing Calibration observation, review:
 
 `minimum_samples=20` is the first statistical review checkpoint, not an automatic downstream activation gate. Review should also consider task/topic diversity, prospective recording quality, unresolved/duplicate Outcome behavior, causal/identity integrity, and whether outcome diversity arose naturally from real operation.
 
+This is also a prerequisite discipline for M6 Agent Self-Model: calibration aggregates may be inputs to read-only hypotheses, but they cannot create persistent capability/limitation claims until repeated real outcomes, sufficient diversity, and trusted agent identity/P3 isolation are available. `insufficient_evidence` is the correct result when those conditions are not met.
+
 Later changes should be driven by these observations rather than by anthropomorphic assumptions.

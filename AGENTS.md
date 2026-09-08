@@ -19,6 +19,8 @@
 15. Tests must verify intent and migration safety, not only implementation details.
 16. Checkpoint after each implementation slice: changed / verified / remaining.
 17. `cyberbrain/_version.py` is the only current software/package version authority. Do not copy the current version into `pyproject.toml`, provider modules, CI/release scripts, current-status docs, or deployment scripts; derive it instead.
+18. Working Memory is transient task state only: do not add a third canonical collection, automatic Episode/Knowledge persistence, or public state-management surface without a separately justified contract and authorization gate.
+19. Agent Self-Model work fails safely on insufficient evidence. Persistent/scoped self-model influence requires repeated prospective outcome evidence plus trusted agent identity/P3 isolation; never lower that bar by reconstructing retrospective confidence or treating one success/failure as identity truth.
 
 ## Implementation sequence
 
