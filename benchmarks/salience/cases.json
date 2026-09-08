@@ -32,8 +32,8 @@
     {
       "case_id": "blocker-01",
       "family": "unresolved_blocker_vs_resolved_routine",
-      "candidate_a": {"candidate_id": "open-blocker", "scope_marker": "project:beta", "signals": {"unresolved": 1.0, "consequence": 0.8, "recency": 0.6}},
-      "candidate_b": {"candidate_id": "resolved-maintenance", "scope_marker": "project:beta", "signals": {"unresolved": 0.0, "consequence": 0.2, "recency": 0.9}},
+      "candidate_a": {"candidate_id": "open-blocker", "scope_marker": "project:beta", "signals": {"unresolvedness": 1.0, "consequence": 0.8, "recency": 0.6}},
+      "candidate_b": {"candidate_id": "resolved-maintenance", "scope_marker": "project:beta", "signals": {"unresolvedness": 0.0, "consequence": 0.2, "recency": 0.9}},
       "expected": "a_higher",
       "rationale_category": "unresolved_state",
       "rationale": "An unresolved blocker should remain salient over a resolved routine event."
@@ -41,8 +41,8 @@
     {
       "case_id": "blocker-02",
       "family": "unresolved_blocker_vs_resolved_routine",
-      "candidate_a": {"candidate_id": "resolved-check", "scope_marker": "project:beta", "signals": {"unresolved": 0.0, "consequence": 0.2, "recency": 1.0}},
-      "candidate_b": {"candidate_id": "open-dependency", "scope_marker": "project:beta", "signals": {"unresolved": 0.9, "consequence": 0.7, "recency": 0.5}},
+      "candidate_a": {"candidate_id": "resolved-check", "scope_marker": "project:beta", "signals": {"unresolvedness": 0.0, "consequence": 0.2, "recency": 1.0}},
+      "candidate_b": {"candidate_id": "open-dependency", "scope_marker": "project:beta", "signals": {"unresolvedness": 0.9, "consequence": 0.7, "recency": 0.5}},
       "expected": "b_higher",
       "rationale_category": "unresolved_state",
       "rationale": "The unresolved dependency outranks the newer resolved check."
@@ -50,8 +50,8 @@
     {
       "case_id": "blocker-03",
       "family": "unresolved_blocker_vs_resolved_routine",
-      "candidate_a": {"candidate_id": "open-low-impact", "scope_marker": "project:beta", "signals": {"unresolved": 0.8, "consequence": 0.4, "recency": 0.4}},
-      "candidate_b": {"candidate_id": "closed-low-impact", "scope_marker": "project:beta", "signals": {"unresolved": 0.0, "consequence": 0.4, "recency": 0.8}},
+      "candidate_a": {"candidate_id": "open-low-impact", "scope_marker": "project:beta", "signals": {"unresolvedness": 0.8, "consequence": 0.4, "recency": 0.4}},
+      "candidate_b": {"candidate_id": "closed-low-impact", "scope_marker": "project:beta", "signals": {"unresolvedness": 0.0, "consequence": 0.4, "recency": 0.8}},
       "expected": "a_higher",
       "rationale_category": "unresolved_state",
       "rationale": "Equal consequence leaves unresolved state as the bounded differentiator."

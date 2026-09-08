@@ -180,3 +180,29 @@ def test_pairwise_metrics_handle_ties_ambiguity_and_boundaries_correctly() -> No
     assert report.ambiguous_cases == 1
     assert report.not_comparable_cases == 1
     assert report.boundary_safe_rate == 1.0
+
+
+def test_reviewed_cyberbrain_policy_beats_all_trivial_baselines() -> None:
+    from benchmarks.salience.cyberbrain_policy import evaluate_reviewed_policy
+
+    cases = load_cases()
+    reviewed = evaluate_reviewed_policy()
+    baseline_reports = [evaluate_predictions(cases, predictor) for predictor in BASELINES.values()]
+
+    assert reviewed.pairwise_accuracy == 1.0
+    assert reviewed.tie_accuracy == 1.0
+    assert reviewed.boundary_safe_rate == 1.0
+    assert reviewed.pairwise_accuracy > max(report.pairwise_accuracy for report in baseline_reports)
+
+
+def test_controlled_shadow_review_is_scope_safe_and_non_mutating() -> None:
+    from benchmarks.salience.shadow_review import run_shadow_review
+
+    report = run_shadow_review()
+
+    assert report.total_cases == 28
+    assert report.comparable_cases == 26
+    assert report.boundary_cases == 2
+    assert report.boundary_safe_rate == 1.0
+    assert report.candidate_count == 52
+    assert report.non_neutral_candidates > 0

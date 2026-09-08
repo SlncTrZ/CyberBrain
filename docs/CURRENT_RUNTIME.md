@@ -31,7 +31,8 @@ Current source integrates the Wave 2 building blocks without changing the caller
 
 - authenticated MCP requests are bound to explicit `CallerAuthority` in `single_owner` mode; `agent_ready` and `multi_user` modes fail closed until a trusted caller-identity source is wired;
 - canonical `knowledge_get` and `memory_get` perform exact full-record fetch with storage-side ID + scope eligibility;
-- `cyberbrain.agent_adapter.MCPAgentClient` bridges the transport-neutral Agent Adapter contract to the canonical MCP Streamable HTTP tools.
+- `cyberbrain.agent_adapter.MCPAgentClient` bridges the transport-neutral Agent Adapter contract to the canonical MCP Streamable HTTP tools;
+- source-level Salience M3 provides a deterministic reviewed policy, same-scope advisory seam, and metrics-only shadow observer, but is not connected to caller-visible search/ranking.
 
 The current vector search path is still the canonical retrieval backend. A reviewed 28-case real-current-baseline benchmark rejected always-on global hybrid fusion because the Recall@5 gain came with a small MRR loss and rank regressions. Source includes disabled-by-default shadow instrumentation for the better-performing deterministic literal/fingerprint route. When enabled in `single_owner` mode, literal-heavy Knowledge queries submit a non-blocking BM25 observation over a bounded TTL cache of active Knowledge, with the same explicit equality filters reapplied before lexical scoring. The reusable pre-tokenized BM25 corpus avoids rebuilding document statistics on every shadow query; live observation has cleared the earlier recurring scoring-cost blocker. The caller still receives the unchanged vector result, and lexical promotion remains gated on larger relevance/reliability evidence. The Agent Adapter remains optional foreground convenience for compact context use rather than an owner of background cognition; broader tenancy enforcement over all existing search/write paths remains pending. Release and deployment state remain separate from this source-level contract.
 
@@ -77,6 +78,8 @@ The first cognitive-learning mechanism stores Prediction and Outcome records ins
 The provider exposes `prediction_record`, `prediction_resolve`, read-only `prediction_observe`, and read-only `prediction_pending`. Prediction/Outcome metadata is stored under `context.cognition`, and Dreaming can consume it through the existing episodic evidence path. Observation and pending summaries are bounded reads and do not mutate Episodic Memory or Knowledge.
 
 Prediction Learning remains in active observation. The runtime also exposes read-only `calibration_observe` for sample-level confidence calibration analysis. Initial end-to-end MCP gateway validation has exercised record, pending/observation, resolve, and calibration paths successfully. This validation does not replace continued observation or the minimum-evidence gates.
+
+Source `main` also contains completed M3 Salience primitives. `SalienceScorer` consumes explicit bounded signals; `salience-policy-v1` prioritizes prediction error, contradiction, and consequence above novelty/recency; `SalienceAdvisor` rejects cross-scope candidate sets; and `SalienceShadowObserver` records metrics without mutating candidate order. These are internal source-level cognitive primitives, not new MCP tools. They are intentionally not wired into the current retrieval path until broader search-path authorization is integrated.
 
 ## Dreaming profile
 

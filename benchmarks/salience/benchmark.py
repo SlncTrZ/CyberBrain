@@ -15,7 +15,7 @@ ScoredPrediction = Literal["a_higher", "b_higher", "tie"]
 _ALLOWED_SIGNALS = frozenset(
     {
         "prediction_error",
-        "unresolved",
+        "unresolvedness",
         "contradiction",
         "user_emphasis",
         "consequence",

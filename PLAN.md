@@ -132,12 +132,17 @@ linear.
      or strategy mutations.
 
 3. Salience / Priority
-   - Status: paused; not in active development and not reopened by the Level 8+ product/infrastructure work.
-   - Owns: bounded, explainable priority signals over memories/events/candidates.
-   - May use novelty, prediction error, contradiction, repetition, consequence, user emphasis, and
-     unresolvedness.
+   - Status: source-level M3 complete; runtime search integration remains intentionally inactive until
+     broader authorization/search-path prerequisites are complete.
+   - Owns: bounded, explainable priority signals over already-authorized memories/events/candidates.
+   - Uses the canonical signals prediction error, unresolvedness, contradiction, novelty, recurrence,
+     consequence, explicit user emphasis, and recency.
+   - The reviewed policy makes material evidence stronger than novelty/recency and is validated
+     against the fixed Salience benchmark; the generic scorer remains independently configurable.
+   - `SalienceAdvisor` is the bounded integration seam for future Concept Formation, Working Memory,
+     and Lifecycle work; `SalienceShadowObserver` changes no caller-visible ordering.
    - Does not select or persist the active task context; that belongs to Working Memory.
-   - Does not decide truth, promotion, forgetting, or Knowledge mutation.
+   - Does not decide truth, authorization, promotion, forgetting, or Knowledge mutation.
 
 4. Concept Formation / Abstraction
    - Status: planned.
@@ -233,7 +238,7 @@ Normative/current guidance:
 - docs/CURRENT_RUNTIME.md
 - docs/DREAMING_ROUTING.md
 - specs/
-  - including specs/PREDICTION_LEARNING.md and specs/METACOGNITION_CALIBRATION.md for the current cognitive learning mechanisms.
+  - including specs/PREDICTION_LEARNING.md, specs/METACOGNITION_CALIBRATION.md, and specs/SALIENCE.md for the current cognitive mechanisms.
 
 Historical development and migration evidence lives under docs/history/ and is non-normative.
 

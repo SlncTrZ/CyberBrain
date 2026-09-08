@@ -73,6 +73,8 @@ authenticated caller
 
 Exact get-by-ID must never become an authorization bypass, and retrieval ranking/similarity must never broaden caller authority. Current exact fetch combines canonical ID and effective scope in the storage query; missing and out-of-scope IDs intentionally share one not-found response shape. Multi-valued read authority may be narrowed for reads; durable write attribution must resolve every present identity dimension to one concrete value before persistence.
 
+Salience follows the same rule. `SalienceAdvisor` accepts only already-authorized candidates and fails closed if one advisory set crosses a scope marker. Salience score, reason codes, or advisory priority can never make an unauthorized record visible or widen an effective scope.
+
 ## Logging
 
 Logs may include:

@@ -113,6 +113,8 @@ The existing metrics registry records shadow detection/evaluation/failure counts
 
 Authorization/scope eligibility must be applied before candidate data can become visible to fusion, response projection, or agent context packing. Missing metadata does not satisfy an explicit project/topic/entity/status filter. Ranking metadata must never substitute for hard authorization filters.
 
+Salience is not part of canonical retrieval ranking in the current source contract. Future use must happen only after authorization/data eligibility, through the bounded Salience advisory contract in `SALIENCE.md`; a Salience score can prioritize an already-eligible candidate but cannot create retrieval eligibility or override a hard filter.
+
 ## Temporal recall for Dreaming
 
 Dreaming does not issue one undifferentiated semantic query over all history.
