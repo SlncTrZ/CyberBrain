@@ -23,3 +23,7 @@ names, compatibility service slots, acceptance-window instructions, or benchmark
 true at the time but are not current operating instructions.
 
 When current and historical documents differ, current guidance and canonical specs take precedence.
+
+## Source versus runtime status
+
+Current `main` contains unreleased Agent Adapter, hybrid-retrieval benchmark/fusion, and tenancy/isolation foundations. They are intentionally not yet wired into the current provider runtime. `CURRENT_RUNTIME.md`, `../TOOL_GUIDE.md`, and `../specs/TOOL_CONTRACT.md` therefore continue to describe the live/canonical runtime behavior, while `../PLAN.md` and `../README.md` also describe the newer source-only foundation status and the next serialized integration phase.

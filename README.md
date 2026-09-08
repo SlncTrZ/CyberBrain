@@ -13,6 +13,8 @@ Latest tagged release: v0.1.7.
 
 Current development version on `main`: 0.1.7.
 
+Wave 1 integration checkpoint on `main`: `e855816`. This is unreleased source work; the deployed runtime remains based on `c5a8ed9` with provider/package version 0.1.7.
+
 The repository is in use-and-observe mode: changes should be driven by reproducible defects,
 operational evidence, security/privacy needs, or portability gaps rather than speculative feature
 growth.
@@ -37,6 +39,16 @@ CyberBrain intentionally keeps exactly two canonical durable Qdrant collections:
 
 Dreaming is a process, not a third collection. Queue, audit, and reason-task coordination state are
 operational state stored separately from canonical Knowledge and Episodic Memory.
+
+## Unreleased Level 8+ source foundations
+
+`main` now contains three independently tested foundations that are intentionally **not yet wired into the current MCP/runtime/search/storage paths**:
+
+- `cyberbrain/agent_adapter/` — transport-neutral lifecycle routing, token budgeting, duplicate-context suppression, bounded exact-fetch policy, Prediction/Outcome orchestration policy, session closeout, and selective Dream enqueue policy;
+- `cyberbrain/retrieval/` — backend-neutral retrieval benchmark primitives, dependency-free BM25 scoring, deterministic reciprocal-rank fusion, and scope/status/temporal eligibility helpers;
+- `cyberbrain/tenancy/` — transport-neutral tenant/user/agent/project/session authority scopes, fail-closed narrowing, abstract storage-filter/write-attribution contracts, quota policy models, and readiness gates.
+
+These packages are source foundations, not a claim that hybrid retrieval, multi-user tenancy, exact get-by-ID, or automatic Agent Adapter behavior is live. The current provider/tool contract remains the one documented in `TOOL_GUIDE.md`, `specs/TOOL_CONTRACT.md`, and `docs/CURRENT_RUNTIME.md`. Shared Wave 2 integration must preserve hard authorization before exact fetch/retrieval/context packing.
 
 ## Learning primitives
 

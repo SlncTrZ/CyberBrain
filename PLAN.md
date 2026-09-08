@@ -2,6 +2,8 @@
 
 > Status: Current project guidance.
 > Release baseline: v0.1.7.
+> Wave 1 integration checkpoint: `e855816` (unreleased foundations).
+> Deployed runtime source remains `c5a8ed9` / provider version 0.1.7.
 
 ## Operating mode
 
@@ -22,6 +24,30 @@ CyberBrain provides:
 
 CyberBrain remains independent from any single AI client, model provider, routing product, or
 deployment topology.
+
+### Unreleased source foundations
+
+Wave 1 of the Level 8+ product/infrastructure track is complete on `main`. Three source-only foundations are merged and fully regression-tested:
+
+- Agent Integration & Token Efficiency (`cyberbrain/agent_adapter/`);
+- Retrieval & Memory Intelligence (`cyberbrain/retrieval/`);
+- Platform Safety & Productization (`cyberbrain/tenancy/`).
+
+They are deliberately not part of the current runtime/tool contract yet. No current MCP tool, storage schema, production search path, auth middleware, or deployed service behavior changed when these foundations merged.
+
+### Current engineering phase — Wave 2 shared integration
+
+Shared integration is serialized rather than parallel. The security/order invariant is:
+
+```text
+authenticated caller
+→ effective authority/scope
+→ hard storage/read eligibility
+→ scope-safe exact fetch / retrieval
+→ Agent Adapter context packing
+```
+
+Immediate integration work should therefore establish authenticated scope enforcement and scope-safe exact get-by-ID before exposing hybrid retrieval or automatic Agent Adapter behavior through current runtime paths. Hybrid retrieval must first be measured against the real current vector baseline; the Wave 1 structural benchmark is promising evidence, not production acceptance.
 
 ## Current architectural invariants
 
@@ -104,7 +130,7 @@ linear.
      or strategy mutations.
 
 3. Salience / Priority
-   - Status: planned; not in active development.
+   - Status: paused; not in active development and not reopened by the Level 8+ product/infrastructure work.
    - Owns: bounded, explainable priority signals over memories/events/candidates.
    - May use novelty, prediction error, contradiction, repetition, consequence, user emphasis, and
      unresolvedness.

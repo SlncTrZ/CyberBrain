@@ -75,15 +75,19 @@ Thresholds are policy/config values scoped to the retrieval mode.
 
 Search results must expose similarity score when available, but similarity score is not equivalent to truth/confidence.
 
-## Hybrid future compatibility
+## Hybrid evolution and current source status
 
-The public domain contract should allow implementation to evolve from pure vector retrieval to:
+The canonical runtime search path currently remains vector retrieval plus metadata/lifecycle filtering. The public domain contract should allow implementation to evolve toward:
 
 ```text
-vector + lexical + metadata + reranking
+vector + lexical + metadata + deterministic fusion + optional bounded reranking
 ```
 
 without changing canonical result semantics.
+
+`main` now contains a source-only `cyberbrain.retrieval` foundation with a backend-neutral benchmark contract, dependency-free BM25 scoring, deterministic reciprocal-rank fusion, and explicit scope/status/temporal eligibility helpers. This foundation is **not yet wired into canonical Knowledge/Memory search**. Its six-case structural benchmark validates the harness and identifies promising query classes, but production adoption requires comparison against real current vector-search results on a larger reviewed benchmark.
+
+Authorization/scope eligibility must be applied before candidate data can become visible to fusion, response projection, or agent context packing. Ranking metadata must never substitute for hard authorization filters.
 
 ## Temporal recall for Dreaming
 

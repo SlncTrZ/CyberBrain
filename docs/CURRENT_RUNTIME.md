@@ -27,6 +27,12 @@ The provider exposes:
 
 Network-visible MCP access is authenticated when authentication is enabled.
 
+## Unwired source foundations
+
+The current source tree also contains `cyberbrain.agent_adapter`, `cyberbrain.retrieval`, and `cyberbrain.tenancy` foundation packages. They are not yet connected to the runtime paths described in this document. In particular, the current provider does not yet expose canonical exact get-by-ID tools, does not yet replace vector search with the Wave 1 hybrid engine, and does not yet enforce the new tenancy scope model in MCP/API/storage paths.
+
+Those capabilities become part of this runtime contract only after explicit Wave 2 integration, end-to-end authorization/regression testing, tool/spec updates where required, and a later release/deployment decision.
+
 ## Canonical data
 
 CyberBrain uses exactly two durable Qdrant collections:

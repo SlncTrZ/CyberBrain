@@ -55,6 +55,24 @@ MCP transport authentication answers who may call the provider.
 
 Tool-level authorization/policy may additionally be enforced by SlncTrZ-MCP. CyberBrain must not self-expand gateway authority or bypass gateway policy.
 
+### Tenancy/isolation source foundation
+
+`main` contains an unreleased `cyberbrain.tenancy` foundation for transport-neutral tenant/user/agent/project/session authority scopes, true subset narrowing, wildcard rejection, abstract storage filters, concrete write attribution, quota policy models, and readiness gates. This package is **not current runtime enforcement**: the deployed/provider path still uses the authentication boundary described above and has not yet mapped authenticated callers into the tenancy authority model or applied those filters to canonical storage.
+
+Wave 2 integration must fail closed in this order:
+
+```text
+authenticated caller
+→ granted authority
+→ requested-scope narrowing
+→ effective scope
+→ hard storage/read filter
+→ retrieval or exact get-by-ID
+→ downstream ranking/context packing
+```
+
+Exact get-by-ID must never become an authorization bypass, and retrieval ranking/similarity must never broaden caller authority. Multi-valued read authority may be narrowed for reads; durable write attribution must resolve every present identity dimension to one concrete value before persistence.
+
 ## Logging
 
 Logs may include:
