@@ -6,6 +6,7 @@ from typing import Any
 from uuid import UUID
 
 from cyberbrain.embedding.base import EmbeddingProvider
+from cyberbrain.retrieval.shadow import KnowledgeLiteralShadowObserver
 from cyberbrain.storage.base import PointRepository
 from cyberbrain.storage.scoping import storage_filter_to_repository_filter
 from cyberbrain.tenancy import (
@@ -26,11 +27,13 @@ class KnowledgeSearchService:
         embedding: EmbeddingProvider,
         collection: str,
         score_threshold: float | None = 0.7,
+        literal_shadow: KnowledgeLiteralShadowObserver | None = None,
     ) -> None:
         self._repository = repository
         self._embedding = embedding
         self._collection = collection
         self._score_threshold = score_threshold
+        self._literal_shadow = literal_shadow
 
     @property
     def collection(self) -> str:
@@ -66,9 +69,9 @@ class KnowledgeSearchService:
         limit: int = 5,
         **filters: Any,
     ) -> list[dict[str, Any]]:
-        conditions = [
-            {"key": "status", "match": {"value": filters.pop("status", "active")}}
-        ]
+        status = filters.pop("status", "active")
+        normalized_filters = {"status": status, **filters}
+        conditions = [{"key": "status", "match": {"value": status}}]
         for key, value in filters.items():
             if value is not None:
                 conditions.append({"key": key, "match": {"value": value}})
@@ -81,7 +84,7 @@ class KnowledgeSearchService:
             qdrant_filter={"must": conditions},
             score_threshold=self._score_threshold,
         )
-        return [
+        rows = [
             {
                 "id": point["id"],
                 "score": point.get("score"),
@@ -89,6 +92,14 @@ class KnowledgeSearchService:
             }
             for point in points
         ]
+        if self._literal_shadow is not None:
+            self._literal_shadow.submit(
+                query=query,
+                vector_rows=rows,
+                filters=normalized_filters,
+                limit=limit,
+            )
+        return rows
 
     def timeline(
         self,

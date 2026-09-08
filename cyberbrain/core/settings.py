@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     embedding_version: str = "nomic-embed-text@v1"
     knowledge_search_score_threshold: float | None = 0.55
     memory_search_score_threshold: float | None = 0.55
+    retrieval_literal_shadow_enabled: bool = False
+    retrieval_literal_shadow_cache_ttl_seconds: float = 300.0
+    retrieval_literal_shadow_max_records: int = 5_000
     knowledge_evolution_lock_file: str | None = None
 
     mcp_auth_token: str | None = Field(default=None, repr=False)
@@ -64,6 +67,19 @@ class Settings(BaseSettings):
         ):
             if value is not None and not 0 <= value <= 1:
                 raise ConfigurationError(f"{name} must be between 0 and 1 or null")
+        if self.retrieval_literal_shadow_cache_ttl_seconds <= 0:
+            raise ConfigurationError(
+                "retrieval_literal_shadow_cache_ttl_seconds must be > 0"
+            )
+        if self.retrieval_literal_shadow_max_records < 1:
+            raise ConfigurationError("retrieval_literal_shadow_max_records must be > 0")
+        if (
+            self.retrieval_literal_shadow_enabled
+            and self.deployment_mode is not DeploymentMode.SINGLE_OWNER
+        ):
+            raise ConfigurationError(
+                "retrieval literal shadow is currently supported only in single_owner mode"
+            )
         if self.dream_mcp_wait_seconds < 0:
             raise ConfigurationError("dream_mcp_wait_seconds must be >= 0")
         if self.dream_mcp_poll_seconds <= 0:

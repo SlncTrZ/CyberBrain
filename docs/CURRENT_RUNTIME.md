@@ -35,7 +35,7 @@ Current source has integrated three Wave 2 building blocks without changing the 
 - canonical `knowledge_get` and `memory_get` perform exact full-record fetch with storage-side ID + scope eligibility;
 - `cyberbrain.agent_adapter.MCPAgentClient` bridges the transport-neutral Agent Adapter contract to the canonical MCP Streamable HTTP tools.
 
-The current vector search path is still the canonical retrieval backend. A reviewed 28-case real-current-baseline benchmark has now rejected always-on global hybrid fusion because the Recall@5 gain came with a small MRR loss and rank regressions. A deterministic literal/fingerprint lexical route showed better benchmark behavior and is only a shadow candidate; it is not active canonical retrieval. Automatic Agent Adapter lifecycle hooks are not attached to arbitrary external agents, and broader tenancy enforcement over all existing search/write paths remains pending. Release/deployment state may therefore be behind this source-level contract until an explicit release/deployment decision is made.
+The current vector search path is still the canonical retrieval backend. A reviewed 28-case real-current-baseline benchmark rejected always-on global hybrid fusion because the Recall@5 gain came with a small MRR loss and rank regressions. Source now includes disabled-by-default shadow instrumentation for the better-performing deterministic literal/fingerprint route. When enabled in the current `single_owner` source runtime, literal-heavy Knowledge queries submit a non-blocking BM25 observation over a bounded TTL cache of active Knowledge, with the same explicit equality filters reapplied before lexical scoring. The caller still receives the unchanged vector result; shadow failures only affect shadow metrics/logging. Automatic Agent Adapter lifecycle hooks are not attached to arbitrary external agents, and broader tenancy enforcement over all existing search/write paths remains pending. Release/deployment state may therefore be behind this source-level contract until an explicit release/deployment decision is made.
 
 ## Canonical data
 
@@ -116,6 +116,20 @@ The Dream fallback route service reads either:
 
 Route files contain behavior only. Credentials are referenced by environment-variable name and
 remain runtime-only.
+
+## Retrieval shadow instrumentation
+
+The literal/fingerprint shadow observer is source-only observation infrastructure and is disabled by default.
+
+```text
+CYBERBRAIN_RETRIEVAL_LITERAL_SHADOW_ENABLED=false
+CYBERBRAIN_RETRIEVAL_LITERAL_SHADOW_CACHE_TTL_SECONDS=300
+CYBERBRAIN_RETRIEVAL_LITERAL_SHADOW_MAX_RECORDS=5000
+```
+
+When enabled, only `status=active` Knowledge searches with strong deterministic lexical fingerprints are evaluated. The worker does not replace or rerank the caller-visible vector rows. It records numeric counters/timings in the existing authenticated `/metrics` registry and logs only a truncated SHA-256 query fingerprint plus record IDs/rank overlap, never raw query text or stored content.
+
+The cache is bounded and refreshes through payload-only Qdrant scrolls. If the configured record bound is exceeded, the shadow observation fails closed and the canonical vector request remains unaffected. Non-active status searches are skipped rather than evaluated against an incompatible cache.
 
 ## Health and readiness
 

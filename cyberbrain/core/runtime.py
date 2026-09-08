@@ -13,6 +13,7 @@ from cyberbrain.embedding.ollama import OllamaEmbeddingProvider
 from cyberbrain.knowledge.evolution import KnowledgeEvolutionService
 from cyberbrain.knowledge.search import KnowledgeSearchService
 from cyberbrain.memory.service import MemoryService
+from cyberbrain.retrieval.shadow import KnowledgeLiteralShadowObserver
 from cyberbrain.storage.base import PointRepository
 from cyberbrain.storage.qdrant import QdrantRepository
 
@@ -79,6 +80,17 @@ def build_runtime(settings: Settings) -> RuntimeServices:
         repository=repository,
         episodic_collection=settings.episodic_collection,
     )
+    literal_shadow = (
+        KnowledgeLiteralShadowObserver(
+            repository=repository,
+            collection=settings.knowledge_collection,
+            metrics=metrics,
+            cache_ttl_seconds=settings.retrieval_literal_shadow_cache_ttl_seconds,
+            max_records=settings.retrieval_literal_shadow_max_records,
+        )
+        if settings.retrieval_literal_shadow_enabled
+        else None
+    )
     return RuntimeServices(
         metrics=metrics,
         repository=repository,
@@ -89,6 +101,7 @@ def build_runtime(settings: Settings) -> RuntimeServices:
             embedding=embedding,
             collection=settings.knowledge_collection,
             score_threshold=settings.knowledge_search_score_threshold,
+            literal_shadow=literal_shadow,
         ),
         memory=memory,
         prediction_learning=prediction_learning,

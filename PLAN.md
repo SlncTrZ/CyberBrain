@@ -47,7 +47,7 @@ authenticated caller
 → Agent Adapter context packing
 ```
 
-The scope/auth, exact-fetch, real Agent Adapter client bridge, and read-only real retrieval benchmark slices are now implemented on source `main`. The benchmark decision is **do not promote global hybrid retrieval**. The next retrieval step, if continued, is shadow-only validation of a deterministic literal/fingerprint router: lexical retrieval for queries with strong commit/version/model/port-style lexical signals, current vector retrieval otherwise. Shadow evidence must preserve hard metadata authorization, show no ranking regressions or scope leakage, and remain cheap before any canonical search change. Automatic Agent Adapter lifecycle activation remains later than this retrieval observation gate.
+The scope/auth, exact-fetch, real Agent Adapter client bridge, read-only real retrieval benchmark, and shadow literal-routing instrumentation slices are now implemented on source `main`. The benchmark decision remains **do not promote global hybrid retrieval**. The source shadow path is disabled by default and evaluates only literal/fingerprint-heavy Knowledge queries in a non-blocking worker; the current vector result remains caller-visible and unchanged. Its cache is bounded/TTL-controlled, explicit metadata filters are reapplied before BM25, and failures are fail-open to the canonical search path. The next retrieval gate is real observation of these shadow metrics, not a caller-visible retrieval change. Automatic Agent Adapter lifecycle activation remains later than this retrieval observation gate.
 
 ## Current architectural invariants
 

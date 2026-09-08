@@ -24,6 +24,14 @@ class FakeEmbedding:
         return [0.1, 0.2, 0.3]
 
 
+class ShadowRecorder:
+    def __init__(self) -> None:
+        self.calls: list[dict[str, Any]] = []
+
+    def submit(self, **kwargs: Any) -> None:
+        self.calls.append(kwargs)
+
+
 class FakeRepository:
     def __init__(self) -> None:
         self.points: dict[UUID, dict[str, Any]] = {}
@@ -186,6 +194,44 @@ def test_exact_fetch_fails_closed_for_multi_user_until_identity_fields_exist() -
         point_id=UUID("11111111-1111-1111-1111-111111111111"),
         authority=authority,
     ) is None
+
+
+def test_knowledge_search_shadow_cannot_replace_vector_rows() -> None:
+    repo = FakeRepository()
+    shadow = ShadowRecorder()
+    service = KnowledgeSearchService(
+        repository=repo,
+        embedding=FakeEmbedding(),
+        collection="cyberbrain_knowledge",
+        literal_shadow=shadow,  # type: ignore[arg-type]
+    )
+    point_id = UUID("22222222-2222-2222-2222-222222222222")
+    repo.upsert(
+        "cyberbrain_knowledge",
+        point_id=point_id,
+        vector=[0.1, 0.2, 0.3],
+        payload={"status": "active", "domain": "ops", "content": "vector result"},
+    )
+
+    rows = service.search(query="commit abc1234", limit=5, domain="ops")
+
+    assert rows == [
+        {
+            "id": str(point_id),
+            "score": 0.9,
+            "status": "active",
+            "domain": "ops",
+            "content": "vector result",
+        }
+    ]
+    assert shadow.calls == [
+        {
+            "query": "commit abc1234",
+            "vector_rows": rows,
+            "filters": {"status": "active", "domain": "ops"},
+            "limit": 5,
+        }
+    ]
 
 
 def test_knowledge_search_defaults_to_active_status() -> None:

@@ -4,30 +4,15 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import statistics
 from pathlib import Path
 from time import perf_counter
 from typing import Any
 
 from cyberbrain.retrieval.engine import HybridRetrievalEngine
+from cyberbrain.retrieval.literal import literal_heavy_query
 from cyberbrain.retrieval.models import RetrievalHit
 from cyberbrain.retrieval.signals import ScopeTemporalSignals
-
-_LITERAL_PATTERN = re.compile(
-    r"\b[0-9a-f]{7,40}\b"
-    r"|\b\d+\.\d+(?:\.\d+)?\b"
-    r"|\b\d{4,5}\b"
-    r"|\b[\w.-]+:[\w.-]+\b"
-    r"|\b\d+/\d+\b",
-    re.IGNORECASE,
-)
-
-
-def literal_heavy_query(query: str) -> bool:
-    """Return true for queries carrying strong lexical/fingerprint signals."""
-
-    return bool(_LITERAL_PATTERN.search(query))
 
 
 def _load_json(path: Path) -> dict[str, Any]:

@@ -95,6 +95,22 @@ Observed benchmark decision:
 
 Therefore always-on hybrid fusion is **not promoted**. The literal/fingerprint route is only a **conditional shadow candidate** until it survives production-like shadow observation. The canonical Knowledge/Memory search backend remains vector retrieval.
 
+### Literal/fingerprint shadow contract
+
+Source `main` includes disabled-by-default shadow instrumentation for Knowledge search. It is observational only:
+
+```text
+literal-heavy query detected
+→ canonical vector search completes normally
+→ caller-visible vector rows remain unchanged
+→ non-blocking shadow worker evaluates BM25
+→ numeric metrics + content-free query/record fingerprints only
+```
+
+The observer uses a bounded TTL cache of `status=active` Knowledge payloads and reapplies the same explicit equality filters before BM25 scoring. Missing metadata is ineligible. Non-active status searches are skipped. Cache overflow, storage errors, worker contention, or any other shadow failure must not alter or fail the canonical vector response.
+
+The existing metrics registry records shadow detection/evaluation/failure counts, cache refresh/size, worker-busy skips, top-1 agreement/change counts, overlap@K, vector-top1 lexical rank, compact-token estimates, and shadow/cache timings. Raw query text and stored content are not metrics labels or log fields; logs use a truncated SHA-256 query fingerprint and record IDs only.
+
 Authorization/scope eligibility must be applied before candidate data can become visible to fusion, response projection, or agent context packing. Missing metadata does not satisfy an explicit project/topic/entity/status filter. Ranking metadata must never substitute for hard authorization filters.
 
 ## Temporal recall for Dreaming

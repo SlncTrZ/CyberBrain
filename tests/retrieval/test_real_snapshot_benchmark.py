@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import json
 
-from benchmarks.retrieval.benchmark_real_snapshot import literal_heavy_query, run
+from benchmarks.retrieval.benchmark_real_snapshot import run
+from cyberbrain.retrieval.literal import literal_heavy_query
 
 
 def test_literal_heavy_query_detects_fingerprints_but_not_plain_semantics() -> None:

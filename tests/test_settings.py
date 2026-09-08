@@ -32,6 +32,22 @@ def test_non_single_owner_mode_requires_trusted_identity_source(mode: Deployment
         settings.validate_runtime()
 
 
+def test_literal_shadow_bounds_must_be_positive() -> None:
+    with pytest.raises(ConfigurationError, match="cache_ttl_seconds"):
+        Settings(
+            mcp_auth_token=None,
+            require_auth=False,
+            retrieval_literal_shadow_cache_ttl_seconds=0,
+        ).validate_runtime()
+
+    with pytest.raises(ConfigurationError, match="max_records"):
+        Settings(
+            mcp_auth_token=None,
+            require_auth=False,
+            retrieval_literal_shadow_max_records=0,
+        ).validate_runtime()
+
+
 def test_dream_mcp_wait_can_be_zero_but_not_negative() -> None:
     Settings(
         mcp_auth_token=None,
