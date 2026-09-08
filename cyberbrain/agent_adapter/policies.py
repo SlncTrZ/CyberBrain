@@ -6,10 +6,8 @@ from collections.abc import Iterable
 
 from cyberbrain.agent_adapter.models import (
     Consequence,
-    DreamSignals,
     Observation,
     OutcomeMatch,
-    PolicyDecision,
     PredictionDecision,
     PredictionIntent,
     SessionCloseout,
@@ -113,25 +111,3 @@ class CloseoutPolicy:
         if self.max_chars == 1:
             return text[:1]
         return text[: self.max_chars - 1].rstrip() + "…"
-
-
-class DreamEnqueuePolicy:
-    def decide(self, signals: DreamSignals) -> PolicyDecision:
-        if signals.trivial_only:
-            return PolicyDecision(False, ("trivial_session",))
-
-        reasons: list[str] = []
-        if signals.reusable_lesson:
-            reasons.append("reusable_lesson")
-        if signals.prediction_error:
-            reasons.append("prediction_error")
-        if signals.repeated_failure:
-            reasons.append("repeated_failure")
-        if signals.significant_change:
-            reasons.append("significant_change")
-        if signals.surprising_result:
-            reasons.append("surprising_result")
-
-        if not reasons:
-            return PolicyDecision(False, ("no_material_consolidation_signal",))
-        return PolicyDecision(True, tuple(reasons))

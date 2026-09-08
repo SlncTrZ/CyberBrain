@@ -50,6 +50,21 @@ dream_review_resolve
 
 These are the current canonical CyberBrain tool names exposed by the provider. Gateway-level namespacing, when used, is owned by the integration layer rather than by CyberBrain.
 
+## Agent operating boundary
+
+Normal external agents are memory consumers/producers. Their ordinary CyberBrain workflow is intentionally small:
+
+```text
+need context → search → optionally exact get
+worth persisting → knowledge_store or memory_store
+```
+
+CyberBrain owns what happens after storage: normalization, validation, embedding, Knowledge Evolution, the Episodic pending lifecycle, automatic Dream scheduling/processing, evidence/provenance gates, promotion/review, and Knowledge writeback. Normal Codex/Pi/Claude-style clients should not orchestrate those internal stages.
+
+`dream_enqueue`, Prediction operations, Calibration observation, Dream reason-task operations, and review operations remain available as explicit advanced/control surfaces. Their presence in the MCP catalog does not make them part of the normal agent read/write loop.
+
+Prediction Learning is the causal exception to fully post-storage processing: a valid Prediction must exist before its outcome is known. Do not fabricate a Prediction retrospectively from a completed-action summary. A runtime with a genuine pre-action/outcome event seam may bridge those events into Prediction Learning without exposing the subsystem to the acting agent.
+
 ## Compatibility aliases
 
 ```text
@@ -77,7 +92,7 @@ Read-only. Returns the running provider contract, version metadata, contract has
 
 - `memory_search` searches episodic memory and applies session/channel/role/agent/project/topic filters. Canonical recall defaults to `view=compact`; use `view=full` only when broad search truly needs complete rows.
 - `memory_get` fetches one canonical Episodic record by exact UUID and returns the full stored row only when that ID is eligible under the caller's bound authority scope. It does not perform semantic search.
-- `memory_store` stores one canonical episodic record with required `session_id` and `event_time`.
+- `memory_store` stores one canonical episodic record with required `session_id` and `event_time`. Ordinary Episodes enter `dream_status=pending`; the server-side Dream scheduler later discovers eligible quiet sessions automatically.
 
 ### Compact recall
 
@@ -112,7 +127,7 @@ These aliases may be retired after dependent clients have migrated to canonical 
 - Prediction/Outcome records remain Episodic evidence. Neither prior confidence nor outcome assessment has direct Knowledge write authority.
 - Outcome identity context is inherited from the referenced Prediction so callers cannot silently relabel the learning event.
 
-Recommended agent loop: `prediction_record` → `prediction_pending` / `prediction_observe` → `prediction_resolve` → Dreaming. See `specs/PREDICTION_LEARNING.md` for the full contract.
+Prediction operations are an explicit causal-learning surface, not a required ordinary-agent loop. Use them only when a caller/integration can preserve the real pre-outcome ordering. Dreaming can consume the resulting Prediction/Outcome Episodes automatically through the normal episodic pipeline. See `specs/PREDICTION_LEARNING.md` for the full contract.
 
 ### Calibration
 
@@ -126,7 +141,7 @@ See `specs/METACOGNITION_CALIBRATION.md`.
 
 ### Dreaming operations
 
-- `dream_enqueue` queues a completed session for the Dream worker. Optional focal topics may be supplied.
+- `dream_enqueue` explicitly/manual-queues a completed session for the Dream worker. It is an advanced override/control path; ordinary pending Episodes are discovered and queued automatically by the server-side Dream scheduler after the configured quiet period. Optional focal topics may be supplied.
 - `dream_status` returns queue status for one session.
 - `dream_reason_claim` leases the next pending bounded micro-reasoning task to an external MCP consumer such as a dedicated ChatGPT Reasoner session.
 - `dream_reason_submit` submits structured evidence-grounded claims for the active lease; task ID, claim token, confidence, and evidence references are validated before acceptance.

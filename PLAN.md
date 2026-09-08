@@ -3,7 +3,7 @@
 > Status: Current project guidance.
 > Release baseline: v0.1.7.
 > Wave 1 integration checkpoint: `e855816` (unreleased foundations).
-> Deployed runtime source remains `c5a8ed9` / provider version 0.1.7.
+> Deployment state is managed separately from source guidance; verify the actual runtime before making deployment claims.
 
 ## Operating mode
 
@@ -22,8 +22,9 @@ CyberBrain provides:
 - provider-neutral Dream fallback routing;
 - backup, migration, and compatibility tooling.
 
-CyberBrain remains independent from any single AI client, model provider, routing product, or
-deployment topology.
+CyberBrain remains independent from any single AI client, model provider, routing product, or deployment topology.
+
+Normal external agents are memory consumers/producers. Their stable responsibility is recall/get/store. CyberBrain owns post-storage cognition: normalization, validation, embedding, Knowledge Evolution, Episodic pending-state processing, automatic Dream scheduling/processing, promotion/review, and Knowledge writeback. Prediction Learning preserves causal order and may use a thin pre-action/outcome event bridge where a runtime genuinely exposes those events; it must not be reconstructed retrospectively.
 
 ### Unreleased integration state
 
@@ -33,7 +34,7 @@ Wave 1 of the Level 8+ product/infrastructure track is complete on `main`. Wave 
 - canonical `knowledge_get(id)` and `memory_get(id)` perform exact full fetch with storage-side scope eligibility and indistinguishable absent/out-of-scope not-found behavior;
 - `cyberbrain.agent_adapter` has a real MCP Streamable HTTP client bridge over the canonical tool contract.
 
-The retrieval benchmark/fusion foundation remains unconnected to production search, but its real-current-baseline gate is now complete. A 28-case reviewed benchmark against the current vector path rejected always-on global hybrid fusion: it improved Recall@5 but slightly reduced MRR and introduced rank regressions. A deterministic literal/fingerprint router that uses lexical retrieval only for literal-heavy queries while retaining vector retrieval elsewhere improved Recall@5 and MRR with no observed rank regressions in the reviewed set; this is a **conditional shadow candidate**, not production approval. Automatic Agent Adapter lifecycle hooks and broader tenancy enforcement across existing search/write paths are also still pending. These changes are unreleased and do not alter an older deployed runtime automatically.
+The retrieval benchmark/fusion foundation remains observational rather than caller-visible, but its real-current-baseline gate is complete. A 28-case reviewed benchmark against the current vector path rejected always-on global hybrid fusion: it improved Recall@5 but slightly reduced MRR and introduced rank regressions. A deterministic literal/fingerprint router that uses lexical retrieval only for literal-heavy queries while retaining vector retrieval elsewhere improved Recall@5 and MRR with no observed rank regressions in the reviewed set; this is a **conditional shadow candidate**, not production approval. Source now reuses a pre-tokenized BM25 shadow corpus to remove repeated document-tokenization cost while preserving ranking semantics. The Agent Adapter remains optional foreground convenience rather than a cognitive lifecycle owner. Broader tenancy enforcement across existing search/write paths is still pending. These source changes remain unreleased until an explicit release decision.
 
 ### Current engineering phase — Wave 2 shared integration
 
@@ -44,10 +45,11 @@ authenticated caller
 → effective authority/scope
 → hard storage/read eligibility
 → scope-safe exact fetch / retrieval
-→ Agent Adapter context packing
+→ optional foreground Agent Adapter context packing
+→ server-owned post-storage cognition
 ```
 
-The scope/auth, exact-fetch, real Agent Adapter client bridge, read-only real retrieval benchmark, and shadow literal-routing instrumentation slices are now implemented on source `main`. The benchmark decision remains **do not promote global hybrid retrieval**. The source shadow path is disabled by default and evaluates only literal/fingerprint-heavy Knowledge queries in a non-blocking worker; the current vector result remains caller-visible and unchanged. Its cache is bounded/TTL-controlled, explicit metadata filters are reapplied before BM25, and failures are fail-open to the canonical search path. The next retrieval gate is real observation of these shadow metrics, not a caller-visible retrieval change. Automatic Agent Adapter lifecycle activation remains later than this retrieval observation gate.
+The scope/auth, exact-fetch, real Agent Adapter client bridge, read-only real retrieval benchmark, shadow literal-routing instrumentation, reusable BM25 shadow corpus, and server-owned post-storage cognition contract/tests are implemented on source `main`. The benchmark decision remains **do not promote global hybrid retrieval**. The source shadow path is disabled by default and evaluates only literal/fingerprint-heavy Knowledge queries in a non-blocking worker; the current vector result remains caller-visible and unchanged. Its cache is bounded/TTL-controlled, explicit metadata filters are reapplied before BM25, and failures are fail-open to the canonical search path. The next retrieval gate is real observation after an explicitly authorized runtime update, not a caller-visible retrieval change. There is no remaining goal to make Agent Adapter orchestrate Dreaming or other background cognition.
 
 ## Current architectural invariants
 
@@ -66,6 +68,9 @@ The scope/auth, exact-fetch, real Agent Adapter client bridge, read-only real re
 9. Secrets never belong in tracked configuration, prompts, logs, or tool results.
 10. Compatibility aliases are adapters only and must not become a second business-logic path.
 11. Canonical broad recall is compact-first at the MCP response boundary. Full stored content remains available only through an explicit full-view request; response projection must not change ranking, storage, provenance, or evidence semantics.
+12. External agents are memory consumers/producers; CyberBrain owns post-storage cognition.
+13. `dream_enqueue` is an explicit/manual control path, not a required step after ordinary Episodic storage.
+14. Prediction evidence must preserve pre-outcome causal order; retrospective prediction fabrication is invalid.
 
 ## Change policy
 

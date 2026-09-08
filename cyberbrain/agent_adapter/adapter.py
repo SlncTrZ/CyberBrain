@@ -12,33 +12,25 @@ from cyberbrain.agent_adapter.models import (
     AgentScope,
     ContextLedger,
     ContextPack,
-    DreamSignals,
-    Observation,
-    OutcomeMatch,
-    PredictionDecision,
-    PredictionIntent,
     RecallCandidate,
     RecallKind,
     SessionCloseout,
     TurnRecallIntent,
 )
-from cyberbrain.agent_adapter.policies import (
-    CloseoutPolicy,
-    DreamEnqueuePolicy,
-    LifecyclePolicy,
-    OutcomeMatchPolicy,
-    PredictionPolicy,
-)
+from cyberbrain.agent_adapter.policies import CloseoutPolicy, LifecyclePolicy
 
 
 @dataclass(frozen=True, slots=True)
 class BootstrapResult:
     context: ContextPack
-    pending_predictions: tuple[dict[str, Any], ...]
 
 
 class UniversalAgentAdapter:
-    """Wave-1 lifecycle orchestrator over a transport-neutral CyberBrain client."""
+    """Foreground memory/context helper over a transport-neutral CyberBrain client.
+
+    The adapter consumes and produces memory only. Background cognition, including Dream
+    scheduling/processing and Knowledge Evolution, remains CyberBrain-owned.
+    """
 
     def __init__(
         self,
@@ -50,10 +42,7 @@ class UniversalAgentAdapter:
         self.client = client
         self.governor = TokenGovernor(budget_policy)
         self.lifecycle_policy = LifecyclePolicy()
-        self.prediction_policy = PredictionPolicy()
-        self.outcome_policy = OutcomeMatchPolicy()
         self.closeout_policy = CloseoutPolicy(max_chars=closeout_max_chars)
-        self.dream_policy = DreamEnqueuePolicy()
 
     async def bootstrap(
         self,
@@ -77,11 +66,6 @@ class UniversalAgentAdapter:
             view="compact",
             **episodic_filters,
         )
-        pending_rows = await self.client.prediction_pending(
-            limit=policy.max_pending_predictions,
-            **episodic_filters,
-        )
-
         knowledge_candidates = [
             RecallCandidate.from_mapping(row, kind=RecallKind.KNOWLEDGE)
             for row in knowledge_rows
@@ -111,11 +95,7 @@ class UniversalAgentAdapter:
             estimated_tokens=knowledge_pack.estimated_tokens + episode_pack.estimated_tokens,
             omitted_ids=knowledge_pack.omitted_ids + episode_pack.omitted_ids,
         )
-        for row in pending_rows:
-            pending_id = str(row.get("id") or row.get("prediction_id") or "").strip()
-            if pending_id:
-                ledger.pending_prediction_ids.add(pending_id)
-        return BootstrapResult(context=context, pending_predictions=tuple(pending_rows))
+        return BootstrapResult(context=context)
 
     async def recall(
         self,
@@ -198,67 +178,15 @@ class UniversalAgentAdapter:
             ledger.full_fetch_count += 1
         return row
 
-    async def maybe_record_prediction(
-        self,
-        *,
-        intent: PredictionIntent,
-        scope: AgentScope,
-    ) -> tuple[PredictionDecision, dict[str, Any] | None]:
-        decision = self.prediction_policy.decide(intent)
-        if not decision.create:
-            return decision, None
-        metadata: dict[str, Any] = scope.episodic_filters()
-        if intent.action:
-            metadata["action"] = intent.action
-        if intent.correlation_id:
-            metadata["context"] = {"correlation_id": intent.correlation_id}
-        result = await self.client.prediction_record(
-            expected_outcome=intent.expected_outcome,
-            confidence=intent.confidence,
-            session_id=scope.session_id,
-            event_time=intent.event_time,
-            **metadata,
-        )
-        return decision, result
-
-    def match_observation(
-        self,
-        *,
-        pending_predictions: list[dict[str, Any]],
-        observation: Observation,
-    ) -> OutcomeMatch:
-        return self.outcome_policy.match(pending_predictions, observation)
-
-    async def resolve_observation(
-        self,
-        *,
-        pending_predictions: list[dict[str, Any]],
-        observation: Observation,
-    ) -> tuple[OutcomeMatch, dict[str, Any] | None]:
-        match = self.match_observation(
-            pending_predictions=pending_predictions,
-            observation=observation,
-        )
-        if match.prediction_id is None:
-            return match, None
-        result = await self.client.prediction_resolve(
-            prediction_id=match.prediction_id,
-            observed_outcome=observation.observed_outcome,
-            assessment=observation.assessment,
-            event_time=observation.event_time,
-        )
-        return match, result
-
     async def close_session(
         self,
         *,
         scope: AgentScope,
         closeout: SessionCloseout,
         event_time: datetime,
-        dream_signals: DreamSignals | None = None,
-    ) -> tuple[dict[str, Any], bool]:
+    ) -> dict[str, Any]:
         content = self.closeout_policy.render(closeout)
-        stored = await self.client.memory_store(
+        return await self.client.memory_store(
             content=content,
             session_id=scope.session_id,
             event_time=event_time,
@@ -267,10 +195,3 @@ class UniversalAgentAdapter:
             topic=scope.topic,
             source="agent_adapter_closeout",
         )
-        enqueue = False
-        if dream_signals is not None:
-            decision = self.dream_policy.decide(dream_signals)
-            if decision.allow:
-                await self.client.dream_enqueue(session_id=scope.session_id)
-                enqueue = True
-        return stored, enqueue

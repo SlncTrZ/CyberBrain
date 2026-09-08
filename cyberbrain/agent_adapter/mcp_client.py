@@ -15,7 +15,11 @@ class AsyncToolInvoker(Protocol):
 
 
 class MCPAgentClient:
-    """CyberBrainClient implementation over the canonical MCP tool contract."""
+    """MCP client for the minimal Agent Adapter memory contract plus advanced controls.
+
+    UniversalAgentAdapter uses only recall/get/store methods. Prediction and Dream operations remain
+    explicit MCP control surfaces for callers that intentionally opt into those mechanisms.
+    """
 
     def __init__(self, invoker: AsyncToolInvoker) -> None:
         self._invoker = invoker

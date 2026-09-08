@@ -35,6 +35,14 @@ completed session
   → Knowledge Evolution / no-write
 ```
 
+## Scheduling ownership
+
+Ordinary Episodic writes enter the Dream lifecycle as `dream_status=pending`. CyberBrain's server-side scheduler discovers pending sessions, waits until the configured quiet period has elapsed, and queues eligible sessions automatically. External agents are not required to call `dream_enqueue` after storing memory.
+
+`dream_enqueue` remains an explicit/manual control path for forcing or narrowing a completed-session Dream run. It does not define the normal lifecycle.
+
+The scheduler and worker are part of CyberBrain's post-storage cognition boundary. Client agents may produce Episodes, but they do not own queueing, reasoning orchestration, evidence gates, promotion, or Knowledge writeback.
+
 ## Default multipass orchestration
 
 The default Dreaming Reasoner strategy is multipass. A single large prompt over raw evidence is not the canonical path.

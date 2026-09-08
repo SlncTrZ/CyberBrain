@@ -15,7 +15,6 @@ class TokenBudgetPolicy:
     chars_per_token: int = 4
     max_bootstrap_knowledge: int = 3
     max_bootstrap_episodes: int = 2
-    max_pending_predictions: int = 3
 
     def __post_init__(self) -> None:
         for name in (
@@ -25,7 +24,6 @@ class TokenBudgetPolicy:
             "chars_per_token",
             "max_bootstrap_knowledge",
             "max_bootstrap_episodes",
-            "max_pending_predictions",
         ):
             if getattr(self, name) <= 0:
                 raise ValueError(f"{name} must be positive")

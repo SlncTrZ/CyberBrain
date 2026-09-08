@@ -6,11 +6,7 @@ import pytest
 
 from cyberbrain.agent_adapter import (
     AgentScope,
-    Consequence,
     ContextLedger,
-    DreamSignals,
-    Observation,
-    PredictionIntent,
     RecallKind,
     SessionCloseout,
     TokenBudgetPolicy,
@@ -33,7 +29,6 @@ async def test_bootstrap_uses_compact_reads_and_preserves_both_memory_classes() 
         {"id": "e1", "recall_text": "e" * 2_000, "recall_text_source": "summary"},
         {"id": "e2", "recall_text": "second episode"},
     ]
-    client.pending_rows = [{"id": "p1", "expected_outcome": "CI passes"}]
     adapter = UniversalAgentAdapter(
         client,
         budget_policy=TokenBudgetPolicy(bootstrap_tokens=100, chars_per_token=4),
@@ -51,11 +46,9 @@ async def test_bootstrap_uses_compact_reads_and_preserves_both_memory_classes() 
         RecallKind.KNOWLEDGE,
         RecallKind.EPISODE,
     }
-    assert result.pending_predictions[0]["id"] == "p1"
-    assert ledger.pending_prediction_ids == {"p1"}
     assert client.count("knowledge_search") == 1
     assert client.count("memory_search") == 1
-    assert client.count("prediction_pending") == 1
+    assert client.count("prediction_pending") == 0
     knowledge_call = next(args for name, args in client.calls if name == "knowledge_search")
     memory_call = next(args for name, args in client.calls if name == "memory_search")
     assert knowledge_call["view"] == "compact"
@@ -65,8 +58,6 @@ async def test_bootstrap_uses_compact_reads_and_preserves_both_memory_classes() 
     assert memory_call["agent"] == "chatgpt"
     assert memory_call["project"] == "CyberBrain"
     assert "session_id" not in memory_call
-    pending_call = next(args for name, args in client.calls if name == "prediction_pending")
-    assert "session_id" not in pending_call
 
 
 @pytest.mark.asyncio
@@ -166,84 +157,7 @@ async def test_timeline_requires_identity_and_uses_client_protocol() -> None:
 
 
 @pytest.mark.asyncio
-async def test_prediction_record_and_resolution_are_deterministic() -> None:
-    client = FakeCyberBrainClient()
-    adapter = UniversalAgentAdapter(client)
-    scope = AgentScope(session_id="s1", agent="agent-a", project="CyberBrain")
-    intent = PredictionIntent(
-        expected_outcome="CI succeeds",
-        confidence=0.8,
-        event_time=NOW,
-        outcome_known=False,
-        observable_later=True,
-        resolvable_with_evidence=True,
-        consequence=Consequence.MEDIUM,
-        action="push change",
-        correlation_id="ci-123",
-    )
-
-    decision, prediction = await adapter.maybe_record_prediction(intent=intent, scope=scope)
-    assert decision.create is True
-    assert prediction is not None
-    assert client.count("prediction_record") == 1
-
-    pending = [{"id": "p1", "context": {"correlation_id": "ci-123"}}]
-    match, outcome = await adapter.resolve_observation(
-        pending_predictions=pending,
-        observation=Observation(
-            observed_outcome="CI succeeded",
-            assessment="confirmed",
-            event_time=NOW,
-            correlation_id="ci-123",
-        ),
-    )
-    assert match.prediction_id == "p1"
-    assert outcome is not None
-    assert client.count("prediction_resolve") == 1
-
-
-@pytest.mark.asyncio
-async def test_unmatched_observation_does_not_resolve_prediction() -> None:
-    client = FakeCyberBrainClient()
-    adapter = UniversalAgentAdapter(client)
-    match, outcome = await adapter.resolve_observation(
-        pending_predictions=[{"id": "p1"}],
-        observation=Observation(
-            observed_outcome="unknown result",
-            assessment="indeterminate",
-            event_time=NOW,
-            correlation_id="not-present",
-        ),
-    )
-    assert match.prediction_id is None
-    assert match.reason_code == "no_deterministic_match"
-    assert outcome is None
-    assert client.count("prediction_resolve") == 0
-
-
-@pytest.mark.asyncio
-async def test_trivial_prediction_never_calls_client() -> None:
-    client = FakeCyberBrainClient()
-    adapter = UniversalAgentAdapter(client)
-    decision, result = await adapter.maybe_record_prediction(
-        intent=PredictionIntent(
-            expected_outcome="directory listing returns",
-            confidence=0.99,
-            event_time=NOW,
-            outcome_known=False,
-            observable_later=True,
-            resolvable_with_evidence=True,
-            consequence=Consequence.TRIVIAL,
-        ),
-        scope=AgentScope(session_id="s1"),
-    )
-    assert decision.create is False
-    assert result is None
-    assert client.count("prediction_record") == 0
-
-
-@pytest.mark.asyncio
-async def test_closeout_is_bounded_and_dream_enqueue_is_selective() -> None:
+async def test_closeout_stores_bounded_episode_without_orchestrating_dreaming() -> None:
     client = FakeCyberBrainClient()
     adapter = UniversalAgentAdapter(client, closeout_max_chars=180)
     closeout = SessionCloseout(
@@ -256,21 +170,13 @@ async def test_closeout_is_bounded_and_dream_enqueue_is_selective() -> None:
     )
     scope = AgentScope(session_id="s1", agent="agent-a", project="CyberBrain")
 
-    stored, enqueued = await adapter.close_session(
+    stored = await adapter.close_session(
         scope=scope,
         closeout=closeout,
         event_time=NOW,
-        dream_signals=DreamSignals(),
     )
-    assert len(stored["content"]) <= 180
-    assert enqueued is False
-    assert client.count("dream_enqueue") == 0
 
-    _, enqueued = await adapter.close_session(
-        scope=scope,
-        closeout=closeout,
-        event_time=NOW,
-        dream_signals=DreamSignals(reusable_lesson=True),
-    )
-    assert enqueued is True
-    assert client.count("dream_enqueue") == 1
+    assert len(stored["content"]) <= 180
+    assert client.count("memory_store") == 1
+    assert client.count("dream_enqueue") == 0
+    assert client.count("prediction_pending") == 0

@@ -9,7 +9,6 @@ from cyberbrain.agent_adapter.models import (
     Consequence,
     ContextLedger,
     ContextPack,
-    DreamSignals,
     Observation,
     OutcomeMatch,
     PredictionDecision,
@@ -20,7 +19,6 @@ from cyberbrain.agent_adapter.models import (
 )
 from cyberbrain.agent_adapter.policies import (
     CloseoutPolicy,
-    DreamEnqueuePolicy,
     LifecyclePolicy,
     OutcomeMatchPolicy,
     PredictionPolicy,
@@ -34,8 +32,6 @@ __all__ = [
     "ContextLedger",
     "ContextPack",
     "CyberBrainClient",
-    "DreamEnqueuePolicy",
-    "DreamSignals",
     "LifecyclePolicy",
     "MCPAgentClient",
     "Observation",

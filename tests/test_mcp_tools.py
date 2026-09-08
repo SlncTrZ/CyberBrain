@@ -284,6 +284,18 @@ def _call(name: str, args: dict) -> dict | list:
     return json.loads(result[0].text)
 
 
+def test_help_describes_agent_memory_boundary_and_automatic_dream_lifecycle() -> None:
+    text = asyncio.run(call_tool("help", {}))[0].text
+
+    assert "Normal external agents are memory consumers/producers" in text
+    assert (
+        "server-side Dream scheduler later discovers eligible quiet sessions automatically"
+        in text
+    )
+    assert "advanced override/control path" in text
+    assert "Do not fabricate a Prediction retrospectively" in text
+
+
 def test_knowledge_search_handler() -> None:
     result = _call("knowledge_search", {"query": "x", "domain": "ops", "limit": 3})
     assert result[0]["query"] == "x"

@@ -7,8 +7,6 @@ import pytest
 from cyberbrain.agent_adapter import (
     CloseoutPolicy,
     Consequence,
-    DreamEnqueuePolicy,
-    DreamSignals,
     LifecyclePolicy,
     Observation,
     OutcomeMatchPolicy,
@@ -121,18 +119,3 @@ def test_empty_closeout_is_rejected() -> None:
     policy = CloseoutPolicy()
     with pytest.raises(ValueError, match="at least one"):
         policy.render(SessionCloseout(goal=""))
-
-
-def test_dream_enqueue_policy_requires_material_signal() -> None:
-    policy = DreamEnqueuePolicy()
-    denied = policy.decide(DreamSignals())
-    assert denied.allow is False
-    assert denied.reason_codes == ("no_material_consolidation_signal",)
-
-    trivial = policy.decide(DreamSignals(reusable_lesson=True, trivial_only=True))
-    assert trivial.allow is False
-    assert trivial.reason_codes == ("trivial_session",)
-
-    allowed = policy.decide(DreamSignals(prediction_error=True, significant_change=True))
-    assert allowed.allow is True
-    assert allowed.reason_codes == ("prediction_error", "significant_change")

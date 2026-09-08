@@ -163,6 +163,23 @@ def test_mcp_accepts_bearer_auth_to_reach_protocol_layer() -> None:
     assert response.status_code != 401
 
 
+def test_tool_catalog_describes_server_owned_post_storage_boundary() -> None:
+    tools = {tool.name: tool for tool in asyncio.run(list_tools())}
+
+    assert (
+        "server-owned pending Dream lifecycle automatically"
+        in tools["memory_store"].description
+    )
+    assert (
+        "not required for ordinary memory read/write usage"
+        in tools["prediction_pending"].description
+    )
+    assert (
+        "ordinary pending episodes are scheduled server-side"
+        in tools["dream_enqueue"].description
+    )
+
+
 def test_tool_catalog_contains_canonical_and_legacy_compatibility_tools() -> None:
     tools = asyncio.run(list_tools())
     assert [tool.name for tool in tools] == [

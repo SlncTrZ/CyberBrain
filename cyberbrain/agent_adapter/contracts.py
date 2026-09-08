@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from datetime import datetime
 from typing import Any, Protocol
 
@@ -41,38 +40,4 @@ class CyberBrainClient(Protocol):
         session_id: str,
         event_time: datetime,
         **metadata: Any,
-    ) -> dict[str, Any]: ...
-
-    async def prediction_record(
-        self,
-        *,
-        expected_outcome: str,
-        confidence: float,
-        session_id: str,
-        event_time: datetime,
-        **metadata: Any,
-    ) -> dict[str, Any]: ...
-
-    async def prediction_resolve(
-        self,
-        *,
-        prediction_id: str,
-        observed_outcome: str,
-        assessment: str,
-        event_time: datetime,
-        **metadata: Any,
-    ) -> dict[str, Any]: ...
-
-    async def prediction_pending(
-        self,
-        *,
-        limit: int = 5,
-        **filters: Any,
-    ) -> list[dict[str, Any]]: ...
-
-    async def dream_enqueue(
-        self,
-        *,
-        session_id: str,
-        focal_topics: Sequence[str] | None = None,
     ) -> dict[str, Any]: ...

@@ -13,7 +13,7 @@ Latest tagged release: v0.1.7.
 
 Current development version on `main`: 0.1.7.
 
-Wave 1 integration checkpoint on `main`: `e855816`. This is unreleased source work; the deployed runtime remains based on `c5a8ed9` with provider/package version 0.1.7.
+Wave 1 integration checkpoint on `main`: `e855816`. Later Wave 2 source work remains unreleased unless explicitly tagged. Deployment state is managed separately from the source plan and should be verified from the actual runtime rather than inferred from this README.
 
 The repository is in use-and-observe mode: changes should be driven by reproducible defects,
 operational evidence, security/privacy needs, or portability gaps rather than speculative feature
@@ -25,10 +25,11 @@ container build on supported changes.
 ## Core architecture
 
     AI clients / agents
+      consume / produce memory
            ↓
     CyberBrain MCP/API
            ↓
-    Knowledge Engine + Memory Engine + Dreaming Engine
+    Knowledge + Memory + post-storage cognition
            ↓
     Qdrant + Embedding Runtime
 
@@ -44,17 +45,17 @@ operational state stored separately from canonical Knowledge and Episodic Memory
 
 Wave 1 foundations remain on `main`, and Wave 2 has begun wiring them through shared paths:
 
-- `cyberbrain/agent_adapter/` now includes a real MCP Streamable HTTP client bridge while preserving transport-neutral lifecycle policy, token budgeting, duplicate-context suppression, bounded exact-fetch policy, Prediction/Outcome orchestration, session closeout, and selective Dream enqueue policy;
+- `cyberbrain/agent_adapter/` includes a real MCP Streamable HTTP client bridge for optional foreground convenience such as token budgeting, duplicate-context suppression, compact recall, and bounded exact fetch. It is not the owner of Dreaming, Knowledge Evolution, Calibration, or other background cognition;
 - `cyberbrain/retrieval/` now includes a reproducible real-snapshot benchmark harness. The reviewed 28-case current-vector comparison rejects always-on global hybrid fusion and identifies a deterministic literal/fingerprint lexical route as a conditional shadow candidate only;
 - `cyberbrain/tenancy/` now binds authenticated source requests to explicit caller authority in `single_owner` mode and supplies storage-side eligibility for canonical exact fetch. `agent_ready` and `multi_user` modes fail closed until trusted caller identity and the required persisted identity fields are wired.
 
-Current source exposes scope-safe `knowledge_get` and `memory_get` and supports the preferred compact-search → selected-ID → exact-full-fetch flow. The canonical retrieval backend remains vector search: the real benchmark did **not** justify replacing it with always-on hybrid fusion. Source now also includes disabled-by-default literal/fingerprint shadow instrumentation: literal-heavy Knowledge queries can be evaluated by bounded BM25 in a non-blocking worker while the caller still receives the unchanged vector result. The shadow path records numeric metrics and content-free query/record fingerprints only; it is observation infrastructure, not retrieval promotion. Automatic Agent Adapter lifecycle hooks and broader tenancy enforcement on all search/write paths are still not active runtime behavior. These source changes are unreleased and do not imply that an older deployed runtime has changed.
+Current source exposes scope-safe `knowledge_get` and `memory_get` and supports the preferred compact-search → selected-ID → exact-full-fetch flow. Normal external agents are memory consumers/producers: they recall/get/store while CyberBrain owns normalization, Knowledge Evolution, the Episodic pending lifecycle, automatic Dream scheduling/processing, promotion/review, and Knowledge writeback. The canonical retrieval backend remains vector search: the real benchmark did **not** justify replacing it with always-on hybrid fusion. Source also includes disabled-by-default literal/fingerprint shadow instrumentation with a reusable pre-tokenized BM25 corpus so repeated shadow queries do not rebuild lexical document statistics. The caller still receives the unchanged vector result. Broader tenancy enforcement on all search/write paths remains pending. These source changes are unreleased until an explicit release decision.
 
 ## Learning primitives
 
 Main now includes the first bounded cognitive-learning mechanism: Prediction Learning (Prediction / Outcome / Prediction Error).
 
-Agents can record an explicit expected outcome and prior confidence before an action, then resolve that prediction with an observed outcome and finite assessment. CyberBrain stores both as canonical Episodic evidence and derives a transparent prediction-error signal. This does not implement metacognition or self-modeling.
+Prediction Learning can record an explicit expected outcome and prior confidence before an action, then resolve that prediction with an observed outcome and finite assessment. CyberBrain stores both as canonical Episodic evidence and derives a transparent prediction-error signal. This is an explicit causal-learning surface, not a required ordinary-agent read/write loop; predictions must not be fabricated retrospectively after the outcome is known.
 
 See specs/PREDICTION_LEARNING.md. Main also contains an initial read-only Calibration analysis over resolved Prediction Learning evidence. It does not persist self-beliefs or change agent strategy. Initial end-to-end MCP gateway validation has passed; both mechanisms remain in observation. See specs/METACOGNITION_CALIBRATION.md.
 
@@ -108,7 +109,7 @@ Dreaming stack:
     docker compose --profile dreaming up -d
 
 The default Compose stack includes CyberBrain, Qdrant, and the embedding runtime. The dreaming
-profile additionally starts the Dream worker, configured LLM route reasoner, and nightly scheduler.
+profile additionally starts the Dream worker, configured LLM route reasoner, and server-side pending-session scheduler (nightly by default). Ordinary pending Episodes are discovered automatically; `dream_enqueue` remains an explicit/manual control path.
 
 See docs/CURRENT_RUNTIME.md for the source-level runtime contract.
 

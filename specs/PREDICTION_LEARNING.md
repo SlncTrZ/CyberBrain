@@ -5,8 +5,7 @@
 
 ## Purpose
 
-This mechanism lets an agent record what it expected before an action or decision, then later
-record what actually happened.
+This mechanism captures what was expected before an action or decision, then later records what actually happened. The caller may be an explicit causal-learning integration rather than the acting agent itself.
 
 CyberBrain stores both records as canonical Episodic Memory and derives a bounded prediction-error
 signal without treating either the prediction or the caller's assessment as canonical truth.
@@ -28,6 +27,8 @@ changes. Those are separate roadmap stages.
 - Prediction error is a learning signal, not truth confidence.
 - Prediction/Outcome records have no direct Knowledge write authority.
 - Dreaming may use these Episodes as evidence through the existing provenance and promotion gates.
+- Prediction evidence must exist before the outcome is known. CyberBrain must never fabricate a prior Prediction retrospectively from a post-outcome summary.
+- Prediction operations are an explicit causal-learning surface, not a required ordinary-agent memory read/write loop.
 
 ## Prediction record
 
@@ -198,15 +199,19 @@ Callers must then treat the list as a partial view rather than the complete unre
 
 This tool does not create reminders, change prediction state, or infer an Outcome.
 
-Recommended operational loop:
+Explicit causal-integration loop:
 
+    pre-action event
+        ↓
     prediction_record
         ↓
-    prediction_pending / prediction_observe
+    observed action result
         ↓
     prediction_resolve
         ↓
-    Dreaming evidence
+    automatic Dreaming evidence lifecycle
+
+`prediction_pending` and `prediction_observe` remain bounded inspection/control surfaces. A normal memory consumer/producer does not need to call them merely to store or recall CyberBrain data.
 
 ## Dreaming integration
 
@@ -241,7 +246,7 @@ Those behaviors require separate specifications and evidence before implementati
 
 During ongoing Prediction Learning and Calibration observation, real usage should establish:
 
-- whether agents reliably record predictions before consequential actions;
+- whether causal integrations reliably capture predictions before consequential actions;
 - whether assessment categories are expressive enough;
 - whether callers overuse indeterminate or partially_confirmed;
 - whether the error signal helps Dreaming discover reusable lessons;

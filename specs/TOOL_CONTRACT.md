@@ -40,6 +40,14 @@ conversation_recall
 
 Aliases are adapters only and do not define a second persistence or business-logic path.
 
+## Agent / cognition responsibility boundary
+
+Normal external agents consume and produce memory through the canonical search/get/store operations. They are not responsible for orchestrating post-storage cognition.
+
+CyberBrain owns normalization/validation, embedding, Knowledge Evolution, the Episodic pending lifecycle, automatic Dream scheduling/processing, evidence and provenance validation, promotion/review, and Knowledge writeback. Advanced/control operations may remain exposed in MCP without becoming mandatory steps in a normal agent workflow.
+
+Prediction Learning is causally different: Prediction evidence must be captured before its outcome is known. Implementations must not synthesize prior predictions retrospectively. A client/runtime may supply a thin pre-action/outcome event bridge when it has a genuine causal event seam.
+
 ## `help`
 
 Read-only, zero side effects. Returns current provider contract/version metadata, capabilities, authentication description, contract hash, and usage guide content.
@@ -147,7 +155,7 @@ session_id
 event_time
 ```
 
-Optional episodic metadata follows `MEMORY_SCHEMA.md`. New ordinary episodes default to `dream_status=pending`.
+Optional episodic metadata follows `MEMORY_SCHEMA.md`. New ordinary episodes default to `dream_status=pending`. The server-side Dream scheduler owns discovery of eligible quiet pending sessions and automatic queueing; a normal caller does not need to call `dream_enqueue` after `memory_store`.
 
 ## Prediction Learning
 
@@ -219,7 +227,7 @@ dream_review_resolve
 
 ### `dream_enqueue`
 
-Queues a completed session for Dream processing. Optional focal topics may narrow intended consolidation scope.
+Explicitly queues a completed session for Dream processing. This is an advanced/manual override or control path; it is not required after ordinary `memory_store`. Pending Episodes are discovered and queued automatically by the server-side Dream scheduler after the configured quiet period. Optional focal topics may narrow intended consolidation scope.
 
 ### `dream_status`
 

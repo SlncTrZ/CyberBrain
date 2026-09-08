@@ -6,9 +6,7 @@
 
 ## Runtime boundary
 
-CyberBrain owns its provider-local MCP/API surface, domain logic, Dreaming orchestration, storage
-adapters, and runtime validation. External gateways or reverse proxies own their own routing,
-namespacing, lifecycle, and policy.
+CyberBrain owns its provider-local MCP/API surface, domain logic, post-storage cognition, Dreaming orchestration, storage adapters, and runtime validation. Normal external agents are memory consumers/producers: they recall/get/store through stable interfaces, while CyberBrain owns normalization, evolution, Dream scheduling/processing, promotion, and Knowledge writeback. External gateways or reverse proxies own their own routing, namespacing, lifecycle, and policy.
 
 ## Base stack
 
@@ -35,7 +33,7 @@ Current source has integrated three Wave 2 building blocks without changing the 
 - canonical `knowledge_get` and `memory_get` perform exact full-record fetch with storage-side ID + scope eligibility;
 - `cyberbrain.agent_adapter.MCPAgentClient` bridges the transport-neutral Agent Adapter contract to the canonical MCP Streamable HTTP tools.
 
-The current vector search path is still the canonical retrieval backend. A reviewed 28-case real-current-baseline benchmark rejected always-on global hybrid fusion because the Recall@5 gain came with a small MRR loss and rank regressions. Source now includes disabled-by-default shadow instrumentation for the better-performing deterministic literal/fingerprint route. When enabled in the current `single_owner` source runtime, literal-heavy Knowledge queries submit a non-blocking BM25 observation over a bounded TTL cache of active Knowledge, with the same explicit equality filters reapplied before lexical scoring. The caller still receives the unchanged vector result; shadow failures only affect shadow metrics/logging. Automatic Agent Adapter lifecycle hooks are not attached to arbitrary external agents, and broader tenancy enforcement over all existing search/write paths remains pending. Release/deployment state may therefore be behind this source-level contract until an explicit release/deployment decision is made.
+The current vector search path is still the canonical retrieval backend. A reviewed 28-case real-current-baseline benchmark rejected always-on global hybrid fusion because the Recall@5 gain came with a small MRR loss and rank regressions. Source now includes disabled-by-default shadow instrumentation for the better-performing deterministic literal/fingerprint route. When enabled in the current `single_owner` source runtime, literal-heavy Knowledge queries submit a non-blocking BM25 observation over a bounded TTL cache of active Knowledge, with the same explicit equality filters reapplied before lexical scoring. The caller still receives the unchanged vector result; shadow failures only affect shadow metrics/logging. The Agent Adapter remains optional foreground convenience for compact context use rather than an owner of background cognition; broader tenancy enforcement over all existing search/write paths remains pending. Release/deployment state may therefore be behind this source-level contract until an explicit release/deployment decision is made.
 
 ## Canonical data
 
@@ -66,6 +64,12 @@ Canonical `knowledge_search` and `memory_search` use compact-first MCP response 
 
 This boundary does not mutate Knowledge, Episodic Memory, embeddings, ranking, provenance, or Dreaming evidence. For focused follow-up, `knowledge_get(id)` and `memory_get(id)` return one selected full record without a second semantic search; ID and effective scope are combined at the storage query before payload return. Compatibility aliases retain their legacy response behavior.
 
+## Post-storage cognition boundary
+
+Ordinary `memory_store` writes create canonical Episodes that default to `dream_status=pending`. When the Dreaming profile is active, the server-side scheduler scans pending Episodes, groups them by session, waits for the configured quiet period, and queues eligible sessions automatically. The Dream worker then performs bounded evidence retrieval/reasoning, provenance validation, promotion/review gates, and Knowledge Evolution writeback. A normal external agent does not need to invoke `dream_enqueue` after storing an Episode.
+
+`dream_enqueue` remains an explicit/manual control surface for forcing or narrowing a completed-session Dream run. Prediction Learning remains causally separate: valid prediction evidence must be captured before the outcome is known, so it cannot be reconstructed truthfully as a purely post-storage step.
+
 ## Cognitive learning
 
 The first cognitive-learning mechanism stores Prediction and Outcome records inside `cyberbrain_episodic`; it does not create another durable collection.
@@ -80,7 +84,7 @@ The optional Docker Compose dreaming profile adds:
 
 - dream-route-reasoner — provider-neutral fallback LLM route service;
 - dream-worker — Dream orchestration and writeback worker;
-- dream-scheduler — deterministic nightly enqueue scheduler.
+- dream-scheduler — deterministic server-side pending-session enqueue scheduler (nightly by default).
 
 The Dream worker prepares the whole bounded reasoning run first, registers it atomically, and gives
 external MCP consumers one common run-level claim/submit window.

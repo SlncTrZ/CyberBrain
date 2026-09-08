@@ -11,7 +11,6 @@ from typing import Any
 class RecallKind(StrEnum):
     KNOWLEDGE = "knowledge"
     EPISODE = "episode"
-    PENDING = "pending_prediction"
 
 
 class Consequence(StrEnum):
@@ -125,7 +124,6 @@ class ContextLedger:
     session_id: str
     task_id: str | None = None
     injected_ids: set[str] = field(default_factory=set)
-    pending_prediction_ids: set[str] = field(default_factory=set)
     recall_signatures: set[str] = field(default_factory=set)
     consumed_tokens: int = 0
     full_fetch_count: int = 0
@@ -187,19 +185,3 @@ class SessionCloseout:
     outcomes: tuple[str, ...] = ()
     unresolved: tuple[str, ...] = ()
     identifiers: tuple[str, ...] = ()
-
-
-@dataclass(frozen=True, slots=True)
-class DreamSignals:
-    reusable_lesson: bool = False
-    prediction_error: bool = False
-    repeated_failure: bool = False
-    significant_change: bool = False
-    surprising_result: bool = False
-    trivial_only: bool = False
-
-
-@dataclass(frozen=True, slots=True)
-class PolicyDecision:
-    allow: bool
-    reason_codes: tuple[str, ...]

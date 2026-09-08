@@ -260,7 +260,10 @@ async def list_tools() -> list[types.Tool]:
         ),
         types.Tool(
             name="memory_store",
-            description="Store one canonical episodic memory record.",
+            description=(
+                "Store one canonical episodic memory record; ordinary episodes enter the "
+                "server-owned pending Dream lifecycle automatically."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -358,7 +361,10 @@ async def list_tools() -> list[types.Tool]:
         ),
         types.Tool(
             name="prediction_pending",
-            description="List unresolved Predictions so agents can close the learning loop.",
+            description=(
+                "List unresolved causal Predictions for explicit learning integrations; "
+                "not required for ordinary memory read/write usage."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -474,7 +480,10 @@ async def list_tools() -> list[types.Tool]:
         ),
         types.Tool(
             name="dream_enqueue",
-            description="Queue one completed session for evidence-gated Dreaming.",
+            description=(
+                "Explicitly/manual-queue one completed session for evidence-gated Dreaming; "
+                "ordinary pending episodes are scheduled server-side."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {

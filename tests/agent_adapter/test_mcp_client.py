@@ -155,7 +155,6 @@ def test_universal_adapter_uses_real_client_contract_for_compact_then_exact_fetc
                 }
             ],
             "memory_search": [],
-            "prediction_pending": {"items": [], "returned": 0, "may_be_incomplete": False},
             "knowledge_get": {
                 "id": record_id,
                 "content": "full auth decision",
@@ -181,6 +180,5 @@ def test_universal_adapter_uses_real_client_contract_for_compact_then_exact_fetc
     assert [name for name, _ in invoker.calls] == [
         "knowledge_search",
         "memory_search",
-        "prediction_pending",
         "knowledge_get",
     ]
