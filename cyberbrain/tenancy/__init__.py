@@ -10,7 +10,9 @@ from .auth import (
     current_authority,
     deployment_identity_profile,
 )
+from .enforcement import EnforcementPlan, TenancyOperation, plan_enforcement
 from .filters import FilterCondition, StorageFilter, build_storage_filter
+from .identity import TrustedIdentityEvidence, authority_from_trusted_identity
 from .models import (
     AuthorityGrant,
     AuthorizationDecision,
@@ -21,7 +23,16 @@ from .models import (
 )
 from .normalization import normalize_identifier
 from .policy import ScopeAuthorizationPolicy
-from .quota import QuotaLimit, QuotaPolicy, QuotaResource
+from .quota import (
+    QuotaDecision,
+    QuotaDecisionInput,
+    QuotaLimit,
+    QuotaPolicy,
+    QuotaResource,
+    QuotaScopeKey,
+    derive_quota_scope_key,
+    evaluate_quota,
+)
 from .readiness import (
     GateFamily,
     ReadinessCheck,
@@ -35,26 +46,36 @@ __all__ = [
     "AuthorizationDecision",
     "DeploymentIdentityProfile",
     "DeploymentMode",
+    "EnforcementPlan",
     "FilterCondition",
     "GateFamily",
     "IdentityDimension",
     "IdentityScope",
     "OperationClass",
+    "QuotaDecision",
+    "QuotaDecisionInput",
     "QuotaLimit",
     "QuotaPolicy",
     "QuotaResource",
+    "QuotaScopeKey",
     "ReadinessCheck",
     "ReadinessEvaluator",
     "ReadinessReport",
     "ScopeAuthorizationPolicy",
     "ScopeRequirements",
     "StorageFilter",
+    "TenancyOperation",
+    "TrustedIdentityEvidence",
     "WriteAttribution",
     "authority_for_authenticated_scope",
+    "authority_from_trusted_identity",
     "bind_authority",
     "build_storage_filter",
     "build_write_attribution",
     "current_authority",
     "deployment_identity_profile",
+    "derive_quota_scope_key",
+    "evaluate_quota",
     "normalize_identifier",
+    "plan_enforcement",
 ]

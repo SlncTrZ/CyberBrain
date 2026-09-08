@@ -29,6 +29,7 @@ class ReadinessCheck:
         if not self.name.strip():
             raise ValueError("readiness check name must not be empty")
         object.__setattr__(self, "family", GateFamily(self.family))
+        object.__setattr__(self, "evidence", self.evidence.strip())
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,6 +37,7 @@ class ReadinessReport:
     ready: bool
     missing_families: tuple[GateFamily, ...]
     failed_checks: tuple[str, ...]
+    missing_evidence: tuple[str, ...]
     passed_checks: int
     total_checks: int
 
@@ -55,15 +57,19 @@ class ReadinessEvaluator:
             by_family.setdefault(check.family, []).append(check)
 
         missing = tuple(sorted(self._required - set(by_family), key=lambda item: item.value))
-        failed = tuple(
-            check.name for check in checks if check.family in self._required and not check.passed
-        )
         required_checks = [check for check in checks if check.family in self._required]
+        failed = tuple(check.name for check in required_checks if not check.passed)
+        missing_evidence = tuple(
+            check.name for check in required_checks if check.passed and not check.evidence
+        )
         return ReadinessReport(
-            ready=not missing and not failed,
+            ready=not missing and not failed and not missing_evidence,
             missing_families=missing,
             failed_checks=failed,
-            passed_checks=sum(1 for check in required_checks if check.passed),
+            missing_evidence=missing_evidence,
+            passed_checks=sum(
+                1 for check in required_checks if check.passed and bool(check.evidence)
+            ),
             total_checks=len(required_checks),
         )
 

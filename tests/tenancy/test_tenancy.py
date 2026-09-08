@@ -326,8 +326,8 @@ def test_readiness_all_required_families_pass() -> None:
     evaluator = ReadinessEvaluator(required)
     report = evaluator.evaluate(
         [
-            ReadinessCheck("isolation", GateFamily.AUTH_ISOLATION, True),
-            ReadinessCheck("rollback", GateFamily.ROLLBACK, True),
+            ReadinessCheck("isolation", GateFamily.AUTH_ISOLATION, True, "pytest"),
+            ReadinessCheck("rollback", GateFamily.ROLLBACK, True, "pytest"),
         ]
     )
     assert report.ready is True
@@ -336,6 +336,6 @@ def test_readiness_all_required_families_pass() -> None:
 
 
 def test_multi_user_beta_requires_every_gate_family() -> None:
-    checks = [ReadinessCheck(family.value, family, True) for family in GateFamily]
+    checks = [ReadinessCheck(family.value, family, True, "pytest") for family in GateFamily]
     assert ReadinessEvaluator.multi_user_beta().evaluate(checks).ready is True
     assert ReadinessEvaluator.multi_user_beta().evaluate(checks[:-1]).ready is False
