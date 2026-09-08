@@ -35,7 +35,7 @@ Current source has integrated three Wave 2 building blocks without changing the 
 - canonical `knowledge_get` and `memory_get` perform exact full-record fetch with storage-side ID + scope eligibility;
 - `cyberbrain.agent_adapter.MCPAgentClient` bridges the transport-neutral Agent Adapter contract to the canonical MCP Streamable HTTP tools.
 
-The current vector search path is still the canonical retrieval backend. The Wave 1 hybrid engine is not active. Automatic Agent Adapter lifecycle hooks are not attached to arbitrary external agents, and broader tenancy enforcement over all existing search/write paths remains pending. Release/deployment state may therefore be behind this source-level contract until an explicit release/deployment decision is made.
+The current vector search path is still the canonical retrieval backend. A reviewed 28-case real-current-baseline benchmark has now rejected always-on global hybrid fusion because the Recall@5 gain came with a small MRR loss and rank regressions. A deterministic literal/fingerprint lexical route showed better benchmark behavior and is only a shadow candidate; it is not active canonical retrieval. Automatic Agent Adapter lifecycle hooks are not attached to arbitrary external agents, and broader tenancy enforcement over all existing search/write paths remains pending. Release/deployment state may therefore be behind this source-level contract until an explicit release/deployment decision is made.
 
 ## Canonical data
 

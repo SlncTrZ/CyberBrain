@@ -49,9 +49,43 @@ def test_scope_signal_rejects_explicit_project_mismatch() -> None:
     assert reasons == {"project_mismatch": -1.0}
 
 
+def test_scope_signal_rejects_missing_project_when_project_is_required() -> None:
+    allowed, reasons = ScopeTemporalSignals().contributions(
+        RetrievalHit("x", project=None), project="target"
+    )
+    assert allowed is False
+    assert reasons == {"project_mismatch": -1.0}
+
+
+def test_scope_signal_rejects_topic_and_entity_mismatch() -> None:
+    allowed, reasons = ScopeTemporalSignals().contributions(
+        RetrievalHit("x", topic="other", entity_name="wrong"),
+        topic="target",
+        entity_name="expected",
+    )
+    assert allowed is False
+    assert reasons == {"topic_mismatch": -1.0}
+
+    allowed, reasons = ScopeTemporalSignals().contributions(
+        RetrievalHit("x", topic="target", entity_name=None),
+        topic="target",
+        entity_name="expected",
+    )
+    assert allowed is False
+    assert reasons == {"entity_mismatch": -1.0}
+
+
 def test_status_signal_rejects_lifecycle_mismatch() -> None:
     allowed, reasons = ScopeTemporalSignals().contributions(
         RetrievalHit("x", status="superseded"), status="active"
+    )
+    assert allowed is False
+    assert reasons == {"status_mismatch": -1.0}
+
+
+def test_status_signal_rejects_missing_status_when_status_is_required() -> None:
+    allowed, reasons = ScopeTemporalSignals().contributions(
+        RetrievalHit("x", status=None), status="active"
     )
     assert allowed is False
     assert reasons == {"status_mismatch": -1.0}

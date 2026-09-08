@@ -25,9 +25,13 @@ class ScopeTemporalSignals:
         status: str | None = None,
         not_after: datetime | None = None,
     ) -> tuple[bool, dict[str, float]]:
-        if project is not None and hit.project is not None and hit.project != project:
+        if project is not None and hit.project != project:
             return False, {"project_mismatch": -1.0}
-        if status is not None and hit.status is not None and hit.status != status:
+        if topic is not None and hit.topic != topic:
+            return False, {"topic_mismatch": -1.0}
+        if entity_name is not None and hit.entity_name != entity_name:
+            return False, {"entity_mismatch": -1.0}
+        if status is not None and hit.status != status:
             return False, {"status_mismatch": -1.0}
         if not_after is not None and hit.event_time is not None and hit.event_time > not_after:
             return False, {"future_ineligible": -1.0}

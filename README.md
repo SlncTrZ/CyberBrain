@@ -45,10 +45,10 @@ operational state stored separately from canonical Knowledge and Episodic Memory
 Wave 1 foundations remain on `main`, and Wave 2 has begun wiring them through shared paths:
 
 - `cyberbrain/agent_adapter/` now includes a real MCP Streamable HTTP client bridge while preserving transport-neutral lifecycle policy, token budgeting, duplicate-context suppression, bounded exact-fetch policy, Prediction/Outcome orchestration, session closeout, and selective Dream enqueue policy;
-- `cyberbrain/retrieval/` remains benchmark/fusion infrastructure pending a real current-vector baseline before any production retrieval change;
+- `cyberbrain/retrieval/` now includes a reproducible real-snapshot benchmark harness. The reviewed 28-case current-vector comparison rejects always-on global hybrid fusion and identifies a deterministic literal/fingerprint lexical route as a conditional shadow candidate only;
 - `cyberbrain/tenancy/` now binds authenticated source requests to explicit caller authority in `single_owner` mode and supplies storage-side eligibility for canonical exact fetch. `agent_ready` and `multi_user` modes fail closed until trusted caller identity and the required persisted identity fields are wired.
 
-Current source exposes scope-safe `knowledge_get` and `memory_get` and supports the preferred compact-search → selected-ID → exact-full-fetch flow. Automatic Agent Adapter lifecycle hooks, broader tenancy enforcement on all search/write paths, and hybrid retrieval are still not active runtime behavior. These source changes are unreleased and do not imply that an older deployed runtime has changed.
+Current source exposes scope-safe `knowledge_get` and `memory_get` and supports the preferred compact-search → selected-ID → exact-full-fetch flow. The canonical retrieval backend remains vector search: the real benchmark did **not** justify replacing it with always-on hybrid fusion. A literal-heavy lexical route may proceed only through shadow validation. Automatic Agent Adapter lifecycle hooks and broader tenancy enforcement on all search/write paths are still not active runtime behavior. These source changes are unreleased and do not imply that an older deployed runtime has changed.
 
 ## Learning primitives
 

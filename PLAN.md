@@ -33,7 +33,7 @@ Wave 1 of the Level 8+ product/infrastructure track is complete on `main`. Wave 
 - canonical `knowledge_get(id)` and `memory_get(id)` perform exact full fetch with storage-side scope eligibility and indistinguishable absent/out-of-scope not-found behavior;
 - `cyberbrain.agent_adapter` has a real MCP Streamable HTTP client bridge over the canonical tool contract.
 
-The retrieval benchmark/fusion foundation remains unconnected to production search. Automatic Agent Adapter lifecycle hooks and broader tenancy enforcement across existing search/write paths are also still pending. These changes are unreleased and do not alter an older deployed runtime automatically.
+The retrieval benchmark/fusion foundation remains unconnected to production search, but its real-current-baseline gate is now complete. A 28-case reviewed benchmark against the current vector path rejected always-on global hybrid fusion: it improved Recall@5 but slightly reduced MRR and introduced rank regressions. A deterministic literal/fingerprint router that uses lexical retrieval only for literal-heavy queries while retaining vector retrieval elsewhere improved Recall@5 and MRR with no observed rank regressions in the reviewed set; this is a **conditional shadow candidate**, not production approval. Automatic Agent Adapter lifecycle hooks and broader tenancy enforcement across existing search/write paths are also still pending. These changes are unreleased and do not alter an older deployed runtime automatically.
 
 ### Current engineering phase — Wave 2 shared integration
 
@@ -47,7 +47,7 @@ authenticated caller
 → Agent Adapter context packing
 ```
 
-The scope/auth, exact-fetch, and real Agent Adapter client bridge slices are now implemented on source `main`. The next engineering gate is a read-only benchmark against the real current vector baseline. Hybrid retrieval must advance only if that benchmark shows a durable improvement in ranking/recall without unacceptable scope contamination, token cost, or latency. Automatic Agent Adapter lifecycle activation remains later than this measurement gate.
+The scope/auth, exact-fetch, real Agent Adapter client bridge, and read-only real retrieval benchmark slices are now implemented on source `main`. The benchmark decision is **do not promote global hybrid retrieval**. The next retrieval step, if continued, is shadow-only validation of a deterministic literal/fingerprint router: lexical retrieval for queries with strong commit/version/model/port-style lexical signals, current vector retrieval otherwise. Shadow evidence must preserve hard metadata authorization, show no ranking regressions or scope leakage, and remain cheap before any canonical search change. Automatic Agent Adapter lifecycle activation remains later than this retrieval observation gate.
 
 ## Current architectural invariants
 

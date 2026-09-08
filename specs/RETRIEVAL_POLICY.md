@@ -85,9 +85,17 @@ vector + lexical + metadata + deterministic fusion + optional bounded reranking
 
 without changing canonical result semantics.
 
-`main` now contains a source-only `cyberbrain.retrieval` foundation with a backend-neutral benchmark contract, dependency-free BM25 scoring, deterministic reciprocal-rank fusion, and explicit scope/status/temporal eligibility helpers. This foundation is **not yet wired into canonical Knowledge/Memory search**. Its six-case structural benchmark validates the harness and identifies promising query classes, but production adoption requires comparison against real current vector-search results on a larger reviewed benchmark.
+`main` now contains `cyberbrain.retrieval` benchmark/fusion infrastructure with dependency-free BM25 scoring, deterministic reciprocal-rank fusion, strict scope/status/temporal eligibility helpers, and a reproducible real-snapshot benchmark harness. The real-current-baseline gate has been run on 28 reviewed Knowledge cases using live current-vector rankings plus a read-only active/superseded corpus snapshot.
 
-Authorization/scope eligibility must be applied before candidate data can become visible to fusion, response projection, or agent context packing. Ranking metadata must never substitute for hard authorization filters.
+Observed benchmark decision:
+
+- vector baseline: Recall@5 0.964286, MRR@5 0.898810;
+- always-on hybrid RRF: Recall@5 1.000000, MRR@5 0.892857, with two rank regressions;
+- deterministic literal/fingerprint router (lexical only for strong commit/version/model/port-style lexical signals, vector otherwise): Recall@5 1.000000, MRR@5 0.934524, no observed rank regressions in the reviewed set, and lower mean returned-token estimate than vector.
+
+Therefore always-on hybrid fusion is **not promoted**. The literal/fingerprint route is only a **conditional shadow candidate** until it survives production-like shadow observation. The canonical Knowledge/Memory search backend remains vector retrieval.
+
+Authorization/scope eligibility must be applied before candidate data can become visible to fusion, response projection, or agent context packing. Missing metadata does not satisfy an explicit project/topic/entity/status filter. Ranking metadata must never substitute for hard authorization filters.
 
 ## Temporal recall for Dreaming
 
