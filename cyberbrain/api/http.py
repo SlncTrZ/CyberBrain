@@ -17,6 +17,13 @@ from cyberbrain.core.errors import ConfigurationError
 from cyberbrain.core.metrics import MetricsRegistry
 from cyberbrain.core.settings import Settings
 from cyberbrain.mcp.server import server as mcp_server
+from cyberbrain.tenancy import (
+    CallerAuthority,
+    IdentityScope,
+    OperationClass,
+    authority_for_authenticated_scope,
+    bind_authority,
+)
 
 
 class StreamableHTTPASGIApp:
@@ -48,11 +55,12 @@ def _authorized(scope: Scope, token: str) -> bool:
 
 
 class RequireAuthMiddleware:
-    def __init__(self, app: ASGIApp, token: str):
+    def __init__(self, app: ASGIApp, token: str, authority: CallerAuthority):
         if not token.strip():
             raise ConfigurationError("auth token must not be empty")
         self._app = app
         self._token = token
+        self._authority = authority
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
@@ -81,7 +89,18 @@ class RequireAuthMiddleware:
             await send({"type": "http.response.body", "body": body})
             return
 
-        await self._app(scope, receive, send)
+        with bind_authority(self._authority):
+            await self._app(scope, receive, send)
+
+
+class BindAuthorityMiddleware:
+    def __init__(self, app: ASGIApp, authority: CallerAuthority):
+        self._app = app
+        self._authority = authority
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        with bind_authority(self._authority):
+            await self._app(scope, receive, send)
 
 
 def create_app(
@@ -93,10 +112,15 @@ def create_app(
     settings.validate_runtime()
     session_manager = StreamableHTTPSessionManager(mcp_server, json_response=False)
     raw_mcp = StreamableHTTPASGIApp(session_manager)
+    caller_authority = authority_for_authenticated_scope(
+        settings.deployment_mode,
+        scope=IdentityScope(),
+        operations=frozenset(OperationClass),
+    )
     protected_mcp: ASGIApp = (
-        RequireAuthMiddleware(raw_mcp, settings.mcp_auth_token or "")
+        RequireAuthMiddleware(raw_mcp, settings.mcp_auth_token or "", caller_authority)
         if settings.require_auth
-        else raw_mcp
+        else BindAuthorityMiddleware(raw_mcp, caller_authority)
     )
 
     async def health(_request):  # noqa: ANN001, ANN202

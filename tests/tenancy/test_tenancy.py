@@ -6,6 +6,7 @@ import pytest
 
 from cyberbrain.tenancy import (
     AuthorityGrant,
+    DeploymentMode,
     GateFamily,
     IdentityDimension,
     IdentityScope,
@@ -17,8 +18,10 @@ from cyberbrain.tenancy import (
     ReadinessEvaluator,
     ScopeAuthorizationPolicy,
     ScopeRequirements,
+    authority_for_authenticated_scope,
     build_storage_filter,
     build_write_attribution,
+    deployment_identity_profile,
     normalize_identifier,
 )
 
@@ -37,6 +40,62 @@ def grant(*, projects=("alpha", "beta"), operations=(OperationClass.READ, Operat
 
 def requirements(*dims: IdentityDimension) -> ScopeRequirements:
     return ScopeRequirements(frozenset(dims))
+
+
+def test_deployment_profiles_define_minimum_authenticated_identity() -> None:
+    assert deployment_identity_profile(DeploymentMode.SINGLE_OWNER).minimum_identity_dimensions == (
+        frozenset()
+    )
+    assert deployment_identity_profile(DeploymentMode.AGENT_READY).minimum_identity_dimensions == (
+        frozenset({IdentityDimension.AGENT})
+    )
+    assert deployment_identity_profile(DeploymentMode.MULTI_USER).minimum_identity_dimensions == (
+        frozenset({IdentityDimension.TENANT, IdentityDimension.USER})
+    )
+
+
+def test_single_owner_authenticated_scope_maps_to_authority_grant() -> None:
+    authority = authority_for_authenticated_scope(
+        DeploymentMode.SINGLE_OWNER,
+        scope=IdentityScope(),
+        operations=frozenset(OperationClass),
+    )
+    assert authority.deployment_mode is DeploymentMode.SINGLE_OWNER
+    assert authority.grant.scope == IdentityScope()
+    assert authority.grant.operations == frozenset(OperationClass)
+
+
+def test_agent_ready_requires_one_authenticated_agent_identity() -> None:
+    with pytest.raises(ValueError, match="exactly one agent"):
+        authority_for_authenticated_scope(
+            DeploymentMode.AGENT_READY,
+            scope=IdentityScope(),
+            operations=frozenset({OperationClass.READ}),
+        )
+
+    authority = authority_for_authenticated_scope(
+        DeploymentMode.AGENT_READY,
+        scope=IdentityScope.from_values(agent="agent-a"),
+        operations=frozenset({OperationClass.READ}),
+    )
+    assert authority.grant.scope.agent == frozenset({"agent-a"})
+
+
+def test_multi_user_requires_concrete_tenant_and_user_identity() -> None:
+    with pytest.raises(ValueError, match="exactly one user|exactly one tenant"):
+        authority_for_authenticated_scope(
+            DeploymentMode.MULTI_USER,
+            scope=IdentityScope.from_values(tenant="tenant-a"),
+            operations=frozenset({OperationClass.READ}),
+        )
+
+    authority = authority_for_authenticated_scope(
+        DeploymentMode.MULTI_USER,
+        scope=IdentityScope.from_values(tenant="tenant-a", user="user-a"),
+        operations=frozenset({OperationClass.READ}),
+    )
+    assert authority.grant.scope.tenant == frozenset({"tenant-a"})
+    assert authority.grant.scope.user == frozenset({"user-a"})
 
 
 def test_identifier_normalization_trims_but_preserves_case() -> None:

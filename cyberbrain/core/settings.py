@@ -4,6 +4,7 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from cyberbrain.core.errors import ConfigurationError
+from cyberbrain.tenancy import DeploymentMode
 
 
 class Settings(BaseSettings):
@@ -27,6 +28,7 @@ class Settings(BaseSettings):
 
     mcp_auth_token: str | None = Field(default=None, repr=False)
     require_auth: bool = True
+    deployment_mode: DeploymentMode = DeploymentMode.SINGLE_OWNER
 
     dream_queue_db: str = "/data/dream_queue.sqlite"
     dream_audit_db: str = "/data/dream_audit.sqlite"
@@ -49,6 +51,11 @@ class Settings(BaseSettings):
     def validate_runtime(self) -> None:
         if self.require_auth and not (self.mcp_auth_token or "").strip():
             raise ConfigurationError("CYBERBRAIN_MCP_AUTH_TOKEN is required when auth is enabled")
+        if self.deployment_mode is not DeploymentMode.SINGLE_OWNER:
+            raise ConfigurationError(
+                f"deployment mode {self.deployment_mode.value!r} requires a trusted caller "
+                "identity source that is not wired into the current runtime"
+            )
         if self.embedding_dimension <= 0:
             raise ConfigurationError("embedding_dimension must be > 0")
         for name, value in (

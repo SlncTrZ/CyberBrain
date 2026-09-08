@@ -3,13 +3,23 @@
 import asyncio
 
 import pytest
+from starlette.applications import Starlette
+from starlette.responses import JSONResponse
+from starlette.routing import Route
 from starlette.testclient import TestClient
 
-from cyberbrain.api.http import create_app
+from cyberbrain.api.http import RequireAuthMiddleware, create_app
 from cyberbrain.core.errors import ConfigurationError
 from cyberbrain.core.metrics import MetricsRegistry
 from cyberbrain.core.settings import Settings
 from cyberbrain.mcp.server import list_tools
+from cyberbrain.tenancy import (
+    DeploymentMode,
+    IdentityScope,
+    OperationClass,
+    authority_for_authenticated_scope,
+    current_authority,
+)
 
 
 def make_settings(token: str | None = "secret") -> Settings:
@@ -88,6 +98,33 @@ def test_metrics_is_available_without_auth_only_when_auth_is_disabled() -> None:
         response = client.get("/metrics")
     assert response.status_code == 200
     assert response.json() == {"counters": {}, "timings": {}}
+
+
+def test_authenticated_request_binds_single_owner_authority() -> None:
+    authority = authority_for_authenticated_scope(
+        DeploymentMode.SINGLE_OWNER,
+        scope=IdentityScope(),
+        operations=frozenset(OperationClass),
+    )
+
+    async def probe(_request):  # noqa: ANN001, ANN202
+        active = current_authority()
+        assert active is not None
+        assert active.deployment_mode is DeploymentMode.SINGLE_OWNER
+        assert active.grant.operations == frozenset(OperationClass)
+        return JSONResponse({"ok": True})
+
+    app = RequireAuthMiddleware(
+        Starlette(routes=[Route("/", endpoint=probe, methods=["GET"])]),
+        "secret",
+        authority,
+    )
+    with TestClient(app) as client:
+        response = client.get("/", headers={"Authorization": "Bearer secret"})
+
+    assert response.status_code == 200
+    assert response.json() == {"ok": True}
+    assert current_authority() is None
 
 
 def test_mcp_rejects_missing_auth() -> None:

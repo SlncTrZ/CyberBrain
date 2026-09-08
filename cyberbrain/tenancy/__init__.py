@@ -1,6 +1,15 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from .attribution import WriteAttribution, build_write_attribution
+from .auth import (
+    CallerAuthority,
+    DeploymentIdentityProfile,
+    DeploymentMode,
+    authority_for_authenticated_scope,
+    bind_authority,
+    current_authority,
+    deployment_identity_profile,
+)
 from .filters import FilterCondition, StorageFilter, build_storage_filter
 from .models import (
     AuthorityGrant,
@@ -22,7 +31,10 @@ from .readiness import (
 
 __all__ = [
     "AuthorityGrant",
+    "CallerAuthority",
     "AuthorizationDecision",
+    "DeploymentIdentityProfile",
+    "DeploymentMode",
     "FilterCondition",
     "GateFamily",
     "IdentityDimension",
@@ -38,7 +50,11 @@ __all__ = [
     "ScopeRequirements",
     "StorageFilter",
     "WriteAttribution",
+    "authority_for_authenticated_scope",
+    "bind_authority",
     "build_storage_filter",
     "build_write_attribution",
+    "current_authority",
+    "deployment_identity_profile",
     "normalize_identifier",
 ]
