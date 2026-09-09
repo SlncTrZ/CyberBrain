@@ -62,6 +62,8 @@ Current source canonical payload schema is V2. Knowledge V2 adds `record_class`,
 
 V2 migration is stage-before-cutover. The source migration tooling merges canonical V1 stage records with raw legacy deltas, preserves source point IDs/content/vectors, fingerprints IDs + payloads + vectors to detect concurrent source change, requires exact target-count convergence, marks historical identity as untrusted rather than authenticated, and moves unmappable records into non-recallable migration quarantine instead of fabricating canonical metadata. Independent validation rechecks union equality, target overlap, schema parsing, vector/content fidelity, identity trust, and recall isolation. Presence of this tooling does not mean the live Qdrant collections have already been migrated. The current operating procedure is `docs/V2_MIGRATION_RUNBOOK.md`.
 
+The current provider is intentionally migration-compatible: ordinary Knowledge/Memory recall accepts canonical V1 stage records whose V2-only recall fields are absent, but explicit V2 non-recallable/class-isolation metadata remains authoritative. The MCP tool contract stays at its existing compatibility version; provider help advertises the canonical schema version independently.
+
 ## Recall response boundary
 
 Canonical `knowledge_search` and `memory_search` use compact-first MCP response projection. Retrieval and ranking still operate on the canonical stored record; only the returned payload is reduced for broad recall.

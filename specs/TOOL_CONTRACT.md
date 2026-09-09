@@ -263,6 +263,8 @@ See `DREAMING_SPEC.md`, `REASONER_CONTRACT.md`, and `REASONER_MCP_PROVIDER.md`.
 
 Legacy aliases may preserve historical response behavior when required for client compatibility. In particular, compatibility recall aliases may continue returning full payloads even though canonical `knowledge_search` and `memory_search` are compact-first.
 
+During the schema migration window, canonical and compatibility recall accept legacy V1 rows whose V2-only recall fields are absent. Explicit V2 `record_class` / `ordinary_recall` values remain authoritative, so non-recallable V2 records stay excluded. This is one compatibility path over the canonical services, not a separate V1 API or persistence implementation.
+
 Known legacy behavior bugs are not part of the canonical contract.
 
 ## Error semantics

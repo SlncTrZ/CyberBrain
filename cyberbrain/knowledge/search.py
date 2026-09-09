@@ -80,10 +80,20 @@ class KnowledgeSearchService:
         conditions = [
             {"key": "status", "match": {"value": status}},
             {
-                "key": "record_class",
-                "match": {"value": KnowledgeRecordClass.KNOWLEDGE.value},
+                "should": [
+                    {
+                        "key": "record_class",
+                        "match": {"value": KnowledgeRecordClass.KNOWLEDGE.value},
+                    },
+                    {"is_empty": {"key": "record_class"}},
+                ]
             },
-            {"key": "ordinary_recall", "match": {"value": True}},
+            {
+                "should": [
+                    {"key": "ordinary_recall", "match": {"value": True}},
+                    {"is_empty": {"key": "ordinary_recall"}},
+                ]
+            },
         ]
         for key, value in filters.items():
             if value is not None:

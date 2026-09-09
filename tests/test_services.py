@@ -8,6 +8,7 @@ from uuid import UUID
 
 from cyberbrain.knowledge.search import KnowledgeSearchService
 from cyberbrain.memory.service import MemoryService
+from cyberbrain.retrieval.shadow import KnowledgeLiteralShadowObserver
 from cyberbrain.tenancy import (
     DeploymentMode,
     IdentityScope,
@@ -105,7 +106,12 @@ def test_memory_store_and_search_applies_filters() -> None:
     assert results[0]["id"] == str(record.id)
     assert repo.last_filter == {
         "must": [
-            {"key": "ordinary_recall", "match": {"value": True}},
+            {
+                "should": [
+                    {"key": "ordinary_recall", "match": {"value": True}},
+                    {"is_empty": {"key": "ordinary_recall"}},
+                ]
+            },
             {"key": "channel", "match": {"value": "chatgpt"}},
             {"key": "project", "match": {"value": "CyberBrain"}},
         ]
@@ -252,9 +258,30 @@ def test_knowledge_search_defaults_to_active_status() -> None:
     assert repo.last_filter == {
         "must": [
             {"key": "status", "match": {"value": "active"}},
-            {"key": "record_class", "match": {"value": "knowledge"}},
-            {"key": "ordinary_recall", "match": {"value": True}},
+            {
+                "should": [
+                    {"key": "record_class", "match": {"value": "knowledge"}},
+                    {"is_empty": {"key": "record_class"}},
+                ]
+            },
+            {
+                "should": [
+                    {"key": "ordinary_recall", "match": {"value": True}},
+                    {"is_empty": {"key": "ordinary_recall"}},
+                ]
+            },
             {"key": "domain", "match": {"value": "ops"}},
             {"key": "topic", "match": {"value": "mcp"}},
         ]
     }
+
+
+def test_literal_shadow_v1_missing_recall_fields_remain_eligible() -> None:
+    assert KnowledgeLiteralShadowObserver._matches_filter({}, "record_class", "knowledge")
+    assert KnowledgeLiteralShadowObserver._matches_filter({}, "ordinary_recall", True)
+    assert not KnowledgeLiteralShadowObserver._matches_filter(
+        {"record_class": "self_model_hypothesis"}, "record_class", "knowledge"
+    )
+    assert not KnowledgeLiteralShadowObserver._matches_filter(
+        {"ordinary_recall": False}, "ordinary_recall", True
+    )

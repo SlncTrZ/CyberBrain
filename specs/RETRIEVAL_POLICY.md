@@ -117,6 +117,8 @@ Salience is not part of canonical retrieval ranking in the current source contra
 
 The same rule applies when retrieval output later feeds M5 Working Memory: task relevance, Salience, duplicate suppression, and token packing operate only on candidates already admitted by hard authorization/data eligibility. Working Memory does not make retrieval broader and is not part of the caller-visible search contract; any runtime integration remains separately gated.
 
+During the schema-V1 → schema-V2 migration window, ordinary recall remains backward-compatible with canonical V1 stage rows that legitimately lack V2-only `record_class` / `ordinary_recall` fields. Missing fields may satisfy the legacy compatibility branch, but explicit V2 values remain authoritative: non-`knowledge` Knowledge classes and `ordinary_recall=false` are excluded. This compatibility rule allows the current software release to run safely before and after staged corpus migration without changing tool semantics.
+
 ## Temporal recall for Dreaming
 
 Dreaming does not issue one undifferentiated semantic query over all history.

@@ -2,4 +2,4 @@
 
 # Canonical CyberBrain software/package version.
 # Build metadata, runtime providers, CI, and release tags must derive from this value.
-__version__ = "0.1.7"
+__version__ = "0.2.0"

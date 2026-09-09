@@ -149,7 +149,14 @@ class MemoryService:
                 dream_status.value if isinstance(dream_status, DreamStatus) else dream_status
             ),
         }
-        conditions = [{"key": "ordinary_recall", "match": {"value": True}}]
+        conditions = [
+            {
+                "should": [
+                    {"key": "ordinary_recall", "match": {"value": True}},
+                    {"is_empty": {"key": "ordinary_recall"}},
+                ]
+            }
+        ]
         conditions.extend(
             {"key": key, "match": {"value": value}}
             for key, value in filter_values.items()

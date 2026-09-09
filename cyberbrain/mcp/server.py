@@ -17,12 +17,18 @@ from cyberbrain.core.errors import ConfigurationError
 from cyberbrain.core.runtime import RuntimeServices
 from cyberbrain.dreaming.operations import DreamOperations
 from cyberbrain.dreaming.reason_task_inbox import DreamReasonTaskInbox
-from cyberbrain.schemas.models import EpisodeRole, IdentityTrust, Origin, Verification
+from cyberbrain.schemas.models import (
+    CURRENT_SCHEMA_VERSION,
+    EpisodeRole,
+    IdentityTrust,
+    Origin,
+    Verification,
+)
 from cyberbrain.tenancy import current_authority, current_trusted_identity, normalize_identifier
 
 PROVIDER_NAME = "cyberbrain"
 CONTRACT_VERSION = "1"
-SCHEMA_VERSION = "1"
+SCHEMA_VERSION = str(CURRENT_SCHEMA_VERSION)
 COMPACT_RECALL_MAX_CHARS = 1_200
 _RECALL_VIEWS = {"compact", "full"}
 

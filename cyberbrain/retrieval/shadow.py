@@ -197,10 +197,19 @@ class KnowledgeLiteralShadowObserver:
             tuple(
                 record
                 for record in records
-                if all(record.payload.get(key) == value for key, value in active_filters.items())
+                if all(
+                    self._matches_filter(record.payload, key, value)
+                    for key, value in active_filters.items()
+                )
             ),
             corpus,
         )
+
+    @staticmethod
+    def _matches_filter(payload: dict[str, Any], key: str, value: Any) -> bool:
+        if key in {"record_class", "ordinary_recall"} and key not in payload:
+            return True
+        return payload.get(key) == value
 
     def _records(self) -> tuple[tuple[_ShadowRecord, ...], BM25Corpus]:
         now = monotonic()

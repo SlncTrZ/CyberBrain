@@ -10,5 +10,6 @@ def test_help_returns_runtime_contract() -> None:
     text = result[0].text
     assert "provider_name: cyberbrain" in text
     assert "contract_version: 1" in text
+    assert "schema_version: 2" in text
     assert "contract_hash:" in text
     assert "CyberBrain Tool Guide" in text
