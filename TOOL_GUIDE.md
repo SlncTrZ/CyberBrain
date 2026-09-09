@@ -139,7 +139,7 @@ Prediction operations are an explicit causal-learning surface, not a required or
 - With enough samples, bias above the configured threshold is labeled `overconfident`, below the negative threshold `underconfident`, otherwise `roughly_calibrated`.
 - These labels describe the selected evidence sample only. They are not persisted as agent identity or Knowledge and do not change prompts, strategy, routing, or model behavior.
 
-See `specs/METACOGNITION_CALIBRATION.md`. `prediction_resolve` now triggers M6 evaluation for the trusted caller identity; readiness remains fail-closed. Active M6/M7 behavior is documented in `specs/AGENT_SELF_MODEL.md`, `specs/MEMORY_LIFECYCLE.md`, and `specs/COGNITIVE_RUNTIME_PATH.md`.
+See `specs/METACOGNITION_CALIBRATION.md`. `prediction_resolve` triggers M6 evaluation for the authenticated trusted principal; readiness remains fail-closed. In the current single-owner deployment, all callers using the shared MCP credential map to `coding-agents`, so their new trusted Prediction/Outcome evidence accumulates in one pool. Active M6/M7 behavior is documented in `specs/AGENT_SELF_MODEL.md`, `specs/MEMORY_LIFECYCLE.md`, and `specs/COGNITIVE_RUNTIME_PATH.md`.
 
 ### Dreaming operations
 

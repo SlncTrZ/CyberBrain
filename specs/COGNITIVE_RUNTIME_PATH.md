@@ -143,6 +143,19 @@ Legacy aliases remain mapped to the same canonical services and pass through the
 
 Returned recall rows may include additive `_cognition` metadata describing active M3/M4/M5/M6/M7 decisions. Clients must not treat this metadata as canonical record content or truth.
 
+
+## Current single-owner shared M6 principal
+
+The current deployment deliberately uses the existing static authenticated-principal seam:
+
+```text
+shared MCP credential
+→ trusted agent principal = coding-agents
+→ M6 trusted Prediction/Outcome pool
+```
+
+All currently authorized coding agents using that shared credential therefore contribute to one M6 evidence pool. This is an explicit owner-selected single-owner operating mode for simplicity. It does **not** claim per-agent identity separation and does not enable `agent_ready` or `multi_user`. Historical `legacy_untrusted` evidence is still not upgraded merely because the shared principal is now active; only records created through the authenticated boundary after activation receive `identity_trust=authenticated`.
+
 ## Runtime switches
 
 The active path is controlled by explicit settings:

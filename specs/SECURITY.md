@@ -120,3 +120,9 @@ Embedding/storage failure must fail explicitly. CyberBrain must not silently gen
 Behavioral non-secret configuration may be source-controlled when the current runtime contract explicitly defines how it is consumed. Tracked examples that are not runtime-loaded must say so clearly.
 
 The current CyberBrain runtime primarily consumes `CYBERBRAIN_*` environment variables plus explicit Dream route JSON. Real credentials remain runtime-only and are never checked into Git.
+
+## Shared trusted coding-agent principal
+
+In the current single-owner deployment, the owner has explicitly chosen a simplified trusted identity policy: any caller that authenticates with the existing shared MCP credential is bound to `agent=coding-agents` for trusted cognition attribution. This allows M6 to accumulate one pooled trusted Prediction/Outcome stream without introducing per-agent credentials.
+
+This policy does not create multi-user/per-agent isolation. It must not be described as `agent_ready` or `multi_user`, both of which remain fail-closed until broader P3 isolation is complete. Caller-supplied agent fields still cannot override the authenticated principal on Prediction Learning paths.

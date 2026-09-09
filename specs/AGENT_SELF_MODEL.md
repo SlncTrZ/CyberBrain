@@ -289,3 +289,9 @@ M6 does not add:
 P3.1 trusted agent attribution is sufficient for source-level prospective evidence integrity. It is **not** sufficient to enable `agent_ready` or `multi_user` runtime modes.
 
 Broader P3 read/write/background isolation and persisted identity requirements remain independent product-safety gates before multi-agent persistent authority can be activated.
+
+### Current single-owner pooled identity policy
+
+The current production deployment intentionally binds every caller authenticated with the shared MCP credential to the trusted principal `coding-agents`. M6 therefore evaluates one pooled trusted Prediction/Outcome stream for all currently authorized coding agents. This is an owner-selected simplification for the single-owner environment, not per-agent identity separation and not `agent_ready`/`multi_user`.
+
+Only prospective records created after this authenticated binding receive `identity_trust=authenticated`; historical `legacy_untrusted` evidence remains untrusted and is not retroactively promoted.

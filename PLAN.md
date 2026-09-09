@@ -35,6 +35,7 @@ Wave 1 of the Level 8+ product/infrastructure track and the shared Wave 2 integr
 - M3 Salience and M4 Concept Formation are active after authorized prefetch/store observation under their bounded advisory/evidence contracts;
 - M5 Working Memory is active as exact scope/session/task transient state with relevance → Salience → dedupe → token-budget selection, TTL/closeout, and bounded M4/M6 advisory context;
 - M6 runs automatically on trusted Prediction→Outcome resolution and remains fail-closed until readiness passes;
+- current single-owner production pools all shared-credential coding agents under trusted principal `coding-agents` for M6 evidence accumulation; this is intentionally simpler than per-agent P3 identity and does not enable broader multi-user authority;
 - M7 records access and applies reversible lifecycle decisions event-by-event, with no automatic historical bulk sweep;
 - the Level-8.0 source gate is satisfied and the production cognitive integration path is active.
 
