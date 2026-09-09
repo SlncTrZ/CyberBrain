@@ -136,9 +136,10 @@ Salience score must never broaden scope or turn an ineligible record into an eli
 - leaves the caller-owned candidate order untouched;
 - has no storage, network, model, Knowledge-write, or retrieval-reranking authority.
 
-Current controlled benchmark shadow evidence is source-level only. Salience is not wired into the
-current canonical search path because broader tenancy enforcement on search/write paths is still a
-separate product-safety gate.
+The controlled benchmark remains source-level acceptance evidence. In production, Salience is now
+wired **after** canonical authorization/search eligibility over a bounded vector prefetch. It may
+change the order/selection of those already-visible candidates but cannot create eligibility, widen
+scope, or replace the canonical vector retrieval backend.
 
 ## Bounded integration seam
 
@@ -190,7 +191,7 @@ M3 does not add:
 - a persistent Salience store;
 - an MCP Salience tool;
 - an LLM classifier;
-- caller-visible search reranking;
+- retrieval eligibility creation or pre-authorization reranking;
 - automatic Knowledge mutation;
 - direct Dreaming integration;
 - task-context persistence;
@@ -206,4 +207,4 @@ M3 source development is complete when:
 - benchmark evidence beats trivial baselines without modifying expected labels to fit the scorer;
 - shadow/advisor paths preserve input behavior and fail closed across scope boundaries;
 - full regression and lint/integrity gates pass;
-- runtime search remains unchanged until its authorization prerequisites are complete.
+- active runtime integration occurs only after existing authorization/search eligibility and preserves scope boundaries.

@@ -18,6 +18,7 @@ The documentation tree separates current normative guidance from historical evid
 - ../specs/AGENT_SELF_MODEL.md — canonical M6 trusted evidence, readiness, deterministic hypothesis generation, review, persistence, and bounded Working Memory advisory contract.
 - ../specs/MEMORY_LIFECYCLE.md — canonical M7 shadow scoring, reversible suppression/reactivation, access tracking, and real-corpus activation gates.
 - ../specs/KNOWLEDGE_SCHEMA.md / MEMORY_SCHEMA.md — canonical schema-V2 metadata contracts, including identity provenance and lifecycle fields.
+- ../specs/COGNITIVE_RUNTIME_PATH.md — active server-owned M3→M7 recall/store/event integration contract.
 - ../specs/ — remaining canonical evolution, Dreaming, Reasoner, security, Prediction Learning, Calibration, retrieval, and schema contracts.
 
 ## Historical evidence

@@ -206,20 +206,14 @@ def test_recovers_pending_evolution_after_activation_failure() -> None:
         store(service, "B")
 
     active_after_failure = [
-        point
-        for point in repo.points.values()
-        if point["payload"].get("status") == "active"
+        point for point in repo.points.values() if point["payload"].get("status") == "active"
     ]
     assert active_after_failure == []
 
     recovered = store(service, "B")
 
     assert recovered.outcome == EvolutionOutcome.NO_CHANGE
-    active = [
-        point
-        for point in repo.points.values()
-        if point["payload"].get("status") == "active"
-    ]
+    active = [point for point in repo.points.values() if point["payload"].get("status") == "active"]
     assert len(active) == 1
     assert active[0]["payload"]["content"] == "B"
     assert repo.points[first.record.id]["payload"]["status"] == "superseded"
@@ -255,11 +249,7 @@ def test_recovers_pending_evolution_after_predecessor_update_failure() -> None:
     recovered = store(service, "B")
 
     assert recovered.outcome == EvolutionOutcome.NO_CHANGE
-    active = [
-        point
-        for point in repo.points.values()
-        if point["payload"].get("status") == "active"
-    ]
+    active = [point for point in repo.points.values() if point["payload"].get("status") == "active"]
     assert len(active) == 1
     assert active[0]["payload"]["content"] == "B"
 
@@ -296,11 +286,7 @@ def test_startup_reconciliation_recovers_pending_after_activation_crash() -> Non
     recovered = restarted.reconcile_pending()
 
     assert recovered == 1
-    active = [
-        point
-        for point in repo.points.values()
-        if point["payload"].get("status") == "active"
-    ]
+    active = [point for point in repo.points.values() if point["payload"].get("status") == "active"]
     assert len(active) == 1
     assert active[0]["payload"]["content"] == "B"
     assert repo.points[first.record.id]["payload"]["status"] == "superseded"
@@ -357,3 +343,40 @@ def test_multiple_active_versions_fail_loud() -> None:
 
     with pytest.raises(ConflictError, match="multiple active versions"):
         store(service, "C")
+
+
+def test_force_evolution_revises_metadata_even_when_content_is_unchanged() -> None:
+    repository = FakeRepository()
+    service = make_service(repository)
+    first = service.store(
+        content="Stable claim",
+        domain="cognition",
+        topic="agent_self_model",
+        entity_type="self_model_hypothesis",
+        entity_name="agent-a:hypothesis-a",
+        confidence=0.7,
+        extensions={"self_model": {"sample_count": 20}},
+    )
+    second = service.store(
+        content="Stable claim",
+        domain="cognition",
+        topic="agent_self_model",
+        entity_type="self_model_hypothesis",
+        entity_name="agent-a:hypothesis-a",
+        confidence=0.8,
+        extensions={"self_model": {"sample_count": 21}},
+        force_evolution=True,
+    )
+
+    assert first.outcome is EvolutionOutcome.INSERT_NEW
+    assert second.outcome is EvolutionOutcome.EVOLVE
+    assert second.record.version == 2
+    assert second.record.confidence == 0.8
+    active = [
+        point
+        for point in repository.points.values()
+        if point["payload"].get("status") == "active"
+        and point["payload"].get("entity_name") == "agent-a:hypothesis-a"
+    ]
+    assert len(active) == 1
+    assert active[0]["payload"]["extensions"]["self_model"]["sample_count"] == 21

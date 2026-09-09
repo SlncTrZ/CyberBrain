@@ -18,7 +18,7 @@ CyberBrain provides:
 - authenticated MCP/API access;
 - provider-neutral Dream fallback routing;
 - backup, migration, and compatibility tooling;
-- bounded source-level M3–M7 cognition primitives, including transient Working Memory, reviewed Self-Model persistence, and reversible Memory Lifecycle;
+- active bounded M3–M7 server cognition over already-authorized recall/store events, including transient Working Memory, evidence-gated Self-Model persistence, and reversible event-driven Memory Lifecycle;
 - canonical schema-V2 metadata normalization plus staged migration/validation tooling.
 
 CyberBrain remains independent from any single AI client, model provider, routing product, or deployment topology.
@@ -32,9 +32,11 @@ Wave 1 of the Level 8+ product/infrastructure track and the shared Wave 2 integr
 - authenticated MCP source requests bind to explicit `CallerAuthority` in `single_owner` mode; source can additionally bind a server-configured trusted agent identity only after credential verification, while `agent_ready`/`multi_user` remain fail-closed until full P3 read/write/background isolation and persisted identity requirements are complete;
 - canonical `knowledge_get(id)` and `memory_get(id)` perform exact full fetch with storage-side scope eligibility and indistinguishable absent/out-of-scope not-found behavior;
 - `cyberbrain.agent_adapter` has a real MCP Streamable HTTP client bridge over the canonical tool contract;
-- M3 Salience and M4 Concept Formation are source-level complete under their bounded advisory/evidence contracts;
-- M5 Working Memory is source-level complete as exact scope/session/task transient state with relevance → Salience → dedupe → token-budget selection, TTL/closeout, and delta emission;
-- the Level-8.0 source gate is satisfied, while production M5 activation remains intentionally unwired until shared authorization/integration review is complete.
+- M3 Salience and M4 Concept Formation are active after authorized prefetch/store observation under their bounded advisory/evidence contracts;
+- M5 Working Memory is active as exact scope/session/task transient state with relevance → Salience → dedupe → token-budget selection, TTL/closeout, and bounded M4/M6 advisory context;
+- M6 runs automatically on trusted Prediction→Outcome resolution and remains fail-closed until readiness passes;
+- M7 records access and applies reversible lifecycle decisions event-by-event, with no automatic historical bulk sweep;
+- the Level-8.0 source gate is satisfied and the production cognitive integration path is active.
 
 The retrieval benchmark/fusion foundation remains observational rather than caller-visible. A 28-case reviewed benchmark against the current vector path rejected always-on global hybrid fusion: it improved Recall@5 but slightly reduced MRR and introduced rank regressions. A deterministic literal/fingerprint router that uses lexical retrieval only for literal-heavy queries while retaining vector retrieval elsewhere improved Recall@5 and MRR with no observed rank regressions in the reviewed set. Shadow observation is implemented and the reusable pre-tokenized BM25 corpus has cleared the earlier recurring scoring-cost blocker, but lexical output remains **SHADOW ONLY** until larger live relevance/reliability evidence is reviewed. The Agent Adapter remains optional foreground convenience rather than a cognitive lifecycle owner. Broader tenancy enforcement across existing search/write paths is still pending. Public release packaging remains a separate explicit decision.
 
@@ -51,7 +53,7 @@ authenticated caller
 → server-owned post-storage cognition
 ```
 
-The scope/auth, exact-fetch, real Agent Adapter client bridge, real retrieval benchmark, shadow literal-routing instrumentation, reusable BM25 shadow corpus, server-owned post-storage cognition contract/tests, M3 Salience, M4 Concept Formation, M5 Working Memory, P3.1 trusted-agent binding, E2 prospective-outcome census, complete source-level M6 Self-Model, complete source-level M7 Memory Lifecycle, schema-V2 metadata contracts, hardened V2 migration/validation tooling, and the current V2 migration runbook are implemented. The complete corpus has been staged, independently validated, canary-tested, and cut over to schema V2. The benchmark decision remains **do not promote global hybrid retrieval**. The literal shadow path remains observational and caller-visible retrieval remains vector. The immediate program frontier is now evidence accumulation and integration quality: M6 must remain fail-closed until prospective trusted evidence matures, while M7 remains shadow-only until access/Salience/Concept/relevance evidence supports safe lifecycle actuation. Broader P3 isolation remains separately required before `agent_ready`/`multi_user` activation or wider persistent agent authority.
+The scope/auth, exact-fetch, real Agent Adapter client bridge, real retrieval benchmark, shadow literal-routing instrumentation, reusable BM25 shadow corpus, server-owned post-storage cognition contract/tests, M3 Salience, M4 Concept Formation, M5 Working Memory, P3.1 trusted-agent binding, E2 prospective-outcome census, complete source-level M6 Self-Model, complete source-level M7 Memory Lifecycle, schema-V2 metadata contracts, hardened V2 migration/validation tooling, and the current V2 migration runbook are implemented. The complete corpus has been staged, independently validated, canary-tested, and cut over to schema V2. The benchmark decision remains **do not promote global hybrid retrieval**. The literal shadow path remains observational and caller-visible retrieval remains vector. The immediate program frontier is now evidence accumulation and tuning of the active integration: M6 remains fail-closed until prospective trusted evidence matures, while M7 is active only on touched/prefetched events rather than as a full-corpus sweep. Broader P3 isolation remains separately required before `agent_ready`/`multi_user` activation or wider persistent agent authority.
 
 ## Current architectural invariants
 
@@ -137,8 +139,8 @@ linear.
      or strategy mutations.
 
 3. Salience / Priority
-   - Status: source-level M3 complete; runtime search integration remains intentionally inactive until
-     broader authorization/search-path prerequisites are complete.
+   - Status: M3 complete and active after normal authorization/search eligibility; it reorders only
+     the bounded authorized prefetch and never creates eligibility.
    - Owns: bounded, explainable priority signals over already-authorized memories/events/candidates.
    - Uses the canonical signals prediction error, unresolvedness, contradiction, novelty, recurrence,
      consequence, explicit user emphasis, and recency.
@@ -149,7 +151,7 @@ linear.
    - Does not decide truth, authorization, promotion, forgetting, or Knowledge mutation.
 
 4. Concept Formation / Abstraction
-   - Status: source-level M4 complete; durable promotion remains fail-closed because the reviewed
+   - Status: M4 complete and active as bounded same-scope runtime discovery/registry; durable promotion remains governed separately because the reviewed
      historical acceptance sample lacks strong verification evidence.
    - Owns: deterministic recurring abstraction candidates, stable concept identity, supporting
      evidence IDs, counterexamples, evidence diversity, and shadow stability.
@@ -166,8 +168,8 @@ linear.
    - No graph database or third durable collection is introduced.
 
 5. Working Memory / Active Context
-   - Status: source-level M5 complete; production/runtime activation remains intentionally inactive
-     until shared read-path authorization and an explicit integration gate are complete.
+   - Status: M5 complete and active on normal MCP/Agent Adapter recall after existing authorization.
+     Transient context remains process-local and bounded.
    - Owns: an exact scope/session/task transient active set for goals, subgoals, assumptions,
      hypotheses, evidence, Concept/memory references, blockers, open questions, and recent decisions.
    - Selection is task relevance → Salience → duplicate suppression → Token Governor budget.
@@ -228,7 +230,7 @@ Review should also consider evidence diversity and integrity:
 - causal ordering and inherited Prediction identity must remain intact;
 - outcome diversity must emerge from real operation rather than manufactured failures.
 
-Reaching the checkpoint triggers review of evidence quality and mechanism behavior only. M6/M7 source code now exists independently of that empirical gate; the checkpoint still does not authorize real-corpus Self-Model persistence, lifecycle actuation, deployment, or broader agent authority. Those decisions follow schema-V2 migration/validation and reviewed corpus evidence.
+The current owner-authorized runtime now exercises M3–M7. Evidence gates still control what each mechanism is allowed to conclude: M6 cannot persist until trusted readiness passes, M7 cannot hard-delete, and broader agent authority still depends on P3.2/P3.3.
 
 ### Cognitive safety invariants
 

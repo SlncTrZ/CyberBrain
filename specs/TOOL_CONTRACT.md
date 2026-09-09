@@ -48,7 +48,7 @@ CyberBrain owns normalization/validation, embedding, Knowledge Evolution, the Ep
 
 Prediction Learning is causally different: Prediction evidence must be captured before its outcome is known. Implementations must not synthesize prior predictions retrospectively. A client/runtime may supply a thin pre-action/outcome event bridge when it has a genuine causal event seam.
 
-M3 Salience, M4 Concept Formation, M5 Working Memory, M6 Agent Self-Model, and M7 Memory Lifecycle are internal cognition contracts and do not add provider-local MCP tools in the current contract. Working Memory is transient task state; Self-Model persistence is accepted-only through Knowledge Evolution and excluded from ordinary Knowledge recall; Lifecycle suppression/reactivation is metadata-only. All remain downstream of trusted authority and hard candidate eligibility.
+M3 Salience, M4 Concept Formation, M5 Working Memory, M6 Agent Self-Model, and M7 Memory Lifecycle are active internal cognition contracts and do not add separate provider-local MCP tools. Normal recall/store tools invoke them server-side after authority/eligibility. Working Memory is transient task state; Self-Model persistence is accepted-only through Knowledge Evolution and excluded from ordinary Knowledge recall; Lifecycle suppression/reactivation is metadata-only. All remain downstream of trusted authority and hard candidate eligibility.
 
 ## `help`
 

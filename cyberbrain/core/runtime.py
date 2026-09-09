@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from cyberbrain.cognition.calibration import MetacognitionCalibrationService
 from cyberbrain.cognition.prediction import PredictionLearningService
+from cyberbrain.cognition.runtime_path import CognitiveRuntimePath
 from cyberbrain.core.metrics import MetricsRegistry
 from cyberbrain.core.settings import Settings
 from cyberbrain.embedding.base import EmbeddingProvider
@@ -33,6 +34,7 @@ class RuntimeServices:
     self_model: SelfModelService
     self_model_persistence: SelfModelPersistence
     memory_lifecycle: MemoryLifecycleService
+    cognition_path: CognitiveRuntimePath
 
 
 def build_runtime(settings: Settings) -> RuntimeServices:
@@ -96,6 +98,27 @@ def build_runtime(settings: Settings) -> RuntimeServices:
         if settings.retrieval_literal_shadow_enabled
         else None
     )
+    self_model = SelfModelService()
+    self_model_persistence = SelfModelPersistence(
+        evolution=knowledge_evolution,
+        repository=repository,
+        collection=settings.knowledge_collection,
+    )
+    memory_lifecycle = MemoryLifecycleService(repository=repository)
+    cognition_path = CognitiveRuntimePath(
+        repository=repository,
+        knowledge_collection=settings.knowledge_collection,
+        episodic_collection=settings.episodic_collection,
+        metrics=metrics,
+        self_model=self_model,
+        self_model_persistence=self_model_persistence,
+        memory_lifecycle=memory_lifecycle,
+        enabled=settings.cognition_m3_m7_enabled,
+        m6_auto_accept=settings.cognition_m6_auto_accept_enabled,
+        m7_actuation=settings.cognition_m7_actuation_enabled,
+        prefetch_multiplier=settings.cognition_prefetch_multiplier,
+        concept_evidence_limit=settings.cognition_concept_evidence_limit,
+    )
     return RuntimeServices(
         metrics=metrics,
         repository=repository,
@@ -113,11 +136,8 @@ def build_runtime(settings: Settings) -> RuntimeServices:
         metacognition_calibration=MetacognitionCalibrationService(
             prediction_learning=prediction_learning,
         ),
-        self_model=SelfModelService(),
-        self_model_persistence=SelfModelPersistence(
-            evolution=knowledge_evolution,
-            repository=repository,
-            collection=settings.knowledge_collection,
-        ),
-        memory_lifecycle=MemoryLifecycleService(repository=repository),
+        self_model=self_model,
+        self_model_persistence=self_model_persistence,
+        memory_lifecycle=memory_lifecycle,
+        cognition_path=cognition_path,
     )

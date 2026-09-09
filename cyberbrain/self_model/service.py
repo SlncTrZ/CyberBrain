@@ -18,6 +18,7 @@ from cyberbrain.schemas.models import (
     Verification,
 )
 from cyberbrain.storage.base import PointRepository
+from cyberbrain.tenancy import TrustedIdentityEvidence
 from cyberbrain.working_memory.models import (
     TaskRelevance,
     WorkingMemoryCandidate,
@@ -60,6 +61,8 @@ class SelfModelService:
         evidence: SelfModelEvidenceSet,
         *,
         generated_at: datetime,
+        trusted_identity: TrustedIdentityEvidence | None = None,
+        require_runtime_identity: bool = False,
     ) -> tuple[SelfModelReadinessReport, tuple[SelfModelHypothesis, ...]]:
         readiness = self._readiness.evaluate(
             SelfModelReadinessInput(
@@ -68,6 +71,8 @@ class SelfModelService:
                 trusted_resolved_outcomes=evidence.trusted_resolved_pairs,
                 diversity=evidence.diversity,
                 evidence_ids=evidence.evidence_ids,
+                trusted_identity=trusted_identity,
+                require_runtime_identity=require_runtime_identity,
                 may_be_incomplete=evidence.may_be_incomplete,
             )
         )
@@ -111,6 +116,14 @@ class SelfModelPersistence:
                 (*hypothesis.support_evidence_ids, *hypothesis.counterexample_evidence_ids)
             )
         ]
+        entity_name = f"{hypothesis.agent_id}:{hypothesis.hypothesis_id}"
+        extension = self._extension(hypothesis)
+        force_evolution = self._metadata_revision_required(
+            agent_id=hypothesis.agent_id,
+            entity_name=entity_name,
+            confidence=hypothesis.confidence,
+            extension=extension,
+        )
         return self._evolution.store(
             content=hypothesis.claim,
             summary=self._summary(hypothesis),
@@ -118,7 +131,7 @@ class SelfModelPersistence:
             domain=_SELF_MODEL_DOMAIN,
             topic=_SELF_MODEL_TOPIC,
             entity_type=_SELF_MODEL_ENTITY_TYPE,
-            entity_name=f"{hypothesis.agent_id}:{hypothesis.hypothesis_id}",
+            entity_name=entity_name,
             agent=hypothesis.agent_id,
             identity_trust=IdentityTrust.SYSTEM_DERIVED,
             ordinary_recall=False,
@@ -131,8 +144,50 @@ class SelfModelPersistence:
             evidence_ids=evidence_ids,
             origin=Origin.COGNITION,
             context={},
-            extensions={"self_model": self._extension(hypothesis)},
+            extensions={"self_model": extension},
+            force_evolution=force_evolution,
         )
+
+    def _metadata_revision_required(
+        self,
+        *,
+        agent_id: str,
+        entity_name: str,
+        confidence: float,
+        extension: dict[str, Any],
+    ) -> bool:
+        existing = next(
+            (
+                row
+                for row in self.load_active(agent_id=agent_id, limit=100)
+                if str(row.get("entity_name") or "") == entity_name
+            ),
+            None,
+        )
+        if existing is None:
+            return False
+        current_extension = (existing.get("extensions") or {}).get("self_model") or {}
+        semantic_keys = (
+            "hypothesis_id",
+            "kind",
+            "scope_topic",
+            "support_evidence_ids",
+            "counterexample_evidence_ids",
+            "sample_count",
+            "diversity",
+            "review_status",
+            "reason_codes",
+            "version",
+        )
+        current_semantics = {key: current_extension.get(key) for key in semantic_keys}
+        target_semantics = {key: extension.get(key) for key in semantic_keys}
+        if current_semantics != target_semantics:
+            return True
+        try:
+            current_confidence = float(existing.get("confidence"))
+        except (TypeError, ValueError):
+            return True
+        return abs(current_confidence - confidence) > 1e-12
 
     def load_active(self, *, agent_id: str, limit: int = 100) -> tuple[dict[str, Any], ...]:
         points = self._repository.scroll(

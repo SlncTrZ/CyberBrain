@@ -184,3 +184,23 @@ def test_only_reviewed_hypothesis_can_persist_or_enter_working_memory() -> None:
     )
     assert candidate.kind.value == "hypothesis"
     assert candidate.candidate_id.startswith("self-model:")
+
+
+def test_strategy_hypothesis_requires_multi_session_support() -> None:
+    samples = list(fixture_samples())
+    single_session_strategy = tuple(
+        sample(
+            topic=f"other-{index % 3}",
+            session="one-session",
+            assessment="confirmed",
+            strategy="single-session-only",
+        )
+        for index in range(5)
+    )
+    combined = tuple(samples) + single_session_strategy
+    hypotheses = SelfModelHypothesisEngine().generate(
+        readiness=ready(combined),
+        samples=combined,
+        generated_at=NOW,
+    )
+    assert not any("single-session-only" in item.claim for item in hypotheses)

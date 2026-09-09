@@ -98,3 +98,25 @@ def test_dream_mcp_poll_must_be_positive() -> None:
             require_auth=False,
             dream_mcp_poll_seconds=0,
         ).validate_runtime()
+
+
+def test_active_cognition_bounds_are_validated() -> None:
+    Settings(
+        mcp_auth_token=None,
+        require_auth=False,
+        cognition_prefetch_multiplier=3,
+        cognition_concept_evidence_limit=256,
+    ).validate_runtime()
+
+    with pytest.raises(ConfigurationError, match="prefetch_multiplier"):
+        Settings(
+            mcp_auth_token=None,
+            require_auth=False,
+            cognition_prefetch_multiplier=0,
+        ).validate_runtime()
+    with pytest.raises(ConfigurationError, match="concept_evidence_limit"):
+        Settings(
+            mcp_auth_token=None,
+            require_auth=False,
+            cognition_concept_evidence_limit=7,
+        ).validate_runtime()

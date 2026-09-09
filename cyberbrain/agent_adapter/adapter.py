@@ -58,21 +58,23 @@ class UniversalAgentAdapter:
             query=query,
             limit=policy.max_bootstrap_knowledge,
             view="compact",
+            context_session_id=scope.session_id,
+            task_id=ledger.task_id or "session_bootstrap",
             **knowledge_filters,
         )
         episode_rows = await self.client.memory_search(
             query=query,
             limit=policy.max_bootstrap_episodes,
             view="compact",
+            context_session_id=scope.session_id,
+            task_id=ledger.task_id or "session_bootstrap",
             **episodic_filters,
         )
         knowledge_candidates = [
-            RecallCandidate.from_mapping(row, kind=RecallKind.KNOWLEDGE)
-            for row in knowledge_rows
+            RecallCandidate.from_mapping(row, kind=RecallKind.KNOWLEDGE) for row in knowledge_rows
         ]
         episode_candidates = [
-            RecallCandidate.from_mapping(row, kind=RecallKind.EPISODE)
-            for row in episode_rows
+            RecallCandidate.from_mapping(row, kind=RecallKind.EPISODE) for row in episode_rows
         ]
         knowledge_budget = max(1, (policy.bootstrap_tokens * 3) // 5)
         episode_budget = max(1, policy.bootstrap_tokens - knowledge_budget)
@@ -121,6 +123,8 @@ class UniversalAgentAdapter:
                 query=intent.query,
                 limit=3,
                 view="compact",
+                context_session_id=scope.session_id,
+                task_id=ledger.task_id or "targeted_recall",
                 **knowledge_filters,
             )
             candidates.extend(
@@ -131,6 +135,8 @@ class UniversalAgentAdapter:
                 query=intent.query,
                 limit=2,
                 view="compact",
+                context_session_id=scope.session_id,
+                task_id=ledger.task_id or "targeted_recall",
                 **episodic_filters,
             )
             candidates.extend(

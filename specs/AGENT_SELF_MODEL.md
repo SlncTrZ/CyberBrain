@@ -1,6 +1,6 @@
 # CyberBrain Agent Self-Model Specification v2
 
-> Status: M6 source implementation complete. Real-corpus quality evaluation and broader behavioral activation remain separately gated.
+> Status: M6 runtime trigger active. Trusted evidence readiness remains fail-closed; current owner-authorized policy auto-accepts generated hypotheses only after that gate passes.
 
 ## Purpose
 
@@ -163,10 +163,11 @@ strategy_constraint
 ```
 
 These are explicitly correlational. Their reason codes include `correlational_not_causal`; they must not claim that a strategy caused success/failure merely because it co-occurred.
+The active policy also requires the strategy to recur across at least two distinct sessions in addition to the strategy sample floor; one-session repetition is insufficient for a workflow tendency/constraint.
 
 ### Stable identity
 
-Hypothesis identity is deterministic from agent + hypothesis kind + scope, producing a stable `smh-*` ID. Repeated analysis of the same semantic scope can therefore evolve one logical Self-Model entity through Knowledge Evolution instead of creating uncontrolled duplicates.
+Hypothesis identity is deterministic from agent + hypothesis kind + scope, producing a stable `smh-*` ID. Repeated analysis of the same semantic scope evolves one logical Self-Model entity. If claim text remains stable while support evidence, sample count, diversity, reason codes, or confidence change, the active persistence seam forces a metadata-bearing Knowledge Evolution revision rather than dropping the update as content-only `NO_CHANGE`.
 
 ## Hypothesis contract
 
@@ -202,7 +203,7 @@ Rules:
 
 ## M6.2 review and persistence
 
-Persistent Self-Model writes are **accepted-only**.
+Persistent Self-Model writes are **accepted-only**. In the current active runtime policy, `prediction_resolve` triggers analysis and the server automatically applies the accepted review transition only when the full trusted readiness gate passes. Operators may disable this automatic acceptance without disabling M6 evidence collection.
 
 `SelfModelPersistence` rejects pending/rejected hypotheses and stores accepted hypotheses through the existing `KnowledgeEvolutionService` using the canonical Knowledge collection.
 
@@ -257,7 +258,7 @@ The current source fixture generates all 5 expected kind/scope outcomes with no 
 
 ## Current evaluation boundary
 
-M6 **source implementation is complete**. The remaining M6 evaluation question is empirical:
+M6 implementation and runtime triggering are active. The remaining M6 evaluation question is empirical:
 
 ```text
 complete schema-V2 corpus
@@ -267,7 +268,7 @@ complete schema-V2 corpus
 → real hypothesis precision/usefulness review
 ```
 
-Until the V2 migration/validation and real-corpus review are complete, source completeness must not be confused with evidence that durable Self-Model hypotheses are useful in production.
+Schema-V2 migration/validation is complete. Current historical evidence still does not satisfy trusted M6 readiness, so active runtime evaluation correctly remains `insufficient_evidence` until prospective trusted outcomes accumulate. Runtime activation must not be confused with evidence that a particular hypothesis is useful.
 
 ## Non-goals
 

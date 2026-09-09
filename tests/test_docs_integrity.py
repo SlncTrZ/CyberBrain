@@ -73,9 +73,7 @@ def test_document_references_resolve() -> None:
 
 
 def test_illustrative_yaml_states_that_runtime_does_not_load_it() -> None:
-    text = (ROOT / "config" / "cyberbrain.example.yaml").read_text(
-        encoding="utf-8"
-    )
+    text = (ROOT / "config" / "cyberbrain.example.yaml").read_text(encoding="utf-8")
 
     assert "runtime does NOT load this YAML file" in text
 
@@ -110,3 +108,15 @@ def test_current_guidance_does_not_embed_private_deployment_paths() -> None:
                 leaked.append((str(source.relative_to(ROOT)), marker))
 
     assert leaked == []
+
+
+def test_active_cognition_runtime_contract_is_current() -> None:
+    runtime_spec = ROOT / "specs" / "COGNITIVE_RUNTIME_PATH.md"
+    assert runtime_spec.exists()
+    text = runtime_spec.read_text(encoding="utf-8")
+    assert "M3 Salience" in text
+    assert "M4" in text and "M5" in text and "M6" in text and "M7" in text
+    assert "no automatic full-corpus suppression sweep" in text
+    current = (DOCS / "CURRENT_RUNTIME.md").read_text(encoding="utf-8")
+    assert "actively wires M3–M7" in current
+    assert "M7 Memory Lifecycle is active event-by-event" in current

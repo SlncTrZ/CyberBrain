@@ -1,6 +1,6 @@
 # Memory Lifecycle Specification v1
 
-> Status: M7 source implementation complete. Real-corpus shadow evaluation and any production activation remain separate gates.
+> Status: M7 event-driven production actuation active. Full-corpus automatic sweeping remains intentionally absent; reversible decisions occur on records touched by bounded normal recall/exact-fetch events.
 
 ## Purpose
 
@@ -262,7 +262,7 @@ Schema-V2 migration initializes lifecycle metadata conservatively:
 - migration quarantine is suppressed and non-recallable;
 - lifecycle migration metadata records source/provenance without treating migration time as evidence that the record is semantically recent.
 
-M7 real-corpus evaluation should occur **after** the full V2 union migration/validation so the evaluator sees one normalized lifecycle contract instead of mixed legacy payloads.
+The full V2 union migration/validation is complete. M7 tuning now uses live event-driven access/Salience/Concept/relevance evidence over one normalized lifecycle contract.
 
 ## Controlled source benchmark
 
@@ -281,9 +281,10 @@ unresolved protection
 
 The current controlled fixture matches all 6 expected decisions with zero false suppression and zero false reactivation. This demonstrates source-policy correctness against the fixture only.
 
-## Real-corpus acceptance
+## Real-corpus monitoring and tuning
 
-Production/caller-visible lifecycle activation requires post-migration evidence at minimum for:
+Event-driven production lifecycle actuation is active. Continued tuning and any stronger Level-8.5+
+acceptance should monitor at minimum:
 
 ```text
 false-suppression rate
@@ -295,7 +296,7 @@ suppressed-record recoverability
 cross-scope safety
 ```
 
-A source-complete M7 engine is not proof that a particular retention threshold is optimal for the real corpus.
+Active M7 execution is not proof that a particular retention threshold is optimal for the real corpus; the owner may tune/disable actuation as evidence accumulates.
 
 ## Non-goals
 

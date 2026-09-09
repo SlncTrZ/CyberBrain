@@ -159,6 +159,8 @@ async def list_tools() -> list[types.Tool]:
                     "entity_type": {"type": "string"},
                     "entity_name": {"type": "string"},
                     "project": {"type": "string"},
+                    "context_session_id": {"type": "string"},
+                    "task_id": {"type": "string"},
                     "status": {"type": "string"},
                     "verification": {"type": "string"},
                     "origin": {"type": "string"},
@@ -247,6 +249,8 @@ async def list_tools() -> list[types.Tool]:
                     "project": {"type": "string"},
                     "topic": {"type": "string"},
                     "dream_status": {"type": "string"},
+                    "context_session_id": {"type": "string"},
+                    "task_id": {"type": "string"},
                     "view": {"type": "string", "enum": ["compact", "full"]},
                     "limit": {"type": "integer", "minimum": 1, "maximum": 50},
                 },
@@ -629,6 +633,42 @@ def _apply_trusted_prediction_agent(args: dict) -> str | None:
     return trusted_agent
 
 
+def _cognition_path(runtime):  # noqa: ANN001, ANN202
+    return getattr(runtime, "cognition_path", None)
+
+
+def _cognitive_recall(
+    runtime,  # noqa: ANN001
+    rows: list[dict],
+    *,
+    query: str,
+    kind: str,
+    requested_limit: int,
+    session_id: str | None = None,
+    project: str | None = None,
+    task_id: str | None = None,
+) -> list[dict]:
+    path = _cognition_path(runtime)
+    if path is None:
+        return rows[:requested_limit]
+    return path.process_recall(
+        rows,
+        query=query,
+        kind=kind,
+        requested_limit=requested_limit,
+        trusted_identity=current_trusted_identity(),
+        session_id=session_id,
+        project=project,
+        task_id=task_id,
+    )
+
+
+def _observe_cognitive_store(runtime, row: dict, *, kind: str) -> None:  # noqa: ANN001
+    path = _cognition_path(runtime)
+    if path is not None:
+        path.observe_store(row, kind=kind, trusted_identity=current_trusted_identity())
+
+
 def _dispatch_tool(name: str, args: dict) -> list[types.TextContent]:
     runtime = _require_runtime()
 
@@ -636,17 +676,42 @@ def _dispatch_tool(name: str, args: dict) -> list[types.TextContent]:
         limit = int(args.pop("limit", 5))
         query = str(args.pop("query"))
         view = _recall_view(args)
+        task_id = args.pop("task_id", None)
+        context_session_id = args.pop("context_session_id", None)
         wing = args.pop("wing", None)
+        path = _cognition_path(runtime)
+        fetch_limit = path.prefetch_limit(limit) if path is not None else limit
+        project = args.get("project")
         if wing is not None:
             if str(wing).strip().casefold() == "conversation":
                 rows = runtime.memory.search(
                     query=query,
-                    limit=limit,
+                    limit=fetch_limit,
                     topic=args.pop("topic", None),
+                )
+                rows = _cognitive_recall(
+                    runtime,
+                    rows,
+                    query=query,
+                    kind="episode",
+                    requested_limit=limit,
+                    session_id=context_session_id,
+                    project=project,
+                    task_id=task_id,
                 )
                 return _json_text(_project_recall_rows(rows, view=view))
             args.setdefault("domain", _legacy_domain(str(wing)))
-        rows = runtime.knowledge_search.search(query=query, limit=limit, **args)
+        rows = runtime.knowledge_search.search(query=query, limit=fetch_limit, **args)
+        rows = _cognitive_recall(
+            runtime,
+            rows,
+            query=query,
+            kind="knowledge",
+            requested_limit=limit,
+            session_id=context_session_id,
+            project=project,
+            task_id=task_id,
+        )
         return _json_text(_project_recall_rows(rows, view=view))
 
     if name == "knowledge_get":
@@ -659,6 +724,9 @@ def _dispatch_tool(name: str, args: dict) -> list[types.TextContent]:
         )
         if row is None:
             return _json_text(not_found("Knowledge record not found").as_dict())
+        path = _cognition_path(runtime)
+        if path is not None:
+            row = path.process_exact_recall(row, kind="knowledge")
         return _json_text(row)
 
     if name == "knowledge_store":
@@ -678,6 +746,9 @@ def _dispatch_tool(name: str, args: dict) -> list[types.TextContent]:
             origin=origin,
             **args,
         )
+        record_payload = result.record.model_dump(mode="json")
+        record_payload = {"id": str(result.record.id), **record_payload}
+        _observe_cognitive_store(runtime, record_payload, kind="knowledge")
         return _json_text(
             {
                 "outcome": result.outcome.value,
@@ -709,7 +780,23 @@ def _dispatch_tool(name: str, args: dict) -> list[types.TextContent]:
         limit = int(args.pop("limit", 5))
         query = str(args.pop("query"))
         view = _recall_view(args)
-        rows = runtime.memory.search(query=query, limit=limit, **args)
+        task_id = args.pop("task_id", None)
+        context_session_id = args.pop("context_session_id", None)
+        path = _cognition_path(runtime)
+        fetch_limit = path.prefetch_limit(limit) if path is not None else limit
+        session_id = args.get("session_id")
+        project = args.get("project")
+        rows = runtime.memory.search(query=query, limit=fetch_limit, **args)
+        rows = _cognitive_recall(
+            runtime,
+            rows,
+            query=query,
+            kind="episode",
+            requested_limit=limit,
+            session_id=context_session_id or session_id,
+            project=project,
+            task_id=task_id,
+        )
         return _json_text(_project_recall_rows(rows, view=view))
 
     if name == "memory_get":
@@ -722,6 +809,9 @@ def _dispatch_tool(name: str, args: dict) -> list[types.TextContent]:
         )
         if row is None:
             return _json_text(not_found("Memory record not found").as_dict())
+        path = _cognition_path(runtime)
+        if path is not None:
+            row = path.process_exact_recall(row, kind="episode")
         return _json_text(row)
 
     if name == "memory_store":
@@ -729,6 +819,11 @@ def _dispatch_tool(name: str, args: dict) -> list[types.TextContent]:
         role_value = args.pop("role", None)
         role = EpisodeRole(role_value) if role_value is not None else None
         record = runtime.memory.store(event_time=event_time, role=role, **args)
+        _observe_cognitive_store(
+            runtime,
+            {"id": str(record.id), **record.model_dump(mode="json")},
+            kind="episode",
+        )
         return _json_text(record.model_dump(mode="json"))
 
     if name == "prediction_record":
@@ -739,6 +834,11 @@ def _dispatch_tool(name: str, args: dict) -> list[types.TextContent]:
         record = runtime.prediction_learning.record_prediction(
             event_time=event_time,
             **args,
+        )
+        _observe_cognitive_store(
+            runtime,
+            {"id": str(record.id), **record.model_dump(mode="json")},
+            kind="episode",
         )
         return _json_text(record.model_dump(mode="json"))
 
@@ -752,7 +852,21 @@ def _dispatch_tool(name: str, args: dict) -> list[types.TextContent]:
             required_agent=trusted_agent,
             **args,
         )
-        return _json_text(record.model_dump(mode="json"))
+        _observe_cognitive_store(
+            runtime,
+            {"id": str(record.id), **record.model_dump(mode="json")},
+            kind="episode",
+        )
+        payload = record.model_dump(mode="json")
+        path = _cognition_path(runtime)
+        if path is not None:
+            payload["_cognition"] = {
+                "m6": path.run_self_model(
+                    trusted_identity=current_trusted_identity(),
+                    generated_at=event_time,
+                )
+            }
+        return _json_text(payload)
 
     if name == "prediction_observe":
         _apply_trusted_prediction_agent(args)
@@ -787,6 +901,11 @@ def _dispatch_tool(name: str, args: dict) -> list[types.TextContent]:
             verification=Verification.UNVERIFIED,
             origin=Origin.INGESTION,
         )
+        _observe_cognitive_store(
+            runtime,
+            {"id": str(result.record.id), **result.record.model_dump(mode="json")},
+            kind="knowledge",
+        )
         return _json_text(
             {
                 "outcome": result.outcome.value,
@@ -799,14 +918,41 @@ def _dispatch_tool(name: str, args: dict) -> list[types.TextContent]:
         query = str(args.pop("query"))
         wing = args.pop("wing", None)
         filters = {"domain": _legacy_domain(str(wing))} if wing else {}
-        return _json_text(runtime.knowledge_search.search(query=query, limit=5, **filters))
+        path = _cognition_path(runtime)
+        fetch_limit = path.prefetch_limit(5) if path is not None else 5
+        rows = runtime.knowledge_search.search(query=query, limit=fetch_limit, **filters)
+        rows = _cognitive_recall(
+            runtime,
+            rows,
+            query=query,
+            kind="knowledge",
+            requested_limit=5,
+        )
+        return _json_text(rows)
 
     if name == "ai_memory_read":
         query = str(args.pop("query"))
+        path = _cognition_path(runtime)
+        knowledge_fetch = path.prefetch_limit(5) if path is not None else 5
+        memory_fetch = path.prefetch_limit(3) if path is not None else 3
+        knowledge_rows = runtime.knowledge_search.search(query=query, limit=knowledge_fetch)
+        memory_rows = runtime.memory.search(query=query, limit=memory_fetch)
         return _json_text(
             {
-                "knowledge": runtime.knowledge_search.search(query=query, limit=5),
-                "memory": runtime.memory.search(query=query, limit=3),
+                "knowledge": _cognitive_recall(
+                    runtime,
+                    knowledge_rows,
+                    query=query,
+                    kind="knowledge",
+                    requested_limit=5,
+                ),
+                "memory": _cognitive_recall(
+                    runtime,
+                    memory_rows,
+                    query=query,
+                    kind="episode",
+                    requested_limit=3,
+                ),
             }
         )
 
@@ -829,16 +975,27 @@ def _dispatch_tool(name: str, args: dict) -> list[types.TextContent]:
             importance=args.pop("importance", None),
             source="legacy_mcp_compat",
         )
+        _observe_cognitive_store(
+            runtime,
+            {"id": str(record.id), **record.model_dump(mode="json")},
+            kind="episode",
+        )
         return _json_text(record.model_dump(mode="json"))
 
     if name == "conversation_recall":
         query = str(args.pop("query"))
         limit = int(args.pop("limit", 5))
+        channel = args.pop("channel", None)
+        path = _cognition_path(runtime)
+        fetch_limit = path.prefetch_limit(limit) if path is not None else limit
+        rows = runtime.memory.search(query=query, limit=fetch_limit, channel=channel)
         return _json_text(
-            runtime.memory.search(
+            _cognitive_recall(
+                runtime,
+                rows,
                 query=query,
-                limit=limit,
-                channel=args.pop("channel", None),
+                kind="episode",
+                requested_limit=limit,
             )
         )
 

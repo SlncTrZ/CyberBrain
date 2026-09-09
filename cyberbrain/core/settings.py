@@ -29,6 +29,12 @@ class Settings(BaseSettings):
     retrieval_literal_shadow_max_records: int = 5_000
     knowledge_evolution_lock_file: str | None = None
 
+    cognition_m3_m7_enabled: bool = True
+    cognition_m6_auto_accept_enabled: bool = True
+    cognition_m7_actuation_enabled: bool = True
+    cognition_prefetch_multiplier: int = 3
+    cognition_concept_evidence_limit: int = 256
+
     mcp_auth_token: str | None = Field(default=None, repr=False)
     require_auth: bool = True
     deployment_mode: DeploymentMode = DeploymentMode.SINGLE_OWNER
@@ -80,11 +86,13 @@ class Settings(BaseSettings):
             if value is not None and not 0 <= value <= 1:
                 raise ConfigurationError(f"{name} must be between 0 and 1 or null")
         if self.retrieval_literal_shadow_cache_ttl_seconds <= 0:
-            raise ConfigurationError(
-                "retrieval_literal_shadow_cache_ttl_seconds must be > 0"
-            )
+            raise ConfigurationError("retrieval_literal_shadow_cache_ttl_seconds must be > 0")
         if self.retrieval_literal_shadow_max_records < 1:
             raise ConfigurationError("retrieval_literal_shadow_max_records must be > 0")
+        if self.cognition_prefetch_multiplier < 1 or self.cognition_prefetch_multiplier > 10:
+            raise ConfigurationError("cognition_prefetch_multiplier must be between 1 and 10")
+        if self.cognition_concept_evidence_limit < 8:
+            raise ConfigurationError("cognition_concept_evidence_limit must be >= 8")
         if (
             self.retrieval_literal_shadow_enabled
             and self.deployment_mode is not DeploymentMode.SINGLE_OWNER

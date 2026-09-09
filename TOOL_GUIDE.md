@@ -63,7 +63,7 @@ CyberBrain owns what happens after storage: normalization, validation, embedding
 
 `dream_enqueue`, Prediction operations, Calibration observation, Dream reason-task operations, and review operations remain available as explicit advanced/control surfaces. Their presence in the MCP catalog does not make them part of the normal agent read/write loop.
 
-M3 Salience, M4 Concept Formation, M5 Working Memory, M6 Agent Self-Model, and M7 Memory Lifecycle are internal source-level cognitive mechanisms, not additional public MCP tools. M5 transient state is not a caller-managed durable scratchpad; M6 accepted hypotheses persist only through Knowledge Evolution and are excluded from ordinary recall; M7 suppression/reactivation changes lifecycle metadata only. All remain behind the existing authorization boundary.
+M3 Salience, M4 Concept Formation, M5 Working Memory, M6 Agent Self-Model, and M7 Memory Lifecycle are active internal server mechanisms, not additional public MCP tools. Normal canonical and legacy recall/store calls pass through the same bounded coordinator after authorization. M5 transient state is not a caller-managed durable scratchpad; M6 persists only accepted/evidence-ready hypotheses outside ordinary recall; M7 changes lifecycle/access metadata only and does not hard-delete. See `specs/COGNITIVE_RUNTIME_PATH.md`.
 
 Prediction Learning is the causal exception to fully post-storage processing: a valid Prediction must exist before its outcome is known. Do not fabricate a Prediction retrospectively from a completed-action summary. A runtime with a genuine pre-action/outcome event seam may bridge those events into Prediction Learning without exposing the subsystem to the acting agent.
 
@@ -85,14 +85,14 @@ Read-only. Returns the running provider contract, software version metadata, con
 
 ### Knowledge tools
 
-- `knowledge_search` searches canonical Knowledge and applies advertised filters. Schema-V2 ordinary recall is constrained to `status=active`, `record_class=knowledge`, and `ordinary_recall=true`, excluding Self-Model hypotheses, migration quarantine, and M7-suppressed rows. Canonical recall defaults to `view=compact`; use `view=full` only when broad search truly needs complete rows.
+- `knowledge_search` searches canonical Knowledge and applies advertised filters. The server then runs the active M3→M5→M7 path over a bounded authorized prefetch; optional `context_session_id` / `task_id` improve transient M5 identity without changing data filters. Schema-V2 ordinary recall is constrained to `status=active`, `record_class=knowledge`, and `ordinary_recall=true`, excluding Self-Model hypotheses, migration quarantine, and M7-suppressed rows. Canonical recall defaults to `view=compact`; use `view=full` only when broad search truly needs complete rows.
 - `knowledge_get` fetches one canonical Knowledge record by exact UUID and returns the full stored row only when that ID is eligible under the caller's bound authority scope. It does not perform semantic search.
 - `knowledge_store` inserts or evolves canonical knowledge with explicit evolution outcomes.
 - `knowledge_timeline` returns version history for one canonical entity identity.
 
 ### Memory tools
 
-- `memory_search` searches Episodic Memory and applies session/channel/role/agent/project/topic filters. Schema-V2 ordinary recall additionally requires `ordinary_recall=true`, so M7-suppressed Episodes remain stored but do not appear in normal semantic recall. Canonical recall defaults to `view=compact`; use `view=full` only when broad search truly needs complete rows.
+- `memory_search` searches Episodic Memory and applies session/channel/role/agent/project/topic filters. The server then runs the active M3→M5→M7 path over a bounded authorized prefetch; optional `context_session_id` / `task_id` identify transient M5 context only. Schema-V2 ordinary recall additionally requires `ordinary_recall=true`, so M7-suppressed Episodes remain stored but do not appear in normal semantic recall. Canonical recall defaults to `view=compact`; use `view=full` only when broad search truly needs complete rows.
 - `memory_get` fetches one canonical Episodic record by exact UUID and returns the full stored row only when that ID is eligible under the caller's bound authority scope. It does not perform semantic search.
 - `memory_store` stores one canonical episodic record with required `session_id` and `event_time`. Ordinary Episodes enter `dream_status=pending`; the server-side Dream scheduler later discovers eligible quiet sessions automatically.
 
@@ -139,7 +139,7 @@ Prediction operations are an explicit causal-learning surface, not a required or
 - With enough samples, bias above the configured threshold is labeled `overconfident`, below the negative threshold `underconfident`, otherwise `roughly_calibrated`.
 - These labels describe the selected evidence sample only. They are not persisted as agent identity or Knowledge and do not change prompts, strategy, routing, or model behavior.
 
-See `specs/METACOGNITION_CALIBRATION.md`. M6 consumes trusted prospective evidence only after its own readiness gate; current source M6 generation/review/persistence is documented in `specs/AGENT_SELF_MODEL.md`. M7 lifecycle behavior is documented in `specs/MEMORY_LIFECYCLE.md`.
+See `specs/METACOGNITION_CALIBRATION.md`. `prediction_resolve` now triggers M6 evaluation for the trusted caller identity; readiness remains fail-closed. Active M6/M7 behavior is documented in `specs/AGENT_SELF_MODEL.md`, `specs/MEMORY_LIFECYCLE.md`, and `specs/COGNITIVE_RUNTIME_PATH.md`.
 
 ### Dreaming operations
 

@@ -255,7 +255,7 @@ M5 cross-task leakage = 0
 M5 exact fetches <= baseline
 ```
 
-These thresholds validate the source mechanism only. Production activation requires its own authorization/integration and live evidence.
+These thresholds validate the controlled mechanism only. Production integration is now active after the existing authorization boundary; live usefulness/tuning remains an empirical concern rather than a prerequisite for the mechanism to execute.
 
 ## Storage and runtime model
 
@@ -271,9 +271,7 @@ NO public Working Memory MCP tool
 NO caller-visible retrieval reranking
 ```
 
-The source mechanism is internal and transport-neutral. It is not wired into the current production MCP request path while broader shared read-path authorization remains incomplete.
-
-An optional Agent Adapter integration may consume M5 later, but the Adapter must remain a convenience layer rather than the owner of Working Memory state or cognitive policy.
+The mechanism is internal and transport-neutral and is now wired into the normal authenticated MCP recall path **after** existing authorization/eligibility. The official Agent Adapter forwards transient `context_session_id` / `task_id` hints, but the server remains the owner of Working Memory state/policy and derives bounded fallbacks for older clients. Two active slots are reserved for M4/M6 advisory context so raw candidate volume cannot starve all downstream cognition. See `COGNITIVE_RUNTIME_PATH.md`.
 
 ## Security and tenancy boundary
 

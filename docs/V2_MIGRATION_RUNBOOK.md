@@ -215,7 +215,7 @@ M7 full-corpus shadow lifecycle evaluation
 integrated M3→M7 assessment
 ```
 
-M6 may correctly return `insufficient_evidence`; do not lower thresholds. M7 remains shadow-only until false-suppression/reactivation and useful-recall impact are reviewed.
+M6 may correctly return `insufficient_evidence`; do not lower thresholds. Current M7 operates event-by-event on touched/prefetched records after cutover; do not reinterpret this evaluation step as permission for a one-shot full-corpus lifecycle sweep.
 
 ## 7. Production cutover gate
 

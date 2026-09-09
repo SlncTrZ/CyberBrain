@@ -211,6 +211,11 @@ Concept discovery remains deterministic regardless of Salience ordering.
 
 M5 Working Memory may consume a Concept candidate/ID only as an already-authorized, task-relevant reference. Concept Formation does not decide Working Memory membership, and Working Memory does not copy the entire supporting historical evidence set merely because a concept reference is selected. Salience may prioritize within the same authorized scope, but neither mechanism changes Concept identity, formation confidence, or verification status.
 
+
+## Active runtime integration
+
+Normal authenticated recall/store events now feed a bounded in-memory same-scope Concept evidence window owned by the server cognitive coordinator. `ConceptDiscoveryEngine` and `ConceptShadowRegistry` run over that window; task-relevant candidates may enter M5 as references. Active discovery does not change the existing promotion boundary: no candidate becomes durable canonical Knowledge automatically merely because it is repeatedly observed. See `COGNITIVE_RUNTIME_PATH.md`.
+
 ## Shadow registry
 
 `ConceptShadowRegistry` is in-memory observation state only.

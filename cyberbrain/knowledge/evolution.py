@@ -243,6 +243,7 @@ class KnowledgeEvolutionService:
         negative_knowledge: bool = False,
         context: dict[str, Any] | None = None,
         extensions: dict[str, Any] | None = None,
+        force_evolution: bool = False,
     ) -> EvolutionResult:
         normalized = normalize_content(content)
         self._secret_scanner.assert_safe(
@@ -301,7 +302,11 @@ class KnowledgeEvolutionService:
                 previous_payload = (previous or {}).get("payload") or {}
                 previous_id = UUID(str(previous["id"])) if previous else None
 
-                if previous and previous_payload.get("content_hash") == digest:
+                if (
+                    previous
+                    and previous_payload.get("content_hash") == digest
+                    and not force_evolution
+                ):
                     return EvolutionResult(
                         outcome=EvolutionOutcome.NO_CHANGE,
                         record=KnowledgeRecord.model_validate(previous_payload),

@@ -22,11 +22,17 @@ class SelfModelHypothesisPolicy:
     minimum_topic_samples: int = 5
     minimum_topic_sessions: int = 2
     minimum_strategy_samples: int = 5
+    minimum_strategy_sessions: int = 2
     capability_rate: float = 0.8
     limitation_rate: float = 0.4
 
     def __post_init__(self) -> None:
-        for name in ("minimum_topic_samples", "minimum_topic_sessions", "minimum_strategy_samples"):
+        for name in (
+            "minimum_topic_samples",
+            "minimum_topic_sessions",
+            "minimum_strategy_samples",
+            "minimum_strategy_sessions",
+        ):
             value = getattr(self, name)
             if isinstance(value, bool) or not isinstance(value, int) or value < 1:
                 raise ValueError(f"self-model {name} must be a positive integer")
@@ -89,6 +95,11 @@ class SelfModelHypothesisEngine:
         for strategy in sorted(by_strategy):
             group = tuple(by_strategy[strategy])
             if len(group) < self._policy.minimum_strategy_samples:
+                continue
+            if (
+                len({sample.session_id for sample in group})
+                < self._policy.minimum_strategy_sessions
+            ):
                 continue
             hypothesis = self._strategy_hypothesis(
                 agent_id=agent_id,
