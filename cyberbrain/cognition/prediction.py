@@ -11,7 +11,7 @@ from uuid import UUID, uuid4
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from cyberbrain.memory.service import MemoryService
-from cyberbrain.schemas.models import EpisodeRecord
+from cyberbrain.schemas.models import EpisodeRecord, IdentityTrust
 from cyberbrain.storage.base import PointRepository
 from cyberbrain.tenancy import normalize_identifier
 
@@ -37,6 +37,7 @@ class PredictionInput(BaseModel):
     confidence: float = Field(ge=0.0, le=1.0)
     action: str | None = Field(default=None, max_length=1000)
     rationale: str | None = Field(default=None, max_length=2000)
+    strategy_tags: list[str] = Field(default_factory=list, max_length=16)
 
     @field_validator("expected_outcome", "action", "rationale")
     @classmethod
@@ -47,6 +48,12 @@ class PredictionInput(BaseModel):
         if not normalized:
             return None
         return normalized
+
+    @field_validator("strategy_tags")
+    @classmethod
+    def _normalize_strategy_tags(cls, values: list[str]) -> list[str]:
+        cleaned = [value.strip() for value in values if value.strip()]
+        return list(dict.fromkeys(cleaned))
 
 
 class OutcomeInput(BaseModel):
@@ -94,6 +101,7 @@ class PendingPrediction(BaseModel):
     agent: str | None
     project: str | None
     topic: str | None
+    strategy_tags: list[str] = Field(default_factory=list)
 
 
 class PendingPredictionList(BaseModel):
@@ -133,6 +141,8 @@ class PredictionLearningService:
         agent: str | None = None,
         project: str | None = None,
         topic: str | None = None,
+        identity_trust: IdentityTrust = IdentityTrust.UNSPECIFIED,
+        strategy_tags: list[str] | None = None,
         keywords: list[str] | None = None,
         importance: str | None = None,
     ) -> EpisodeRecord:
@@ -141,6 +151,7 @@ class PredictionLearningService:
             confidence=confidence,
             action=action,
             rationale=rationale,
+            strategy_tags=strategy_tags or [],
         )
         prediction_id = uuid4()
         cognition: dict[str, Any] = {
@@ -153,6 +164,8 @@ class PredictionLearningService:
             cognition["action"] = data.action
         if data.rationale is not None:
             cognition["rationale"] = data.rationale
+        if data.strategy_tags:
+            cognition["strategy_tags"] = list(data.strategy_tags)
 
         content = (
             f"Prediction for {data.action}: {data.expected_outcome}"
@@ -167,6 +180,7 @@ class PredictionLearningService:
             agent=agent,
             project=project,
             topic=topic,
+            identity_trust=identity_trust,
             keywords=keywords,
             importance=importance,
             source="cognitive_prediction",
@@ -224,6 +238,7 @@ class PredictionLearningService:
             agent=prediction.agent,
             project=prediction.project,
             topic=prediction.topic,
+            identity_trust=prediction.identity_trust,
             keywords=list(prediction.keywords),
             importance=prediction.importance,
             source="cognitive_outcome",
@@ -444,15 +459,14 @@ class PredictionLearningService:
                     expected_outcome=str(cognition["expected_outcome"]),
                     confidence=float(cognition["confidence"]),
                     action=(
-                        str(cognition["action"])
-                        if cognition.get("action") is not None
-                        else None
+                        str(cognition["action"]) if cognition.get("action") is not None else None
                     ),
                     session_id=record.session_id,
                     channel=record.channel,
                     agent=record.agent,
                     project=record.project,
                     topic=record.topic,
+                    strategy_tags=list(cognition.get("strategy_tags") or []),
                 )
             )
 
@@ -463,9 +477,7 @@ class PredictionLearningService:
         return PendingPredictionList(
             items=selected,
             returned=len(selected),
-            may_be_incomplete=(
-                len(predictions) >= scan_limit or len(outcomes) >= scan_limit
-            ),
+            may_be_incomplete=(len(predictions) >= scan_limit or len(outcomes) >= scan_limit),
             scan_limit=scan_limit,
             filters=dict(filters),
         )
@@ -478,10 +490,7 @@ class PredictionLearningService:
         filters: dict[str, str],
     ) -> list[tuple[EpisodeRecord, dict[str, Any]]]:
         conditions = [{"key": "source", "match": {"value": source}}]
-        conditions.extend(
-            {"key": key, "match": {"value": value}}
-            for key, value in filters.items()
-        )
+        conditions.extend({"key": key, "match": {"value": value}} for key, value in filters.items())
         points = self._repository.scroll(
             self._episodic_collection,
             qdrant_filter={"must": conditions},

@@ -1,0 +1,34 @@
+services:
+  cyberbrain-canary:
+    image: ${CYBERBRAIN_CANARY_IMAGE:?CYBERBRAIN_CANARY_IMAGE is required}
+    restart: "no"
+    ports:
+      - "127.0.0.1:8768:8767"
+    environment:
+      CYBERBRAIN_HOST: 0.0.0.0
+      CYBERBRAIN_PORT: 8767
+      CYBERBRAIN_QDRANT_URL: ${CYBERBRAIN_CANARY_QDRANT_URL:-http://qdrant:6333}
+      CYBERBRAIN_QDRANT_API_KEY: ${CYBERBRAIN_QDRANT_API_KEY:-}
+      CYBERBRAIN_KNOWLEDGE_COLLECTION: cyberbrain_knowledge_v2_stage
+      CYBERBRAIN_EPISODIC_COLLECTION: cyberbrain_episodic_v2_stage
+      CYBERBRAIN_EMBEDDING_URL: ${CYBERBRAIN_CANARY_EMBEDDING_URL:-http://embedding:11434}
+      CYBERBRAIN_EMBEDDING_MODEL: nomic-embed-text
+      CYBERBRAIN_EMBEDDING_DIMENSION: 768
+      CYBERBRAIN_EMBEDDING_VERSION: nomic-embed-text@v1
+      CYBERBRAIN_MCP_AUTH_TOKEN: ${CYBERBRAIN_MCP_AUTH_TOKEN:?CYBERBRAIN_MCP_AUTH_TOKEN is required}
+      CYBERBRAIN_REQUIRE_AUTH: "true"
+      CYBERBRAIN_KNOWLEDGE_EVOLUTION_LOCK_FILE: /data/knowledge_evolution.lock
+      CYBERBRAIN_DREAM_QUEUE_DB: /data/dream_queue.sqlite
+      CYBERBRAIN_DREAM_AUDIT_DB: /data/dream_audit.sqlite
+    volumes:
+      - cyberbrain-canary-data:/data
+    networks:
+      - canary-network
+
+volumes:
+  cyberbrain-canary-data:
+
+networks:
+  canary-network:
+    external: true
+    name: ${CYBERBRAIN_CANARY_NETWORK:?CYBERBRAIN_CANARY_NETWORK is required}

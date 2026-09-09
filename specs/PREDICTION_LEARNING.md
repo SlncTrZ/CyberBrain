@@ -53,6 +53,7 @@ Optional input:
     agent
     project
     topic
+    strategy_tags
     keywords
     importance
 
@@ -67,7 +68,7 @@ and contains:
     context.cognition.expected_outcome = <expected outcome>
     context.cognition.confidence = <0..1>
 
-Optional action/rationale values remain inside the same cognition context. When one trusted agent identity is bound by the authenticated runtime, stored `agent` attribution is taken from that trusted boundary; a conflicting payload value is rejected rather than used.
+Optional action/rationale values remain inside the same cognition context. Optional `strategy_tags[]` are stored prospectively inside `context.cognition`; they are explicit workflow/strategy labels available to later M6 correlational analysis and must not be reconstructed after the outcome. When one trusted agent identity is bound by the authenticated runtime, stored `agent` attribution is taken from that trusted boundary, the Episode is marked `identity_trust=authenticated`, and a conflicting payload value is rejected rather than used.
 
 ## Outcome record
 
@@ -107,6 +108,7 @@ and inherits the Prediction's:
     topic
     keywords
     importance
+    identity_trust
 
 Its cognition context contains at least:
 
@@ -258,4 +260,4 @@ During ongoing Prediction Learning and Calibration observation, real usage shoul
 
 Any schema expansion should be driven by those observations rather than added speculatively.
 
-For M6 Agent Self-Model readiness, only prospectively valid Prediction/Outcome evidence with preserved identity and causal order may contribute to recurring capability/limitation hypotheses. Historical prose must not be converted into synthetic prior confidence to increase Self-Model sample count.
+For M6 Agent Self-Model, only prospectively valid Prediction/Outcome evidence with preserved identity and causal order may contribute to recurring capability/limitation/workflow hypotheses. Historical prose must not be converted into synthetic prior confidence or strategy labels. Current source M6 extraction requires trusted `identity_trust=authenticated` pairs for readiness/generation; historical/pre-P3 agent strings remain `legacy_untrusted`. See `AGENT_SELF_MODEL.md`.

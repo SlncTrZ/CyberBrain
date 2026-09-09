@@ -9,12 +9,37 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field, field_validator
 
+CURRENT_SCHEMA_VERSION = 2
+
 
 class KnowledgeStatus(StrEnum):
     ACTIVE = "active"
     SUPERSEDED = "superseded"
     DEPRECATED = "deprecated"
     REJECTED = "rejected"
+
+
+class KnowledgeRecordClass(StrEnum):
+    KNOWLEDGE = "knowledge"
+    SELF_MODEL_HYPOTHESIS = "self_model_hypothesis"
+    MIGRATION_QUARANTINE = "migration_quarantine"
+
+
+class IdentityTrust(StrEnum):
+    UNSPECIFIED = "unspecified"
+    LEGACY_UNTRUSTED = "legacy_untrusted"
+    AUTHENTICATED = "authenticated"
+    SYSTEM_DERIVED = "system_derived"
+
+
+class LifecycleState(StrEnum):
+    ACTIVE = "active"
+    SUPPRESSED = "suppressed"
+
+
+class RetentionDirective(StrEnum):
+    DEFAULT = "default"
+    KEEP = "keep"
 
 
 class Verification(StrEnum):
@@ -32,6 +57,7 @@ class Origin(StrEnum):
     INGESTION = "ingestion"
     DREAM = "dream"
     MIGRATION = "migration"
+    COGNITION = "cognition"
 
 
 class DreamStatus(StrEnum):
@@ -55,10 +81,18 @@ def utc_now() -> datetime:
     return datetime.now(UTC)
 
 
+def _clean_reason_codes(values: list[str]) -> list[str]:
+    cleaned = [value.strip() for value in values if value.strip()]
+    if len(cleaned) != len(set(cleaned)):
+        raise ValueError("reason codes must be unique")
+    return cleaned
+
+
 class KnowledgeRecord(BaseModel):
     id: UUID = Field(default_factory=uuid4)
-    schema_version: int = 1
+    schema_version: int = CURRENT_SCHEMA_VERSION
     record_type: str = "knowledge"
+    record_class: KnowledgeRecordClass = KnowledgeRecordClass.KNOWLEDGE
 
     content: str
     summary: str | None = None
@@ -68,7 +102,12 @@ class KnowledgeRecord(BaseModel):
     entity_type: str
     entity_name: str
 
+    tenant: str | None = None
+    user: str | None = None
+    agent: str | None = None
     project: str | None = None
+    session_id: str | None = None
+    identity_trust: IdentityTrust = IdentityTrust.UNSPECIFIED
     tags: list[str] = Field(default_factory=list)
     keywords: list[str] = Field(default_factory=list)
 
@@ -93,6 +132,15 @@ class KnowledgeRecord(BaseModel):
     content_hash: str
     embedding_version: str | None = None
 
+    lifecycle_state: LifecycleState = LifecycleState.ACTIVE
+    ordinary_recall: bool = True
+    retention_score: float = Field(default=1.0, ge=0.0, le=1.0)
+    retention_directive: RetentionDirective = RetentionDirective.DEFAULT
+    access_count: int = Field(default=0, ge=0)
+    last_accessed_at: datetime | None = None
+    lifecycle_updated_at: datetime | None = None
+    lifecycle_reason_codes: list[str] = Field(default_factory=list)
+
     context: dict[str, Any] = Field(default_factory=dict)
     extensions: dict[str, Any] = Field(default_factory=dict)
 
@@ -106,9 +154,11 @@ class KnowledgeRecord(BaseModel):
             raise ValueError("record_type must be 'knowledge'")
         return value
 
-    @field_validator("created_at", "updated_at")
+    @field_validator("created_at", "updated_at", "last_accessed_at", "lifecycle_updated_at")
     @classmethod
-    def normalize_knowledge_time(cls, value: datetime) -> datetime:
+    def normalize_knowledge_time(cls, value: datetime | None) -> datetime | None:
+        if value is None:
+            return None
         if value.tzinfo is None or value.utcoffset() is None:
             raise ValueError("knowledge timestamps must include a timezone")
         return value.astimezone(UTC)
@@ -120,10 +170,15 @@ class KnowledgeRecord(BaseModel):
             raise ValueError("version must be >= 1")
         return value
 
+    @field_validator("lifecycle_reason_codes")
+    @classmethod
+    def validate_lifecycle_reason_codes(cls, values: list[str]) -> list[str]:
+        return _clean_reason_codes(values)
+
 
 class EpisodeRecord(BaseModel):
     id: UUID = Field(default_factory=uuid4)
-    schema_version: int = 1
+    schema_version: int = CURRENT_SCHEMA_VERSION
     record_type: str = "episode"
 
     content: str
@@ -134,9 +189,12 @@ class EpisodeRecord(BaseModel):
 
     channel: str | None = None
     role: EpisodeRole | None = None
+    tenant: str | None = None
+    user: str | None = None
     agent: str | None = None
     project: str | None = None
     topic: str | None = None
+    identity_trust: IdentityTrust = IdentityTrust.UNSPECIFIED
     keywords: list[str] = Field(default_factory=list)
     importance: str | None = None
     source: str | None = None
@@ -148,10 +206,20 @@ class EpisodeRecord(BaseModel):
     content_hash: str
     embedding_version: str | None = None
 
+    lifecycle_state: LifecycleState = LifecycleState.ACTIVE
+    ordinary_recall: bool = True
+    retention_score: float = Field(default=1.0, ge=0.0, le=1.0)
+    retention_directive: RetentionDirective = RetentionDirective.DEFAULT
+    access_count: int = Field(default=0, ge=0)
+    last_accessed_at: datetime | None = None
+    lifecycle_updated_at: datetime | None = None
+    lifecycle_reason_codes: list[str] = Field(default_factory=list)
+
     context: dict[str, Any] = Field(default_factory=dict)
     extensions: dict[str, Any] = Field(default_factory=dict)
 
     created_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now)
 
     @field_validator("record_type")
     @classmethod
@@ -160,7 +228,14 @@ class EpisodeRecord(BaseModel):
             raise ValueError("record_type must be 'episode'")
         return value
 
-    @field_validator("event_time", "dreamed_at", "created_at")
+    @field_validator(
+        "event_time",
+        "dreamed_at",
+        "created_at",
+        "updated_at",
+        "last_accessed_at",
+        "lifecycle_updated_at",
+    )
     @classmethod
     def normalize_episode_time(cls, value: datetime | None) -> datetime | None:
         if value is None:
@@ -176,3 +251,8 @@ class EpisodeRecord(BaseModel):
         if not value:
             raise ValueError("session_id must not be empty")
         return value
+
+    @field_validator("lifecycle_reason_codes")
+    @classmethod
+    def validate_episode_lifecycle_reason_codes(cls, values: list[str]) -> list[str]:
+        return _clean_reason_codes(values)

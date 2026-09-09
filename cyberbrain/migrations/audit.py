@@ -7,10 +7,9 @@ from typing import Literal
 
 from pydantic import ValidationError
 
-from cyberbrain.schemas.models import EpisodeRecord, KnowledgeRecord
+from cyberbrain.schemas.models import CURRENT_SCHEMA_VERSION, EpisodeRecord, KnowledgeRecord
 from cyberbrain.storage.base import PointRepository
 
-CURRENT_SCHEMA_VERSION = 1
 RecordKind = Literal["knowledge", "episode"]
 
 

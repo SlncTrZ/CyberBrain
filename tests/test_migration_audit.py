@@ -30,7 +30,7 @@ def _knowledge_payload() -> dict:
 def test_schema_audit_classifies_current_legacy_future_and_invalid() -> None:
     current = _knowledge_payload()
     legacy = {"content": "legacy", "topic": "CyberBrain"}
-    future = {**current, "schema_version": 2}
+    future = {**current, "schema_version": 3}
     invalid = {key: value for key, value in current.items() if key != "domain"}
     mismatch = {**current, "record_type": "episode"}
     repo = FakeRepository(
@@ -54,7 +54,7 @@ def test_schema_audit_classifies_current_legacy_future_and_invalid() -> None:
     assert report.legacy == 1
     assert report.unsupported_future == 1
     assert report.invalid_current == 2
-    assert report.versions == {1: 3, 0: 1, 2: 1}
+    assert report.versions == {2: 3, 0: 1, 3: 1}
     assert {issue.kind for issue in report.issues} == {
         "legacy_schema",
         "unsupported_future_schema",

@@ -285,7 +285,7 @@ Therefore source-level M5 completion does not enable multi-user operation and do
 
 ## Relationship to Agent Self-Model
 
-Working Memory state is transient task context, not evidence that an agent has a durable capability, limitation, or operating tendency. M6 must not infer identity claims merely from an item remaining active, being repeatedly emitted, or appearing in several task revisions. Self-Model readiness requires separate repeated prospective outcome evidence plus trusted agent identity/P3 isolation.
+Working Memory state is transient task context, not evidence that an agent has a durable capability, limitation, or operating tendency. M6 must not infer identity claims merely from an item remaining active, being repeatedly emitted, or appearing in several task revisions. Current M6 instead uses separate trusted prospective Prediction/Outcome evidence. After explicit review, an accepted Self-Model hypothesis may be projected back into M5 only through `SelfModelWorkingMemoryAdapter` as a normal bounded `hypothesis` candidate; pending/rejected hypotheses are rejected, and the candidate remains subject to exact task identity, task relevance, Salience, dedupe, and token budgets. This advisory projection grants no prompt/tool/routing/permission authority. See `AGENT_SELF_MODEL.md`.
 
 ## Non-goals
 

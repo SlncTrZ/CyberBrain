@@ -6,7 +6,7 @@
 
 ## Operating mode
 
-CyberBrain has satisfied the Level-8.0 source-engineering gate and remains in a use-and-observe / product-safety phase. Dreaming V1, M3 Salience, M4 Concept Formation, and M5 Working Memory are source-level accepted. Production activation, broader tenancy, and downstream cognitive authority remain separately gated. The project should prefer evidence-driven fixes and measured improvements over speculative expansion.
+CyberBrain has satisfied the Level-8.0 source-engineering gate and now also contains source-complete M6 Agent Self-Model, M7 Memory Lifecycle, canonical schema V2, and V2 migration/validation tooling. Production activation, full-corpus migration, broader tenancy, and real M6/M7 evidence acceptance remain separate gates. The project should prefer evidence-driven fixes and measured improvements over speculative expansion.
 
 ## Current product boundary
 
@@ -18,7 +18,8 @@ CyberBrain provides:
 - authenticated MCP/API access;
 - provider-neutral Dream fallback routing;
 - backup, migration, and compatibility tooling;
-- bounded source-level Salience, Concept Formation, and transient Working Memory primitives.
+- bounded source-level M3–M7 cognition primitives, including transient Working Memory, reviewed Self-Model persistence, and reversible Memory Lifecycle;
+- canonical schema-V2 metadata normalization plus staged migration/validation tooling.
 
 CyberBrain remains independent from any single AI client, model provider, routing product, or deployment topology.
 
@@ -50,7 +51,7 @@ authenticated caller
 → server-owned post-storage cognition
 ```
 
-The scope/auth, exact-fetch, real Agent Adapter client bridge, real retrieval benchmark, shadow literal-routing instrumentation, reusable BM25 shadow corpus, server-owned post-storage cognition contract/tests, M3 Salience, M4 Concept Formation, M5 Working Memory, P3.1 trusted-agent binding foundation, E2 prospective-outcome census, M6 readiness contracts, and single software/package version authority are implemented on source `main`. The benchmark decision remains **do not promote global hybrid retrieval**. The shadow path is disabled by default in source and, when enabled by a deployment, evaluates only literal/fingerprint-heavy Knowledge queries in a non-blocking worker; the vector result remains caller-visible and unchanged. Its cache is bounded/TTL-controlled, explicit metadata filters are reapplied before BM25, and failures are fail-open to the canonical search path. The next retrieval gate is larger organic relevance/reliability evidence, not another performance fix. There is no remaining goal to make Agent Adapter orchestrate Dreaming or other background cognition. The immediate cognitive frontier remains M6 evidence maturity, not automatic Self-Model activation: M6.0 now fails closed on missing trusted identity, fewer than 20 resolved prospective outcomes, insufficient session/topic diversity, or incomplete scans; broader P3 isolation remains separately required before persistent influence.
+The scope/auth, exact-fetch, real Agent Adapter client bridge, real retrieval benchmark, shadow literal-routing instrumentation, reusable BM25 shadow corpus, server-owned post-storage cognition contract/tests, M3 Salience, M4 Concept Formation, M5 Working Memory, P3.1 trusted-agent binding, E2 prospective-outcome census, complete source-level M6 Self-Model, complete source-level M7 Memory Lifecycle, schema-V2 metadata contracts, hardened V2 migration/validation tooling, and the current V2 migration runbook are implemented locally. The benchmark decision remains **do not promote global hybrid retrieval**. The literal shadow path remains observational and caller-visible retrieval remains vector. The immediate program frontier is no longer mechanism implementation: normalize/migrate the complete Qdrant corpus to schema V2, validate union/content/vector/provenance integrity, then evaluate real M6 evidence quality and M7 lifecycle behavior over the normalized corpus. Broader P3 isolation remains separately required before `agent_ready`/`multi_user` activation or wider persistent agent authority.
 
 ## Current architectural invariants
 
@@ -143,7 +144,7 @@ linear.
      consequence, explicit user emphasis, and recency.
    - The reviewed policy makes material evidence stronger than novelty/recency and is validated
      against the fixed Salience benchmark; the generic scorer remains independently configurable.
-   - `SalienceAdvisor` is the bounded integration seam already consumed by Concept Formation and Working Memory and available to future Lifecycle work; `SalienceShadowObserver` changes no caller-visible ordering.
+   - `SalienceAdvisor` is the bounded integration seam consumed by Concept Formation and Working Memory; implemented M7 may consume an already-derived Salience score as one lifecycle signal. `SalienceShadowObserver` changes no caller-visible ordering.
    - Does not select or persist the active task context; that belongs to Working Memory.
    - Does not decide truth, authorization, promotion, forgetting, or Knowledge mutation.
 
@@ -182,20 +183,18 @@ linear.
      introduced.
 
 6. Agent Self-Model
-   - Status: M6.0 readiness foundation implemented; hypothesis generation remains gated. The default read-only entry gate requires exact trusted agent identity, at least 20 resolved prospective outcomes, at least 3 sessions, at least 3 topics, and a complete evidence scan. Persistent influence is not authorized.
-   - Owns: evidence-backed, agent-scoped hypotheses about recurring capabilities, limitations,
-     operating tendencies, and strategy constraints.
-   - Calibration is one input, not the Self-Model itself.
-   - Self-model claims remain revisable hypotheses and never become identity truth from one success
-     or failure.
+   - Status: source implementation complete; real-corpus evaluation remains pending schema-V2 migration/validation.
+   - Owns: trusted prospective evidence extraction, fail-closed readiness, deterministic agent-scoped capability/limitation/workflow/strategy hypotheses, explicit review, accepted-only Knowledge Evolution persistence, and bounded accepted-only Working Memory advisory projection.
+   - The default readiness floor remains at least 20 trusted resolved prospective outcomes, 3 sessions, 3 topics, and a complete scan.
+   - Calibration is one input discipline, not the Self-Model itself. Historical/pre-P3 identity is not retroactively trusted.
+   - Self-model claims remain revisable hypotheses; they do not mutate prompts, tools, permissions, routing, model weights, or identity truth.
 
 7. Memory Lifecycle
-   - Status: planned; add only when real data volume demonstrates the need.
-   - Owns: retention strength/decay, retrieval suppression or forgetting policy, and lifecycle
-     triggers for reconsideration.
-   - Provenance must not be silently erased.
-   - Reconsolidation should reuse Dreaming and Knowledge Evolution where reasoning or supersession is
-     required rather than create a second consolidation engine.
+   - Status: source implementation complete; real-corpus shadow evaluation remains pending schema-V2 migration/validation.
+   - Owns: deterministic retention scoring, reversible `keep_active | suppress | remain_suppressed | reactivate`, ordinary-recall eligibility, access metadata, and lifecycle reason codes.
+   - Suppression is metadata-only (`lifecycle_state=suppressed`, `ordinary_recall=false`) and does not physically delete canonical records or alter Knowledge truth/evolution status.
+   - Salience/usage/recency/contradiction/storage pressure are bounded signals, not authorization or truth.
+   - Reconsolidation/reasoning continues to reuse Dreaming and Knowledge Evolution rather than create a second consolidation engine.
 
 ### Dependency view
 
@@ -229,8 +228,7 @@ Review should also consider evidence diversity and integrity:
 - causal ordering and inherited Prediction identity must remain intact;
 - outcome diversity must emerge from real operation rather than manufactured failures.
 
-Reaching the checkpoint triggers review of evidence quality and mechanism behavior only. It does not
-automatically start or activate any downstream mechanism.
+Reaching the checkpoint triggers review of evidence quality and mechanism behavior only. M6/M7 source code now exists independently of that empirical gate; the checkpoint still does not authorize real-corpus Self-Model persistence, lifecycle actuation, deployment, or broader agent authority. Those decisions follow schema-V2 migration/validation and reviewed corpus evidence.
 
 ### Cognitive safety invariants
 
@@ -259,8 +257,9 @@ Normative/current guidance:
 - MCP_PROVIDER_STANDARD.md
 - docs/CURRENT_RUNTIME.md
 - docs/DREAMING_ROUTING.md
+- docs/V2_MIGRATION_RUNBOOK.md
 - specs/
-  - including specs/PREDICTION_LEARNING.md, specs/METACOGNITION_CALIBRATION.md, specs/SALIENCE.md, specs/CONCEPT_FORMATION.md, specs/WORKING_MEMORY.md, specs/AGENT_SELF_MODEL.md, and specs/SECURITY.md for the current cognitive and authority boundaries.
+  - including specs/PREDICTION_LEARNING.md, specs/METACOGNITION_CALIBRATION.md, specs/SALIENCE.md, specs/CONCEPT_FORMATION.md, specs/WORKING_MEMORY.md, specs/AGENT_SELF_MODEL.md, specs/MEMORY_LIFECYCLE.md, and specs/SECURITY.md for the current cognitive and authority boundaries.
 
 Historical development and migration evidence lives under docs/history/ and is non-normative.
 

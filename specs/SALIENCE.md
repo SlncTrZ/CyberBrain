@@ -142,14 +142,14 @@ separate product-safety gate.
 
 ## Bounded integration seam
 
-`SalienceAdvisor` is the accepted M3 integration point. Concept Formation and Working Memory now consume this bounded same-scope advisory seam; Memory Lifecycle may consume it later under its own contract.
+`SalienceAdvisor` is the accepted M3 integration point. Concept Formation and Working Memory consume this bounded same-scope advisory seam, and the implemented M7 Memory Lifecycle contract may consume an already-derived bounded Salience score as one retention signal. Lifecycle semantics remain owned by M7; Salience cannot suppress/delete/reactivate a record by itself.
 
 It may provide an advisory priority order over an already-authorized candidate set. Downstream
 mechanisms must keep their own decision semantics:
 
 - Concept Formation owns abstraction identity/evidence;
 - Working Memory owns task relevance and bounded active-set membership;
-- Memory Lifecycle owns reversible retention/suppression policy.
+- Memory Lifecycle owns reversible retention/suppression/reactivation policy and may use Salience only as one bounded downstream signal. See `MEMORY_LIFECYCLE.md`.
 
 None may reinterpret Salience as truth.
 

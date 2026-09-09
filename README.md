@@ -13,7 +13,7 @@ Current software/package version is defined only in `cyberbrain/_version.py`. Gi
 
 For the latest published release, use the repository's GitHub Releases page rather than a duplicated version literal in this README.
 
-Current `main` has satisfied the Level-8.0 source-engineering gate: M3 Salience, M4 Concept Formation, and M5 Working Memory are source-level accepted alongside the server-owned post-storage cognition and single-version-authority foundations. This is not a production-activation claim. Public release state and deployed runtime state are separate from source state; verify them independently rather than inferring either from this README.
+Current local source has satisfied the Level-8.0 source-engineering gate and now also contains source-complete M6 Agent Self-Model, M7 Memory Lifecycle, canonical schema V2, and staged V2 migration/validation tooling alongside the server-owned post-storage cognition and single-version-authority foundations. This is not a production-activation, migration-cutover, or final Level-8.5+ evidence claim. Public release, deployed runtime, and migrated-data state remain separate from source state and must be verified independently.
 
 The repository is in use-and-observe mode: changes should be driven by reproducible defects,
 operational evidence, security/privacy needs, or portability gaps rather than speculative feature
@@ -68,7 +68,11 @@ Concept Formation / Abstraction M4 is also complete at the source level. A read-
 
 Working Memory / Active Context M5 is complete at the source level. `WorkingMemoryService` keeps exact scope/session/task transient state only; candidate selection is explicit task relevance → Salience → duplicate suppression → token budget, with hard limits, TTL, closeout, and unchanged-context emission suppression. A controlled 4-task/16-step benchmark improves required-context coverage from 67.35% to 100% while lowering context tokens from 1045 to 458, recall calls from 16 to 4, and exact fetches from 12 to 4, with zero stale contamination or cross-task leakage in the fixture. This does not activate a production Working Memory path or claim LLM task-quality improvement. See specs/WORKING_MEMORY.md.
 
-Agent Self-Model M6 remains readiness-gated rather than automatically active. Source now contains the M6.0 read-only contract, the E2 prospective Prediction/Outcome census, and trusted-agent attribution/isolation for Prediction Learning. The default M6.0 entry gate requires exact trusted agent identity, at least 20 resolved prospective outcomes, at least 3 sessions, at least 3 topics, and a complete evidence scan. Passing that gate means only `ready_read_only`; hypothesis generation, persistence, and behavioral influence remain unimplemented/unauthorized. See specs/AGENT_SELF_MODEL.md.
+Agent Self-Model M6 is now source-complete as a bounded evidence/review pipeline. Trusted prospective Prediction/Outcome evidence passes a fail-closed readiness gate before deterministic capability/limitation/workflow hypotheses can be generated. Hypotheses start `pending`; only explicitly accepted hypotheses may persist through Knowledge Evolution as `record_class=self_model_hypothesis`, with `ordinary_recall=false`, and only accepted hypotheses may be projected into M5 as bounded advisory context. M6 still has no authority to mutate prompts, tools, permissions, routing, model weights, or identity truth. Real-corpus M6 quality remains unevaluated until schema-V2 migration/validation is complete. See specs/AGENT_SELF_MODEL.md.
+
+Memory Lifecycle M7 is also source-complete. It owns deterministic shadow lifecycle scoring, reversible soft suppression through `lifecycle_state=suppressed` + `ordinary_recall=false`, reactivation, and access metadata. It does not hard-delete canonical memory as its normal forgetting path and does not change Knowledge truth/evolution status. Controlled source fixtures cover keep/suppress/reactivate behavior; real-corpus lifecycle thresholds remain an evaluation question after V2 migration. See specs/MEMORY_LIFECYCLE.md.
+
+Canonical Knowledge and Episodic payloads now use schema V2. V2 adds explicit identity provenance (`identity_trust`), lifecycle metadata, Knowledge `record_class`, and Episode `updated_at`. Migration tooling stages a union of canonical V1 stage data plus raw legacy deltas, preserves point IDs/content/vectors, and quarantines records that cannot be normalized safely instead of fabricating required metadata. Source schema/tooling completeness is not a claim that the production Qdrant collections have already been migrated or cut over.
 
 ## Dreaming
 
@@ -144,7 +148,9 @@ Current guidance:
 - specs/VERSIONING.md — single software/package version authority and independent contract/schema versioning.
 - docs/CURRENT_RUNTIME.md — deployment-neutral runtime contract.
 - docs/DREAMING_ROUTING.md — provider-neutral Dream fallback routing.
-- specs/ — canonical data, retrieval, evolution, Dreaming, security, Reasoner, and tool contracts.
+- docs/V2_MIGRATION_RUNBOOK.md — current stage-before-cutover schema-V2 migration, independent validation, canary, rollback, and stop-condition procedure.
+- specs/MEMORY_LIFECYCLE.md — canonical M7 lifecycle contract.
+- specs/ — canonical data, retrieval, evolution, Dreaming, security, Reasoner, M3–M7 cognition, migration/schema, and tool contracts.
 
 Historical evidence:
 

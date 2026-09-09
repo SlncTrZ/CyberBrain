@@ -12,8 +12,10 @@ from cyberbrain.embedding.base import EmbeddingProvider
 from cyberbrain.embedding.ollama import OllamaEmbeddingProvider
 from cyberbrain.knowledge.evolution import KnowledgeEvolutionService
 from cyberbrain.knowledge.search import KnowledgeSearchService
+from cyberbrain.lifecycle import MemoryLifecycleService
 from cyberbrain.memory.service import MemoryService
 from cyberbrain.retrieval.shadow import KnowledgeLiteralShadowObserver
+from cyberbrain.self_model import SelfModelPersistence, SelfModelService
 from cyberbrain.storage.base import PointRepository
 from cyberbrain.storage.qdrant import QdrantRepository
 
@@ -28,6 +30,9 @@ class RuntimeServices:
     memory: MemoryService
     prediction_learning: PredictionLearningService
     metacognition_calibration: MetacognitionCalibrationService
+    self_model: SelfModelService
+    self_model_persistence: SelfModelPersistence
+    memory_lifecycle: MemoryLifecycleService
 
 
 def build_runtime(settings: Settings) -> RuntimeServices:
@@ -108,4 +113,11 @@ def build_runtime(settings: Settings) -> RuntimeServices:
         metacognition_calibration=MetacognitionCalibrationService(
             prediction_learning=prediction_learning,
         ),
+        self_model=SelfModelService(),
+        self_model_persistence=SelfModelPersistence(
+            evolution=knowledge_evolution,
+            repository=repository,
+            collection=settings.knowledge_collection,
+        ),
+        memory_lifecycle=MemoryLifecycleService(repository=repository),
     )

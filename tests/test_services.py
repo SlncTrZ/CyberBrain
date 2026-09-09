@@ -105,6 +105,7 @@ def test_memory_store_and_search_applies_filters() -> None:
     assert results[0]["id"] == str(record.id)
     assert repo.last_filter == {
         "must": [
+            {"key": "ordinary_recall", "match": {"value": True}},
             {"key": "channel", "match": {"value": "chatgpt"}},
             {"key": "project", "match": {"value": "CyberBrain"}},
         ]
@@ -228,7 +229,12 @@ def test_knowledge_search_shadow_cannot_replace_vector_rows() -> None:
         {
             "query": "commit abc1234",
             "vector_rows": rows,
-            "filters": {"status": "active", "domain": "ops"},
+            "filters": {
+                "status": "active",
+                "record_class": "knowledge",
+                "ordinary_recall": True,
+                "domain": "ops",
+            },
             "limit": 5,
         }
     ]
@@ -246,6 +252,8 @@ def test_knowledge_search_defaults_to_active_status() -> None:
     assert repo.last_filter == {
         "must": [
             {"key": "status", "match": {"value": "active"}},
+            {"key": "record_class", "match": {"value": "knowledge"}},
+            {"key": "ordinary_recall", "match": {"value": True}},
             {"key": "domain", "match": {"value": "ops"}},
             {"key": "topic", "match": {"value": "mcp"}},
         ]

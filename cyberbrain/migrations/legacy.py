@@ -66,6 +66,7 @@ class LegacyMapper:
                 return self._review(point, "unsupported_or_missing_status")
             record = KnowledgeRecord(
                 id=point_id,
+                schema_version=1,
                 content=normalize_content(content),
                 summary=self._optional_string(payload.get("summary")),
                 domain=str(payload["domain"]).strip(),
@@ -108,6 +109,7 @@ class LegacyMapper:
 
         record = KnowledgeRecord(
             id=point_id,
+            schema_version=1,
             content=normalize_content(content),
             domain=domain,
             topic="legacy_source_chunk",
@@ -156,6 +158,7 @@ class LegacyMapper:
 
         record = EpisodeRecord(
             id=point_id,
+            schema_version=1,
             content=normalize_content(content),
             summary=self._optional_string(payload.get("summary")),
             session_id=session_id,

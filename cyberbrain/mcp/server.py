@@ -17,7 +17,7 @@ from cyberbrain.core.errors import ConfigurationError
 from cyberbrain.core.runtime import RuntimeServices
 from cyberbrain.dreaming.operations import DreamOperations
 from cyberbrain.dreaming.reason_task_inbox import DreamReasonTaskInbox
-from cyberbrain.schemas.models import EpisodeRole, Origin, Verification
+from cyberbrain.schemas.models import EpisodeRole, IdentityTrust, Origin, Verification
 from cyberbrain.tenancy import current_authority, current_trusted_identity, normalize_identifier
 
 PROVIDER_NAME = "cyberbrain"
@@ -301,6 +301,11 @@ async def list_tools() -> list[types.Tool]:
                     "agent": {"type": "string"},
                     "project": {"type": "string"},
                     "topic": {"type": "string"},
+                    "strategy_tags": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "maxItems": 16,
+                    },
                     "keywords": {"type": "array", "items": {"type": "string"}},
                     "importance": {"type": "string"},
                 },
@@ -658,9 +663,9 @@ def _dispatch_tool(name: str, args: dict) -> list[types.TextContent]:
             args["domain"] = _legacy_domain(str(wing))
             args.setdefault("entity_type", "concept")
             if not args.get("entity_name"):
-                digest = hashlib.sha256(
-                    str(args.get("content") or "").encode("utf-8")
-                ).hexdigest()[:12]
+                digest = hashlib.sha256(str(args.get("content") or "").encode("utf-8")).hexdigest()[
+                    :12
+                ]
                 args["entity_name"] = f"legacy:{args.get('topic', 'general')}:{digest}"
         result = runtime.knowledge_evolution.store(
             verification=verification,
@@ -722,7 +727,9 @@ def _dispatch_tool(name: str, args: dict) -> list[types.TextContent]:
 
     if name == "prediction_record":
         event_time = datetime.fromisoformat(str(args.pop("event_time")).replace("Z", "+00:00"))
-        _apply_trusted_prediction_agent(args)
+        trusted_agent = _apply_trusted_prediction_agent(args)
+        if trusted_agent is not None:
+            args["identity_trust"] = IdentityTrust.AUTHENTICATED
         record = runtime.prediction_learning.record_prediction(
             event_time=event_time,
             **args,
@@ -805,9 +812,7 @@ def _dispatch_tool(name: str, args: dict) -> list[types.TextContent]:
             session_id = f"legacy-mcp:{channel}:{int(datetime.now().timestamp() * 1000)}"
         role_value = args.pop("role", None)
         role = (
-            EpisodeRole(role_value)
-            if role_value in {item.value for item in EpisodeRole}
-            else None
+            EpisodeRole(role_value) if role_value in {item.value for item in EpisodeRole} else None
         )
         record = runtime.memory.store(
             content=content,

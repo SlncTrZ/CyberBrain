@@ -7,6 +7,7 @@ from uuid import UUID
 
 from cyberbrain.embedding.base import EmbeddingProvider
 from cyberbrain.retrieval.shadow import KnowledgeLiteralShadowObserver
+from cyberbrain.schemas.models import KnowledgeRecordClass
 from cyberbrain.storage.base import PointRepository
 from cyberbrain.storage.scoping import storage_filter_to_repository_filter
 from cyberbrain.tenancy import (
@@ -70,8 +71,20 @@ class KnowledgeSearchService:
         **filters: Any,
     ) -> list[dict[str, Any]]:
         status = filters.pop("status", "active")
-        normalized_filters = {"status": status, **filters}
-        conditions = [{"key": "status", "match": {"value": status}}]
+        normalized_filters = {
+            "status": status,
+            "record_class": KnowledgeRecordClass.KNOWLEDGE.value,
+            "ordinary_recall": True,
+            **filters,
+        }
+        conditions = [
+            {"key": "status", "match": {"value": status}},
+            {
+                "key": "record_class",
+                "match": {"value": KnowledgeRecordClass.KNOWLEDGE.value},
+            },
+            {"key": "ordinary_recall", "match": {"value": True}},
+        ]
         for key, value in filters.items():
             if value is not None:
                 conditions.append({"key": key, "match": {"value": value}})
@@ -123,9 +136,6 @@ class KnowledgeSearchService:
             qdrant_filter=qdrant_filter,
             limit=limit,
         )
-        results = [
-            {"id": point["id"], **(point.get("payload") or {})}
-            for point in points
-        ]
+        results = [{"id": point["id"], **(point.get("payload") or {})} for point in points]
         results.sort(key=lambda item: int(item.get("version", 0)), reverse=True)
         return results

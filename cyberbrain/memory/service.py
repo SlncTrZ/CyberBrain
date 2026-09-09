@@ -9,7 +9,12 @@ from uuid import UUID
 from cyberbrain.core.content import content_hash, normalize_content
 from cyberbrain.core.secrets import SecretScanner
 from cyberbrain.embedding.base import EmbeddingProvider
-from cyberbrain.schemas.models import DreamStatus, EpisodeRecord, EpisodeRole
+from cyberbrain.schemas.models import (
+    DreamStatus,
+    EpisodeRecord,
+    EpisodeRole,
+    IdentityTrust,
+)
 from cyberbrain.storage.base import PointRepository
 from cyberbrain.storage.scoping import storage_filter_to_repository_filter
 from cyberbrain.tenancy import (
@@ -46,8 +51,11 @@ class MemoryService:
         event_time: datetime,
         channel: str | None = None,
         role: EpisodeRole | None = None,
+        tenant: str | None = None,
+        user: str | None = None,
         agent: str | None = None,
         project: str | None = None,
+        identity_trust: IdentityTrust = IdentityTrust.UNSPECIFIED,
         topic: str | None = None,
         keywords: list[str] | None = None,
         importance: str | None = None,
@@ -70,8 +78,11 @@ class MemoryService:
             event_time=event_time,
             channel=channel,
             role=role,
+            tenant=tenant,
+            user=user,
             agent=agent,
             project=project,
+            identity_trust=identity_trust,
             topic=topic,
             keywords=keywords or [],
             importance=importance,
@@ -138,17 +149,18 @@ class MemoryService:
                 dream_status.value if isinstance(dream_status, DreamStatus) else dream_status
             ),
         }
-        conditions = [
+        conditions = [{"key": "ordinary_recall", "match": {"value": True}}]
+        conditions.extend(
             {"key": key, "match": {"value": value}}
             for key, value in filter_values.items()
             if value is not None
-        ]
+        )
         vector = self._embedding.embed(query)
         points = self._repository.search(
             self._collection,
             vector=vector,
             limit=limit,
-            qdrant_filter={"must": conditions} if conditions else None,
+            qdrant_filter={"must": conditions},
             score_threshold=self._score_threshold,
         )
         return [

@@ -15,9 +15,12 @@ from cyberbrain.core.errors import ConflictError
 from cyberbrain.core.secrets import SecretScanner
 from cyberbrain.embedding.base import EmbeddingProvider
 from cyberbrain.schemas.models import (
+    IdentityTrust,
     KnowledgeRecord,
+    KnowledgeRecordClass,
     KnowledgeStatus,
     Origin,
+    RetentionDirective,
     Verification,
     utc_now,
 )
@@ -93,9 +96,7 @@ class KnowledgeEvolutionService:
         try:
             import fcntl
         except ImportError as exc:
-            raise RuntimeError(
-                "knowledge evolution process lock requires fcntl support"
-            ) from exc
+            raise RuntimeError("knowledge evolution process lock requires fcntl support") from exc
         path = Path(self._process_lock_file)
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("a+b") as handle:
@@ -165,8 +166,7 @@ class KnowledgeEvolutionService:
             pending = [
                 point
                 for point in points
-                if (point.get("payload") or {}).get("status")
-                == KnowledgeStatus.DEPRECATED.value
+                if (point.get("payload") or {}).get("status") == KnowledgeStatus.DEPRECATED.value
                 and self._pending_state(point) == _PENDING
             ]
             if len(pending) > max_pending:
@@ -222,7 +222,15 @@ class KnowledgeEvolutionService:
         entity_type: str,
         entity_name: str,
         summary: str | None = None,
+        record_class: KnowledgeRecordClass = KnowledgeRecordClass.KNOWLEDGE,
+        tenant: str | None = None,
+        user: str | None = None,
+        agent: str | None = None,
         project: str | None = None,
+        session_id: str | None = None,
+        identity_trust: IdentityTrust = IdentityTrust.UNSPECIFIED,
+        ordinary_recall: bool = True,
+        retention_directive: RetentionDirective = RetentionDirective.DEFAULT,
         change_reason: str | None = None,
         importance: str | None = None,
         verification: Verification = Verification.UNVERIFIED,
@@ -306,11 +314,17 @@ class KnowledgeEvolutionService:
                 record = KnowledgeRecord(
                     content=normalized,
                     summary=summary,
+                    record_class=record_class,
                     domain=domain,
                     topic=topic,
                     entity_type=entity_type,
                     entity_name=entity_name,
+                    tenant=tenant,
+                    user=user,
+                    agent=agent,
                     project=project,
+                    session_id=session_id,
+                    identity_trust=identity_trust,
                     version=version,
                     status=(
                         KnowledgeStatus.DEPRECATED
@@ -330,6 +344,8 @@ class KnowledgeEvolutionService:
                     negative_knowledge=negative_knowledge,
                     content_hash=digest,
                     embedding_version=self._embedding.version,
+                    ordinary_recall=ordinary_recall,
+                    retention_directive=retention_directive,
                     context=context_value,
                     extensions=self._staging_extensions(base_extensions, previous_id),
                     created_at=now,

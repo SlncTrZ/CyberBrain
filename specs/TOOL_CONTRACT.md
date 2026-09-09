@@ -48,7 +48,7 @@ CyberBrain owns normalization/validation, embedding, Knowledge Evolution, the Ep
 
 Prediction Learning is causally different: Prediction evidence must be captured before its outcome is known. Implementations must not synthesize prior predictions retrospectively. A client/runtime may supply a thin pre-action/outcome event bridge when it has a genuine causal event seam.
 
-M3 Salience, M4 Concept Formation, and M5 Working Memory are internal cognition contracts and do not add provider-local MCP tools in the current contract. Working Memory is transient task state, not a caller-managed durable store; future integration must remain downstream of trusted authority and hard candidate eligibility.
+M3 Salience, M4 Concept Formation, M5 Working Memory, M6 Agent Self-Model, and M7 Memory Lifecycle are internal cognition contracts and do not add provider-local MCP tools in the current contract. Working Memory is transient task state; Self-Model persistence is accepted-only through Knowledge Evolution and excluded from ordinary Knowledge recall; Lifecycle suppression/reactivation is metadata-only. All remain downstream of trusted authority and hard candidate eligibility.
 
 ## `help`
 
@@ -73,7 +73,7 @@ view = compact | full
 limit
 ```
 
-Default lifecycle scope is `status=active`. Default response view is `compact`.
+Default ordinary-recall scope is `status=active`, `record_class=knowledge`, and `ordinary_recall=true`. Default response view is `compact`. Self-Model hypotheses, migration quarantine, and M7-suppressed Knowledge are therefore excluded from normal semantic recall.
 
 Compact response projection occurs after retrieval/ranking:
 
@@ -141,7 +141,7 @@ view = compact | full
 limit
 ```
 
-All advertised filters must actually be applied. Default response view is `compact` and follows the same projection contract as `knowledge_search`. `view=full` returns the complete canonical normalized Episode row.
+All advertised filters must actually be applied. Ordinary Episodic recall additionally requires `ordinary_recall=true`, so M7-suppressed Episodes remain stored but are excluded from normal semantic recall. Default response view is `compact` and follows the same projection contract as `knowledge_search`. `view=full` returns the complete canonical normalized Episode row.
 
 ## `memory_get`
 
@@ -174,7 +174,7 @@ session_id
 event_time
 ```
 
-`confidence` is bounded to 0..1 and is the caller's prior confidence, not truth probability. The record is stored as canonical Episodic evidence before the outcome is known.
+`confidence` is bounded to 0..1 and is the caller's prior confidence, not truth probability. Optional `strategy_tags[]` may declare bounded prospective workflow/strategy labels for later M6 correlational analysis. The record is stored as canonical Episodic evidence before the outcome is known; under trusted-agent binding it is marked `identity_trust=authenticated`.
 
 ### `prediction_resolve`
 

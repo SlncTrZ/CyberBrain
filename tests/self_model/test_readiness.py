@@ -12,8 +12,11 @@ from cyberbrain.self_model import (
     SelfModelReadinessInput,
     SelfModelReadinessReason,
     SelfModelReadinessStatus,
+    SelfModelReviewStatus,
 )
 from cyberbrain.tenancy import IdentityScope, TrustedIdentityEvidence
+
+NOW = datetime(2026, 9, 8, 12, 0, tzinfo=UTC)
 
 
 def trusted(agent: str = "agent-a") -> TrustedIdentityEvidence:
@@ -27,14 +30,18 @@ def evidence(
     *,
     identity: TrustedIdentityEvidence | None = None,
     resolved: int = 2,
+    trusted_resolved: int | None = None,
     sessions: int = 2,
     topics: int = 2,
     incomplete: bool = False,
+    require_runtime_identity: bool = False,
 ) -> SelfModelReadinessInput:
     return SelfModelReadinessInput(
         agent_id="agent-a",
         trusted_identity=identity,
+        require_runtime_identity=require_runtime_identity,
         resolved_outcomes=resolved,
+        trusted_resolved_outcomes=(resolved if trusted_resolved is None else trusted_resolved),
         diversity=SelfModelEvidenceDiversity(
             distinct_sessions=sessions,
             distinct_projects=1,
@@ -56,25 +63,47 @@ def test_current_two_outcome_baseline_is_insufficient_even_with_trusted_identity
     assert report.minimum_resolved_outcomes == 20
 
 
-def test_missing_trusted_identity_fails_closed_even_when_sample_is_large() -> None:
+def test_untrusted_historical_outcomes_fail_even_when_total_sample_is_large() -> None:
     report = SelfModelReadinessEvaluator().evaluate(
-        evidence(identity=None, resolved=30, sessions=5, topics=5)
+        evidence(resolved=30, trusted_resolved=0, sessions=0, topics=0)
+    )
+
+    assert report.ready is False
+    assert SelfModelReadinessReason.UNTRUSTED_OUTCOME_EVIDENCE in report.reasons
+    assert SelfModelReadinessReason.OUTCOME_SAMPLE_FLOOR_NOT_MET in report.reasons
+
+
+def test_runtime_identity_requirement_fails_closed_when_missing() -> None:
+    report = SelfModelReadinessEvaluator().evaluate(
+        evidence(
+            identity=None,
+            resolved=30,
+            sessions=5,
+            topics=5,
+            require_runtime_identity=True,
+        )
     )
 
     assert report.ready is False
     assert report.reasons == (SelfModelReadinessReason.TRUSTED_AGENT_IDENTITY_REQUIRED,)
 
 
-def test_cross_agent_trusted_identity_fails_closed() -> None:
+def test_cross_agent_runtime_identity_fails_closed() -> None:
     report = SelfModelReadinessEvaluator().evaluate(
-        evidence(identity=trusted("agent-b"), resolved=30, sessions=5, topics=5)
+        evidence(
+            identity=trusted("agent-b"),
+            resolved=30,
+            sessions=5,
+            topics=5,
+            require_runtime_identity=True,
+        )
     )
 
     assert report.ready is False
     assert report.reasons == (SelfModelReadinessReason.TRUSTED_AGENT_IDENTITY_MISMATCH,)
 
 
-def test_complete_diverse_sample_can_only_reach_read_only_ready() -> None:
+def test_complete_diverse_trusted_sample_can_only_reach_read_only_ready() -> None:
     report = SelfModelReadinessEvaluator().evaluate(
         evidence(identity=trusted(), resolved=20, sessions=3, topics=3)
     )
@@ -94,7 +123,7 @@ def test_incomplete_scan_fails_closed() -> None:
     assert report.reasons == (SelfModelReadinessReason.EVIDENCE_SCAN_INCOMPLETE,)
 
 
-def test_hypothesis_contract_requires_traceable_evidence_and_timezone() -> None:
+def test_hypothesis_contract_requires_traceable_evidence_and_review_state() -> None:
     hypothesis = SelfModelHypothesis(
         hypothesis_id="hypothesis-a",
         agent_id="agent-a",
@@ -105,12 +134,16 @@ def test_hypothesis_contract_requires_traceable_evidence_and_timezone() -> None:
         confidence=0.7,
         sample_count=20,
         diversity=SelfModelEvidenceDiversity(3, 1, 3),
-        reviewed_at=datetime(2026, 9, 8, 12, 0, tzinfo=UTC),
+        generated_at=NOW,
         reason_codes=("repeated_confirmed_outcomes",),
     )
 
     assert hypothesis.agent_id == "agent-a"
-    assert hypothesis.version == "self-model-v1"
+    assert hypothesis.version == "self-model-v2"
+    assert hypothesis.review_status is SelfModelReviewStatus.PENDING
+    accepted = hypothesis.reviewed(status=SelfModelReviewStatus.ACCEPTED, reviewed_at=NOW)
+    assert accepted.accepted is True
+    assert accepted.reviewed_at == NOW
 
     with pytest.raises(ValueError, match="supporting evidence"):
         SelfModelHypothesis(
@@ -123,6 +156,6 @@ def test_hypothesis_contract_requires_traceable_evidence_and_timezone() -> None:
             confidence=0.5,
             sample_count=1,
             diversity=SelfModelEvidenceDiversity(1, 1, 1),
-            reviewed_at=datetime(2026, 9, 8, 12, 0, tzinfo=UTC),
+            generated_at=NOW,
             reason_codes=("unsupported",),
         )

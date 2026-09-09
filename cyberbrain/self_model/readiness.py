@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MPL-2.0
-"""Fail-closed M6 readiness evaluation over prospective outcome evidence."""
+"""Fail-closed M6 readiness evaluation over prospective trusted outcome evidence."""
 
 from __future__ import annotations
 
@@ -19,6 +19,7 @@ class SelfModelReadinessStatus(StrEnum):
 class SelfModelReadinessReason(StrEnum):
     TRUSTED_AGENT_IDENTITY_REQUIRED = "trusted_agent_identity_required"
     TRUSTED_AGENT_IDENTITY_MISMATCH = "trusted_agent_identity_mismatch"
+    UNTRUSTED_OUTCOME_EVIDENCE = "untrusted_outcome_evidence"
     EVIDENCE_SCAN_INCOMPLETE = "evidence_scan_incomplete"
     OUTCOME_SAMPLE_FLOOR_NOT_MET = "outcome_sample_floor_not_met"
     SESSION_DIVERSITY_NOT_MET = "session_diversity_not_met"
@@ -48,18 +49,22 @@ class SelfModelReadinessPolicy:
 @dataclass(frozen=True, slots=True)
 class SelfModelReadinessInput:
     agent_id: str
-    trusted_identity: TrustedIdentityEvidence | None
     resolved_outcomes: int
+    trusted_resolved_outcomes: int
     diversity: SelfModelEvidenceDiversity
     evidence_ids: tuple[str, ...]
+    trusted_identity: TrustedIdentityEvidence | None = None
+    require_runtime_identity: bool = False
     may_be_incomplete: bool = False
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "agent_id", normalize_identifier(self.agent_id))
-        if isinstance(self.resolved_outcomes, bool) or not isinstance(self.resolved_outcomes, int):
-            raise ValueError("self-model resolved_outcomes must be an integer")
-        if self.resolved_outcomes < 0:
-            raise ValueError("self-model resolved_outcomes must not be negative")
+        for name in ("resolved_outcomes", "trusted_resolved_outcomes"):
+            value = getattr(self, name)
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                raise ValueError(f"self-model {name} must be a non-negative integer")
+        if self.trusted_resolved_outcomes > self.resolved_outcomes:
+            raise ValueError("trusted resolved outcomes cannot exceed total resolved outcomes")
         evidence_ids = tuple(item.strip() for item in self.evidence_ids if item.strip())
         if len(evidence_ids) != len(set(evidence_ids)):
             raise ValueError("self-model readiness evidence IDs must be unique")
@@ -74,6 +79,7 @@ class SelfModelReadinessReport:
     status: SelfModelReadinessStatus
     reasons: tuple[SelfModelReadinessReason, ...]
     resolved_outcomes: int
+    trusted_resolved_outcomes: int
     minimum_resolved_outcomes: int
     diversity: SelfModelEvidenceDiversity
     minimum_distinct_sessions: int
@@ -87,7 +93,7 @@ class SelfModelReadinessReport:
 
 
 class SelfModelReadinessEvaluator:
-    """Gate M6.1 without generating or persisting any self-model hypothesis."""
+    """Gate M6.1 without generating or persisting any Self-Model hypothesis."""
 
     def __init__(self, policy: SelfModelReadinessPolicy | None = None) -> None:
         self._policy = policy or SelfModelReadinessPolicy()
@@ -96,17 +102,23 @@ class SelfModelReadinessEvaluator:
         reasons: list[SelfModelReadinessReason] = []
         trusted_source: str | None = None
         identity = evidence.trusted_identity
-        if identity is None:
-            reasons.append(SelfModelReadinessReason.TRUSTED_AGENT_IDENTITY_REQUIRED)
-        else:
+        if evidence.require_runtime_identity:
+            if identity is None:
+                reasons.append(SelfModelReadinessReason.TRUSTED_AGENT_IDENTITY_REQUIRED)
+            else:
+                trusted_source = identity.authentication_source
+                if identity.scope.agent != frozenset({evidence.agent_id}):
+                    reasons.append(SelfModelReadinessReason.TRUSTED_AGENT_IDENTITY_MISMATCH)
+        elif identity is not None:
             trusted_source = identity.authentication_source
-            trusted_agents = identity.scope.agent
-            if trusted_agents != frozenset({evidence.agent_id}):
+            if identity.scope.agent != frozenset({evidence.agent_id}):
                 reasons.append(SelfModelReadinessReason.TRUSTED_AGENT_IDENTITY_MISMATCH)
 
+        if evidence.trusted_resolved_outcomes != evidence.resolved_outcomes:
+            reasons.append(SelfModelReadinessReason.UNTRUSTED_OUTCOME_EVIDENCE)
         if evidence.may_be_incomplete:
             reasons.append(SelfModelReadinessReason.EVIDENCE_SCAN_INCOMPLETE)
-        if evidence.resolved_outcomes < self._policy.minimum_resolved_outcomes:
+        if evidence.trusted_resolved_outcomes < self._policy.minimum_resolved_outcomes:
             reasons.append(SelfModelReadinessReason.OUTCOME_SAMPLE_FLOOR_NOT_MET)
         if evidence.diversity.distinct_sessions < self._policy.minimum_distinct_sessions:
             reasons.append(SelfModelReadinessReason.SESSION_DIVERSITY_NOT_MET)
@@ -124,6 +136,7 @@ class SelfModelReadinessEvaluator:
             status=status,
             reasons=tuple(reasons),
             resolved_outcomes=evidence.resolved_outcomes,
+            trusted_resolved_outcomes=evidence.trusted_resolved_outcomes,
             minimum_resolved_outcomes=self._policy.minimum_resolved_outcomes,
             diversity=evidence.diversity,
             minimum_distinct_sessions=self._policy.minimum_distinct_sessions,

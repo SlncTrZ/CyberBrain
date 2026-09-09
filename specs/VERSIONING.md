@@ -28,13 +28,13 @@ Backward-compatible additions such as a new optional parameter may remain within
 
 ## Data schema
 
-Canonical knowledge and episodic records start with:
+Current canonical Knowledge and Episodic payloads use:
 
 ```text
-schema_version = 1
+schema_version = 2
 ```
 
-Schema migration must be explicit and reversible where practical.
+Historical schema V1 remains a migration/source format, not the current write contract. Schema migration must be explicit, preserve provenance/content/vector identity, fail if the source does not stabilize or staged target counts do not converge, and remain reversible or stage-before-cutover. Unmappable legacy records must be quarantined rather than silently dropped or normalized with fabricated metadata. The current schema-V2 procedure is `docs/V2_MIGRATION_RUNBOOK.md`.
 
 Never infer schema solely from the provider software version.
 

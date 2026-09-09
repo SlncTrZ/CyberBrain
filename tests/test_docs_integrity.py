@@ -13,6 +13,7 @@ CURRENT_DOC_FILES = {
     "README.md",
     "CURRENT_RUNTIME.md",
     "DREAMING_ROUTING.md",
+    "V2_MIGRATION_RUNBOOK.md",
 }
 
 REFERENCE_PATTERN = re.compile(r"`([^`]+.(?:md|json|ya?ml))`")
@@ -77,3 +78,35 @@ def test_illustrative_yaml_states_that_runtime_does_not_load_it() -> None:
     )
 
     assert "runtime does NOT load this YAML file" in text
+
+
+def test_level8_current_guidance_includes_m7_and_v2_runbook() -> None:
+    docs_index = (DOCS / "README.md").read_text(encoding="utf-8")
+    plan = (ROOT / "PLAN.md").read_text(encoding="utf-8")
+
+    assert "V2_MIGRATION_RUNBOOK.md" in docs_index
+    assert "MEMORY_LIFECYCLE.md" in docs_index
+    assert "V2_MIGRATION_RUNBOOK.md" in plan
+    assert (ROOT / "specs" / "MEMORY_LIFECYCLE.md").exists()
+
+
+def test_current_guidance_does_not_embed_private_deployment_paths() -> None:
+    files = [
+        ROOT / "README.md",
+        ROOT / "PLAN.md",
+        ROOT / "TOOL_GUIDE.md",
+        ROOT / "AGENTS.md",
+        *sorted(DOCS.glob("*.md")),
+        *sorted((ROOT / "specs").glob("*.md")),
+        ROOT / "config" / "docker-compose.v2-canary.example.yml",
+    ]
+    forbidden = ("/home/dinhtc", "/mnt/pc-dev", "docker-all_default")
+
+    leaked: list[tuple[str, str]] = []
+    for source in files:
+        text = source.read_text(encoding="utf-8")
+        for marker in forbidden:
+            if marker in text:
+                leaked.append((str(source.relative_to(ROOT)), marker))
+
+    assert leaked == []
