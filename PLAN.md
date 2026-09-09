@@ -6,7 +6,7 @@
 
 ## Operating mode
 
-CyberBrain has satisfied the Level-8.0 source-engineering gate and now also contains source-complete M6 Agent Self-Model, M7 Memory Lifecycle, canonical schema V2, and V2 migration/validation tooling. Production activation, full-corpus migration, broader tenancy, and real M6/M7 evidence acceptance remain separate gates. The project should prefer evidence-driven fixes and measured improvements over speculative expansion.
+CyberBrain has satisfied the Level-8.0 source-engineering gate and contains source-complete M6 Agent Self-Model, M7 Memory Lifecycle, canonical schema V2, and deterministic migration/validation tooling. The full corpus has completed validated schema-V2 production cutover. Broader tenancy and real M6/M7 evidence acceptance remain separate gates. The project should prefer evidence-driven fixes and measured improvements over speculative expansion.
 
 ## Current product boundary
 
@@ -51,7 +51,7 @@ authenticated caller
 → server-owned post-storage cognition
 ```
 
-The scope/auth, exact-fetch, real Agent Adapter client bridge, real retrieval benchmark, shadow literal-routing instrumentation, reusable BM25 shadow corpus, server-owned post-storage cognition contract/tests, M3 Salience, M4 Concept Formation, M5 Working Memory, P3.1 trusted-agent binding, E2 prospective-outcome census, complete source-level M6 Self-Model, complete source-level M7 Memory Lifecycle, schema-V2 metadata contracts, hardened V2 migration/validation tooling, and the current V2 migration runbook are implemented locally. The benchmark decision remains **do not promote global hybrid retrieval**. The literal shadow path remains observational and caller-visible retrieval remains vector. The immediate program frontier is no longer mechanism implementation: normalize/migrate the complete Qdrant corpus to schema V2, validate union/content/vector/provenance integrity, then evaluate real M6 evidence quality and M7 lifecycle behavior over the normalized corpus. Broader P3 isolation remains separately required before `agent_ready`/`multi_user` activation or wider persistent agent authority.
+The scope/auth, exact-fetch, real Agent Adapter client bridge, real retrieval benchmark, shadow literal-routing instrumentation, reusable BM25 shadow corpus, server-owned post-storage cognition contract/tests, M3 Salience, M4 Concept Formation, M5 Working Memory, P3.1 trusted-agent binding, E2 prospective-outcome census, complete source-level M6 Self-Model, complete source-level M7 Memory Lifecycle, schema-V2 metadata contracts, hardened V2 migration/validation tooling, and the current V2 migration runbook are implemented. The complete corpus has been staged, independently validated, canary-tested, and cut over to schema V2. The benchmark decision remains **do not promote global hybrid retrieval**. The literal shadow path remains observational and caller-visible retrieval remains vector. The immediate program frontier is now evidence accumulation and integration quality: M6 must remain fail-closed until prospective trusted evidence matures, while M7 remains shadow-only until access/Salience/Concept/relevance evidence supports safe lifecycle actuation. Broader P3 isolation remains separately required before `agent_ready`/`multi_user` activation or wider persistent agent authority.
 
 ## Current architectural invariants
 

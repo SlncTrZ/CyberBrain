@@ -1,7 +1,7 @@
 # Schema V2 Migration Runbook
 
-> Status: Current operational runbook for staging and validating the schema-V2 corpus.
-> This runbook does **not** authorize production cutover. Cutover/restart/deployment still requires explicit owner approval.
+> Status: Current reusable operational runbook for schema-V2 staging, validation, catch-up, cutover, and rollback.
+> The current production corpus has completed this procedure. Future cutover/restart/deployment operations still require explicit owner approval.
 
 ## Purpose
 
@@ -16,7 +16,7 @@ cyberbrain_knowledge          # raw/current legacy delta source
 cyberbrain_episodic           # raw/current legacy delta source
 ```
 
-Do not copy only the V1 stage. The latest read-only census used to design this migration found 25 raw IDs absent from the V1 stage and 5,083 unique IDs across the four source collections. **5,083 is an observed checkpoint, not a hard-coded invariant**: rerun the source census immediately before staging because the live sources may have changed.
+Do not copy only the V1 stage. Historical migration evidence demonstrated that raw source deltas can contain IDs absent from the V1 stage, so the complete four-source union is mandatory. Never hard-code a historical corpus count: rerun the source census immediately before staging because live sources may change.
 
 Target stage collections are:
 

@@ -13,7 +13,7 @@ Current software/package version is defined only in `cyberbrain/_version.py`. Gi
 
 For the latest published release, use the repository's GitHub Releases page rather than a duplicated version literal in this README.
 
-Current local source has satisfied the Level-8.0 source-engineering gate and now also contains source-complete M6 Agent Self-Model, M7 Memory Lifecycle, canonical schema V2, and staged V2 migration/validation tooling alongside the server-owned post-storage cognition and single-version-authority foundations. This is not a production-activation, migration-cutover, or final Level-8.5+ evidence claim. Public release, deployed runtime, and migrated-data state remain separate from source state and must be verified independently.
+Current source has satisfied the Level-8.0 source-engineering gate and contains source-complete M6 Agent Self-Model, M7 Memory Lifecycle, canonical schema V2, and deterministic migration/validation tooling alongside the server-owned post-storage cognition and single-version-authority foundations. The current production storage configuration has completed a validated schema-V2 cutover. This is still not a final Level-8.5+ behavioral-evidence claim: M6 remains evidence-gated and M7 remains shadow-only pending richer real-corpus lifecycle evidence.
 
 The repository is in use-and-observe mode: changes should be driven by reproducible defects,
 operational evidence, security/privacy needs, or portability gaps rather than speculative feature
