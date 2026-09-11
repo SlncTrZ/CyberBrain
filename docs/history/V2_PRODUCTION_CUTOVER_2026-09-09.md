@@ -1,6 +1,9 @@
 # CyberBrain Schema-V2 Production Cutover — 2026-09-09
 
 > Historical operational record. Current guidance lives in `docs/CURRENT_RUNTIME.md` and `docs/V2_MIGRATION_RUNBOOK.md`.
+>
+> Successor record: `docs/history/V2_COLLECTION_CLEANUP_2026-09-11.md` (owner closed the
+> acceptance window and authorized removal of every non-live collection).
 
 ## Pre-cutover evidence
 

@@ -251,7 +251,7 @@ Dream scheduler/worker point to the same prior Episodic collection
 no mixed collection pair remains
 ```
 
-Stage collections and migration reports should be retained until the acceptance window is closed and the owner authorizes cleanup.
+Stage collections and migration reports should be retained until the acceptance window is closed and the owner authorizes cleanup. Cleanup is a separate owner-authorized action, not an implied part of cutover: snapshot every collection to be removed, validate at least one snapshot by restoring it and comparing counts, then delete, and record the outcome in dated historical documentation (see `docs/history/V2_COLLECTION_CLEANUP_2026-09-11.md`). The rollback pair is not permanently exempt — the owner may waive it explicitly, and a waived rollback target is dropped in the same authorized operation.
 
 ## 9. Evidence to retain
 
@@ -266,9 +266,13 @@ canary acceptance report
 M6 real-evidence report
 M7 shadow report
 cutover/rollback record if cutover occurs
+collection cleanup record after an authorized cleanup
+current deployment fingerprint
 ```
 
 Deployment-specific evidence belongs in private/operational storage or dated historical documentation as appropriate. Do not put secrets, private hostnames, or credentials into public tracked documentation.
+
+A deployment fingerprint (`docs/history/DEPLOYMENT_FINGERPRINT_227.md`) records measured host configuration — compose hash, image id, collection pair, environment invariants — so that drift is detectable without copying the host compose file into this repository. Re-measure and update it in the same change that alters the deployment.
 
 ## Stop conditions
 
