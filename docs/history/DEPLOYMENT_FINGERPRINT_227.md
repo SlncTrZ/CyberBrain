@@ -1,5 +1,46 @@
 # CyberBrain Deployment Fingerprint — .227
 
+> Historical operational record: measured deployment snapshot, not source guidance.
+> Earlier measurements are retained below; re-measure before relying on this record.
+
+## Measured 2026-09-30 17:04 ICT
+
+| Field | Measured value |
+| --- | --- |
+| Source commit | 1f15ee6fc08d6243ba1cddb3d380a9e9a45f10ad |
+| Image tag | cyberbrain:git-1f15ee6fc08d |
+| Image ID | sha256:c8aa573ce1fd54bd3e0ceee2392eebfae9ac280abe2dc624f737b27bc45f1da5 |
+| Deployment Compose SHA256 | 58d97c7bcdca0b83bc11bd7c033c1f5dce253f5bbc0258dda3ac4f39d1e0b54f |
+| Package version derived from source authority | 0.2.1 |
+| Python source equality | 127/127 files in each of five containers |
+| API / worker / scheduler / router / reasoner | All healthy |
+| Health / readiness | HTTP 200 / 200 |
+| Unauthenticated MCP | HTTP 401 |
+| Gateway authenticated help | PASS after read-only retry |
+| Provider contract hash | 7d7e80e04eed4e5e8512ea8ffdc0afde8db763dd6cad7afa364c8a32884b38fd |
+| Knowledge / Episodic points | 5311 / 1110 |
+| Canonical collections present | Exactly two, existing V2 stage-named collections |
+| Queue after operational schema upgrade | 443 processed, 2 failed historical jobs |
+| Scheduler heartbeat | Fresh waiting; completed-run evidence not yet present |
+
+The rollout used the already validated image with an immutable source-commit tag. It changed
+only five CyberBrain services and added the scheduler heartbeat healthcheck. Existing auth,
+trusted identity, default mode, cognition flags, collection names and dependency services were
+preserved. No broader-mode configuration, review resolution or semantic migration occurred.
+Before quiesced upgrade, both Qdrant collections and all three existing operational SQLite
+files were backed up with verified checksums. Previous image and Compose were retained;
+production rollback was not executed or drilled.
+
+The live evaluation window starts with this actual rollout. Day-30/day-60 observations are
+separate from source acceptance and do not become proof merely because calendar time elapsed.
+Read-only smoke checks establish deployment availability, not long-term learning usefulness.
+
+---
+
+## Earlier deployment measurement
+
+# CyberBrain Deployment Fingerprint — .227
+
 > Historical operational record (measured snapshot, not current guidance).
 > Purpose: make **drift detectable**. The authoritative deployment configuration and
 > compose file live on the deployment host and are not tracked in this repository, so
