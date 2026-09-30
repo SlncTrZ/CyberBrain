@@ -22,7 +22,7 @@ def test_auth_can_be_explicitly_disabled_for_local_test_mode() -> None:
     "mode",
     [DeploymentMode.AGENT_READY, DeploymentMode.MULTI_USER],
 )
-def test_non_single_owner_mode_remains_disabled_until_full_p3_integration(
+def test_broader_mode_requires_persisted_authenticated_principals(
     mode: DeploymentMode,
 ) -> None:
     settings = Settings(
@@ -30,7 +30,7 @@ def test_non_single_owner_mode_remains_disabled_until_full_p3_integration(
         require_auth=True,
         deployment_mode=mode,
     )
-    with pytest.raises(ConfigurationError, match="full P3 read/write/background isolation"):
+    with pytest.raises(ConfigurationError, match="authenticated principal registry"):
         settings.validate_runtime()
 
 

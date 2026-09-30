@@ -22,7 +22,7 @@ Optional compatibility:
 X-API-Key: <token>
 ```
 
-The provider fails closed when authentication is required but not configured. An optional server-side `CYBERBRAIN_TRUSTED_AGENT_ID` may bind one trusted agent only after Bearer/X-API-Key verification; caller headers or tool payloads cannot create trusted identity, and this setting does not enable `agent_ready` or `multi_user` deployment modes.
+The provider fails closed when authentication is required but not configured. An optional server-side `CYBERBRAIN_TRUSTED_AGENT_ID` may bind one trusted agent only after Bearer/X-API-Key verification; caller headers or tool payloads cannot create trusted identity, and this setting alone does not enable broader modes. An optional `CYBERBRAIN_PRINCIPAL_REGISTRY_FILE` binds server-owned principal scope and operation grants after credential verification. Broader modes additionally require complete runtime quota limits; caller fields cannot select or widen authority. See `docs/TENANCY_OPERATIONS.md`.
 
 ## Canonical tools
 
@@ -153,3 +153,27 @@ See `specs/METACOGNITION_CALIBRATION.md`. `prediction_resolve` triggers M6 evalu
 Dreaming operations do not expose a direct write path. A candidate can reach Knowledge only through Reasoner provenance validation, the promotion gate, optional review resolution, and Knowledge Evolution writeback.
 
 For current Dream worker routing, CyberBrain prepares the full Dream request and bounded micro-task set first, registers the whole run atomically in the Reason Task inbox, then gives external MCP consumers one common claim/submit window (`CYBERBRAIN_DREAM_MCP_WAIT_SECONDS`, default 30 seconds). MCP-completed tasks are preserved as the winning results. After the common deadline, only unfinished tasks are sent to the configured fallback Reasoner endpoint. The fallback service reads an ordered, provider-neutral route configuration: provider 1 models in declared order, then provider 2 models, and so on. CyberBrain does not hard-code provider names, model names, or an external routing product. Credentials are resolved only from runtime environment variables named by each route's `auth_env`. The MCP wait is run-level, not a serial per-task delay.
+
+
+## Scope and review pagination
+
+All data-bearing MCP tools require a bound caller authority and the corresponding
+read/write/review/background operation grant. Canonical search/get/timeline applies
+hard effective scope before downstream cognition; durable stores resolve concrete
+attribution before embedding/persistence. Compatibility aliases share the same
+service enforcement. Caller input cannot assign authenticated/system-derived
+identity trust on ordinary writes.
+
+The current single-owner runtime treats unconstrained owner identity dimensions
+as optional query selectors; a constrained dimension can only narrow by a true
+subset. Scoped callers are denied owner-global Dream and Prediction operations
+until durable scope propagation exists. Broader deployment modes remain disabled.
+
+`dream_reviews` accepts optional `cursor` (maximum 1024 characters), alongside
+`limit` (1–500). Each returned row includes `review_cursor`; pass the final row's
+cursor to obtain the next page. Ordering is creation time, run ID, candidate index.
+The endpoint still returns a list, and an exhausted page is empty. Invalid cursors
+fail validation. Cursor pagination never resolves or promotes a review.
+
+
+Source correctness/build acceptance is defined in `docs/SOURCE_ACCEPTANCE.md`. Long-term live effectiveness, evidence maturity and retrieval promotion are evaluated separately under `docs/LIVE_EVALUATION.md`.

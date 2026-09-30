@@ -120,6 +120,8 @@ def build_dream_worker_runtime(settings: Settings) -> DreamWorkerRuntime:
         promotion=promotion,
         writeback=writeback,
         metrics=services.metrics,
+        quota_limiter=services.quota_limiter,
+        deployment_mode=settings.deployment_mode,
     )
     return DreamWorkerRuntime(
         services=services,

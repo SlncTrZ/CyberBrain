@@ -218,7 +218,7 @@ def run(path: Path = DEFAULT_FIXTURE) -> dict[str, Any]:
         "changes_runtime_behavior": False,
         "notes": (
             "Controlled source benchmark. Coverage measures required task-state availability, "
-            "not end-user or LLM task quality. Working Memory is not wired into production runtime."
+            "not end-user or LLM task quality. This fixture does not observe production runtime."
         ),
     }
 

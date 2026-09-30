@@ -6,7 +6,7 @@
 
 ## Operating mode
 
-CyberBrain has satisfied the Level-8.0 source-engineering gate and contains source-complete M6 Agent Self-Model, M7 Memory Lifecycle, canonical schema V2, and deterministic migration/validation tooling. The full corpus has completed validated schema-V2 production cutover. Broader tenancy and real M6/M7 evidence acceptance remain separate gates. The project should prefer evidence-driven fixes and measured improvements over speculative expansion.
+CyberBrain has satisfied the Level-8.0 source-engineering gate and contains source-complete M6 Agent Self-Model, M7 Memory Lifecycle, canonical schema V2, and deterministic migration/validation tooling. The full corpus has completed validated schema-V2 production cutover. Source tenancy implementation and long-term M6/M7 effectiveness are assessed independently. The project should prefer evidence-driven fixes and measured improvements over speculative expansion.
 
 ## Current product boundary
 
@@ -29,7 +29,7 @@ Normal external agents are memory consumers/producers. Their stable responsibili
 
 Wave 1 of the Level 8+ product/infrastructure track and the shared Wave 2 integration are complete on current `main`:
 
-- authenticated MCP source requests bind to explicit `CallerAuthority` in `single_owner` mode; source can additionally bind a server-configured trusted agent identity only after credential verification, while `agent_ready`/`multi_user` remain fail-closed until full P3 read/write/background isolation and persisted identity requirements are complete;
+- authenticated MCP requests bind server-owned authority and trusted identity; `single_owner` remains default, while broader modes require an authenticated principal registry and complete runtime quotas;
 - canonical `knowledge_get(id)` and `memory_get(id)` perform exact full fetch with storage-side scope eligibility and indistinguishable absent/out-of-scope not-found behavior;
 - `cyberbrain.agent_adapter` has a real MCP Streamable HTTP client bridge over the canonical tool contract;
 - M3 Salience and M4 Concept Formation are active after authorized prefetch/store observation under their bounded advisory/evidence contracts;
@@ -39,7 +39,7 @@ Wave 1 of the Level 8+ product/infrastructure track and the shared Wave 2 integr
 - M7 records access and applies reversible lifecycle decisions event-by-event, with no automatic historical bulk sweep;
 - the Level-8.0 source gate is satisfied and the production cognitive integration path is active.
 
-The retrieval benchmark/fusion foundation remains observational rather than caller-visible. A 28-case reviewed benchmark against the current vector path rejected always-on global hybrid fusion: it improved Recall@5 but slightly reduced MRR and introduced rank regressions. A deterministic literal/fingerprint router that uses lexical retrieval only for literal-heavy queries while retaining vector retrieval elsewhere improved Recall@5 and MRR with no observed rank regressions in the reviewed set. Shadow observation is implemented and the reusable pre-tokenized BM25 corpus has cleared the earlier recurring scoring-cost blocker, but lexical output remains **SHADOW ONLY** until larger live relevance/reliability evidence is reviewed. The Agent Adapter remains optional foreground convenience rather than a cognitive lifecycle owner. Broader tenancy enforcement across existing search/write paths is still pending. Public release packaging remains a separate explicit decision.
+The retrieval benchmark/fusion foundation remains observational rather than caller-visible. A 28-case reviewed benchmark against the current vector path rejected always-on global hybrid fusion: it improved Recall@5 but slightly reduced MRR and introduced rank regressions. A deterministic literal/fingerprint router that uses lexical retrieval only for literal-heavy queries while retaining vector retrieval elsewhere improved Recall@5 and MRR with no observed rank regressions in the reviewed set. Shadow observation is implemented and the reusable pre-tokenized BM25 corpus has cleared the earlier recurring scoring-cost blocker, but lexical output remains **SHADOW ONLY** until larger live relevance/reliability evidence is reviewed. The Agent Adapter remains optional foreground convenience rather than a cognitive lifecycle owner. Bound MCP requests enforce operation grants, storage-side scope filters for search/get/timeline, concrete write attribution, and identity-partitioned Knowledge Evolution. Source also implements a server-owned principal registry, durable Dream queue/audit/inbox scope, scoped Prediction/Calibration/Self-Model evidence, atomic persisted quotas, bounded MCP sessions/request bodies, and scoped numeric telemetry. `agent_ready`/`multi_user` are opt-in: authenticated principal configuration and every runtime quota limit are required; missing or incompatible configuration fails closed. Source acceptance, deployment acceptance, and longitudinal live evaluation are separate. See `docs/SOURCE_ACCEPTANCE.md`, `docs/TENANCY_OPERATIONS.md`, and `docs/LIVE_EVALUATION.md`. Public release packaging remains a separate explicit decision.
 
 ### Current engineering phase — Level-8 source accepted; readiness and product-boundary hardening
 
@@ -54,7 +54,7 @@ authenticated caller
 → server-owned post-storage cognition
 ```
 
-The scope/auth, exact-fetch, real Agent Adapter client bridge, real retrieval benchmark, shadow literal-routing instrumentation, reusable BM25 shadow corpus, server-owned post-storage cognition contract/tests, M3 Salience, M4 Concept Formation, M5 Working Memory, P3.1 trusted-agent binding, E2 prospective-outcome census, complete source-level M6 Self-Model, complete source-level M7 Memory Lifecycle, schema-V2 metadata contracts, hardened V2 migration/validation tooling, and the current V2 migration runbook are implemented. The complete corpus has been staged, independently validated, canary-tested, and cut over to schema V2. The benchmark decision remains **do not promote global hybrid retrieval**. The literal shadow path remains observational and caller-visible retrieval remains vector. The immediate program frontier is now evidence accumulation and tuning of the active integration: M6 remains fail-closed until prospective trusted evidence matures, while M7 is active only on touched/prefetched events rather than as a full-corpus sweep. Broader P3 isolation remains separately required before `agent_ready`/`multi_user` activation or wider persistent agent authority.
+The scope/auth, exact-fetch, real Agent Adapter client bridge, real retrieval benchmark, shadow literal-routing instrumentation, reusable BM25 shadow corpus, server-owned post-storage cognition contract/tests, M3 Salience, M4 Concept Formation, M5 Working Memory, P3.1 trusted-agent binding, E2 prospective-outcome census, complete source-level M6 Self-Model, complete source-level M7 Memory Lifecycle, schema-V2 metadata contracts, hardened V2 migration/validation tooling, and the current V2 migration runbook are implemented. The complete corpus has been staged, independently validated, canary-tested, and cut over to schema V2. The benchmark decision remains **do not promote global hybrid retrieval**. The literal shadow path remains observational and caller-visible retrieval remains vector. The immediate program frontier is now evidence accumulation and tuning of the active integration: M6 remains fail-closed until prospective trusted evidence matures, while M7 is active only on touched/prefetched events rather than as a full-corpus sweep. P3 source isolation and resource controls are implemented; broader deployment activation remains an explicit configuration and rollout decision.
 
 ## Current architectural invariants
 
@@ -107,7 +107,7 @@ feature checklist. By default, keep only one new mechanism in active implementat
 allowing specification or read-only/shadow observation of downstream mechanisms when dependencies
 are explicit and current project guidance permits it.
 
-A mechanism is not considered complete until it has:
+A mechanism's source implementation is complete when it has:
 
 - a written contract/specification;
 - one clearly owned class of decisions that does not duplicate another mechanism;
@@ -115,7 +115,9 @@ A mechanism is not considered complete until it has:
 - deterministic validation rules where possible;
 - tests for correctness and failure modes;
 - provenance/evidence boundaries;
-- an observation period before persistent or behavioral authority expands.
+- safe defaults and explicit configuration/rollout boundaries.
+
+Post-deployment usefulness and continual-learning conclusions belong to `docs/LIVE_EVALUATION.md`, normally reviewed after 30 days and again after 60 days of real use. These observations are excluded from source completion; existing prospective evidence thresholds still control each runtime conclusion.
 
 Dreaming V1 is a stable consolidation substrate rather than one of the numbered mechanisms. New
 mechanisms should consume its evidence-grounded outputs instead of reimplementing Dream reasoning,
@@ -186,14 +188,14 @@ linear.
      introduced.
 
 6. Agent Self-Model
-   - Status: source implementation complete; real-corpus evaluation remains pending schema-V2 migration/validation.
+   - Status: source implementation complete; real-corpus acceptance requires fresh trusted prospective evidence; validated schema V2 is already live.
    - Owns: trusted prospective evidence extraction, fail-closed readiness, deterministic agent-scoped capability/limitation/workflow/strategy hypotheses, explicit review, accepted-only Knowledge Evolution persistence, and bounded accepted-only Working Memory advisory projection.
    - The default readiness floor remains at least 20 trusted resolved prospective outcomes, 3 sessions, 3 topics, and a complete scan.
    - Calibration is one input discipline, not the Self-Model itself. Historical/pre-P3 identity is not retroactively trusted.
    - Self-model claims remain revisable hypotheses; they do not mutate prompts, tools, permissions, routing, model weights, or identity truth.
 
 7. Memory Lifecycle
-   - Status: source implementation complete; real-corpus shadow evaluation remains pending schema-V2 migration/validation.
+   - Status: source implementation complete; event-driven actuation is active; full-corpus evaluation requires fresh access/relevance evidence.
    - Owns: deterministic retention scoring, reversible `keep_active | suppress | remain_suppressed | reactivate`, ordinary-recall eligibility, access metadata, and lifecycle reason codes.
    - Suppression is metadata-only (`lifecycle_state=suppressed`, `ordinary_recall=false`) and does not physically delete canonical records or alter Knowledge truth/evolution status.
    - Salience/usage/recency/contradiction/storage pressure are bounded signals, not authorization or truth.
@@ -231,7 +233,7 @@ Review should also consider evidence diversity and integrity:
 - causal ordering and inherited Prediction identity must remain intact;
 - outcome diversity must emerge from real operation rather than manufactured failures.
 
-The current owner-authorized runtime now exercises M3–M7. Evidence gates still control what each mechanism is allowed to conclude: M6 cannot persist until trusted readiness passes, M7 cannot hard-delete, and broader agent authority still depends on P3.2/P3.3.
+The current owner-authorized runtime now exercises M3–M7. Evidence gates still control what each mechanism is allowed to conclude: M6 cannot persist until trusted readiness passes, M7 cannot hard-delete, and broader deployment requires the configured P3 principal and resource boundaries.
 
 ### Cognitive safety invariants
 

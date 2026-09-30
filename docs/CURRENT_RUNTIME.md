@@ -29,7 +29,7 @@ Network-visible MCP access is authenticated when authentication is enabled.
 
 Current software and production storage have satisfied the Level-8.0/schema-V2 gates. The normal authenticated MCP recall/store path now actively wires M3–M7 without replacing canonical vector retrieval or widening authorization:
 
-- authenticated MCP requests are bound to explicit `CallerAuthority` in `single_owner` mode. When `CYBERBRAIN_TRUSTED_AGENT_ID` is configured, successful Bearer/X-API-Key authentication also binds `TrustedIdentityEvidence` for that server-configured agent; caller headers/tool arguments cannot create or substitute trusted identity. `agent_ready` and `multi_user` remain fail-closed until broader P3 isolation/persistence requirements are complete;
+- authenticated MCP requests are bound to explicit `CallerAuthority` in `single_owner` mode. When `CYBERBRAIN_TRUSTED_AGENT_ID` is configured, successful Bearer/X-API-Key authentication also binds `TrustedIdentityEvidence` for that server-configured agent; caller headers/tool arguments cannot create or substitute trusted identity. server-owned principal registry configuration supports scoped identity and operation grants. Broader modes require that registry and every runtime quota limit; legacy shared-token configuration alone cannot enable them;
 - canonical `knowledge_get` and `memory_get` perform exact full-record fetch with storage-side ID + scope eligibility;
 - `cyberbrain.agent_adapter.MCPAgentClient` bridges the transport-neutral Agent Adapter contract to the canonical MCP Streamable HTTP tools;
 - M3 Salience actively scores/reorders the bounded already-authorized vector prefetch;
@@ -40,7 +40,7 @@ Current software and production storage have satisfied the Level-8.0/schema-V2 g
 - M7 Memory Lifecycle is active event-by-event: selected/exact-fetched records record access and may reactivate, while non-selected authorized prefetch candidates may be reversibly suppressed. There is no automatic full-corpus suppression sweep;
 - canonical schema V2 is the current production storage format. The full four-source corpus was staged, independently validated, canary-tested, and cut over with point ID/vector/content preservation and one fail-closed quarantined legacy Episode.
 
-The current vector search path is still the canonical retrieval backend. A reviewed 28-case real-current-baseline benchmark rejected always-on global hybrid fusion because the Recall@5 gain came with a small MRR loss and rank regressions. Source includes disabled-by-default shadow instrumentation for the better-performing deterministic literal/fingerprint route. When enabled in `single_owner` mode, literal-heavy Knowledge queries submit a non-blocking BM25 observation over a bounded TTL cache of active Knowledge, with the same explicit equality filters reapplied before lexical scoring. The reusable pre-tokenized BM25 corpus avoids rebuilding document statistics on every shadow query; live observation has cleared the earlier recurring scoring-cost blocker. The caller still receives the unchanged vector result, and lexical promotion remains gated on larger relevance/reliability evidence. The Agent Adapter remains optional foreground convenience for compact context use rather than an owner of background cognition; broader tenancy enforcement over all existing search/write paths remains pending. Release and deployment state remain separate from this source-level contract.
+The current vector search path is still the canonical retrieval backend. A reviewed 28-case real-current-baseline benchmark rejected always-on global hybrid fusion because the Recall@5 gain came with a small MRR loss and rank regressions. Source includes disabled-by-default shadow instrumentation for the better-performing deterministic literal/fingerprint route. When enabled in `single_owner` mode, literal-heavy Knowledge queries submit a non-blocking BM25 observation over a bounded TTL cache of active Knowledge, with the same explicit equality filters reapplied before lexical scoring. The reusable pre-tokenized BM25 corpus avoids rebuilding document statistics on every shadow query; live observation has cleared the earlier recurring scoring-cost blocker. The caller still receives the unchanged vector result, and lexical promotion remains gated on larger relevance/reliability evidence. The Agent Adapter remains optional foreground convenience for compact context use rather than an owner of background cognition; foreground and durable background paths enforce scope. Persisted registry configuration, quota state and tenant/user telemetry complete the source identity/resource boundary; see `TENANCY_OPERATIONS.md`. Release and deployment state remain separate from this source-level contract.
 
 ## Canonical data
 
@@ -181,3 +181,40 @@ They may change without altering CyberBrain's canonical Knowledge/Memory/Dreamin
 Deployment-specific migration, cutover, acceptance-window, staged-collection, and rollback
 snapshots are preserved under docs/history/. They are historical evidence, not current operating
 instructions.
+
+
+## Operations maintenance source contract
+
+Dream review listings support bounded keyset pagination: pass the last returned
+`review_cursor` as `dream_reviews.cursor`. Cursor ordering remains stable across
+timestamp ties and review resolutions; it does not grant promotion authority.
+
+`cyberbrain.dreaming.diagnostics.review_backlog` opens an existing audit database
+read-only and reports bounded counts, reason distributions, exact content/evidence
+fingerprints, and advisory aging/priority. A repeated content fingerprint with
+different evidence is not an exact duplicate. Partial scans are labeled explicitly.
+No candidate is approved, deleted, or promoted by this report.
+
+`DreamReasonTaskInbox.retire_finalized_runs` is explicit owner maintenance, dry-run
+by default. The caller must supply independently proven terminal request IDs and
+a timezone-aware past retention cutoff. Unknown runs, incomplete task sets, recent
+updates/deadlines, and active leases are blocked. Applying retirement removes only
+operational task payloads; a small run tombstone prevents re-registration/replay.
+Canonical collections and Dream audit evidence are preserved. No automatic pruning
+or VACUUM is enabled, and a deadline alone is not proof of run finalization.
+
+Scheduler heartbeat is opt-in via `CYBERBRAIN_DREAM_SCHEDULER_HEARTBEAT`.
+Check it with `python -m cyberbrain.dreaming.scheduler --check-heartbeat PATH`.
+Freshness, waiting/running state, overdue schedules, last-run errors, and whether a
+successful run has ever completed are distinguished. Waiting heartbeat freshness
+defaults to 180 seconds; a running enqueue attempt has a separate 900-second bound.
+Missing/malformed/future-dated state fails closed. Deployment owners must mount the
+heartbeat path for the healthcheck; Compose source configures the heartbeat writer and checker. Applying that healthcheck to an existing deployment requires a separate rollout.
+
+Transport failures receive redacted HTTP/timeout/connect classifications even
+inside exception groups. Each invoker call creates a fresh session and makes one
+tool call; classification does not introduce automatic replay. HTTP 404 alone does
+not establish whether an endpoint or session was missing.
+
+
+Source acceptance uses correctness, isolation, regression, packaging and reproducibility gates in `SOURCE_ACCEPTANCE.md`. Real outcome/access quality and retrieval promotion belong to `LIVE_EVALUATION.md` after deployment and are excluded from the source completion denominator.

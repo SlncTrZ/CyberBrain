@@ -130,7 +130,7 @@ def test_exact_fetch_enforces_project_scope_for_knowledge() -> None:
         "cyberbrain_knowledge",
         point_id=point_id,
         vector=[0.1, 0.2, 0.3],
-        payload={"project": "alpha", "content": "allowed"},
+        payload={"agent": "agent-a", "project": "alpha", "content": "allowed"},
     )
 
     allowed = authority_for_authenticated_scope(

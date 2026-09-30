@@ -16,15 +16,11 @@ from cyberbrain.schemas.models import (
     IdentityTrust,
 )
 from cyberbrain.storage.base import PointRepository
-from cyberbrain.storage.scoping import storage_filter_to_repository_filter
 from cyberbrain.tenancy import (
     CallerAuthority,
-    DeploymentMode,
-    IdentityScope,
-    OperationClass,
-    ScopeAuthorizationPolicy,
-    build_storage_filter,
 )
+from cyberbrain.tenancy.enforcement import TenancyOperation
+from cyberbrain.tenancy.runtime import enforce_operation, scope_conditions, scoped_values
 
 
 class MemoryService:
@@ -64,6 +60,13 @@ class MemoryService:
         extensions: dict[str, Any] | None = None,
         point_id: UUID | None = None,
     ) -> EpisodeRecord:
+        attribution = scoped_values(
+            dict(tenant=tenant, user=user, agent=agent, project=project, session_id=session_id),
+            operation=TenancyOperation.MEMORY_WRITE,
+        )
+        tenant, user, agent, project, session_id = (
+            attribution[field] for field in ("tenant", "user", "agent", "project", "session_id")
+        )
         normalized = normalize_content(content)
         self._secret_scanner.assert_safe(
             normalized,
@@ -102,20 +105,9 @@ class MemoryService:
         return record
 
     def get(self, *, point_id: UUID, authority: CallerAuthority) -> dict[str, Any] | None:
-        if authority.deployment_mode is DeploymentMode.MULTI_USER:
-            return None
-        decision = ScopeAuthorizationPolicy.decide(
-            authority.grant,
-            requested_scope=IdentityScope(),
-            operation=OperationClass.READ,
-        )
-        if not decision.allow or decision.effective_scope is None:
-            return None
-        qdrant_filter = storage_filter_to_repository_filter(
-            build_storage_filter(decision.effective_scope),
-            include_fields=frozenset({"agent", "project", "session"}),
-            field_aliases={"session": "session_id"},
-        )
+        plan = enforce_operation(TenancyOperation.MEMORY_GET, authority=authority)
+        conditions = scope_conditions(plan)
+        qdrant_filter = {"must": conditions} if conditions else None
         point = self._repository.retrieve(
             self._collection,
             point_id,
@@ -134,6 +126,8 @@ class MemoryService:
         channel: str | None = None,
         role: str | None = None,
         agent: str | None = None,
+        tenant: str | None = None,
+        user: str | None = None,
         project: str | None = None,
         topic: str | None = None,
         dream_status: DreamStatus | str | None = None,
@@ -143,12 +137,15 @@ class MemoryService:
             "channel": channel,
             "role": role,
             "agent": agent,
+            "tenant": tenant,
+            "user": user,
             "project": project,
             "topic": topic,
             "dream_status": (
                 dream_status.value if isinstance(dream_status, DreamStatus) else dream_status
             ),
         }
+        plan = enforce_operation(TenancyOperation.MEMORY_SEARCH, filter_values)
         conditions = [
             {
                 "should": [
@@ -162,6 +159,7 @@ class MemoryService:
             for key, value in filter_values.items()
             if value is not None
         )
+        conditions.extend(scope_conditions(plan))
         vector = self._embedding.embed(query)
         points = self._repository.search(
             self._collection,

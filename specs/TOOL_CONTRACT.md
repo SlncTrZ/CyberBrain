@@ -270,3 +270,33 @@ Known legacy behavior bugs are not part of the canonical contract.
 ## Error semantics
 
 Malformed inputs return structured validation errors. Provider/storage/embedding failures must remain distinguishable from a true successful no-match result. Authentication and authorization failures fail closed according to `SECURITY.md` and `../MCP_PROVIDER_STANDARD.md`.
+
+
+## Scope and review pagination
+
+All data-bearing MCP tools require a bound caller authority and the corresponding
+read/write/review/background operation grant. Canonical search/get/timeline applies
+hard effective scope before downstream cognition; durable stores resolve concrete
+attribution before embedding/persistence. Compatibility aliases share the same
+service enforcement. Caller input cannot assign authenticated/system-derived
+identity trust on ordinary writes.
+
+The current single-owner runtime treats unconstrained owner identity dimensions
+as optional query selectors; a constrained dimension can only narrow by a true
+subset. Scoped callers are denied owner-global Dream and Prediction operations
+until durable scope propagation exists. Broader deployment modes remain disabled.
+
+`dream_reviews` accepts optional `cursor` (maximum 1024 characters), alongside
+`limit` (1–500). Each returned row includes `review_cursor`; pass the final row's
+cursor to obtain the next page. Ordering is creation time, run ID, candidate index.
+The endpoint still returns a list, and an exhausted page is empty. Invalid cursors
+fail validation. Cursor pagination never resolves or promotes a review.
+
+
+## Authenticated scope and operational controls
+
+The server-owned principal registry is the identity authority for opt-in broader modes. Tool payloads may narrow advertised contextual selectors, never assign principal authority or authenticated provenance. Required tenant/user or agent scope precedes storage visibility; optional project/session selectors remain within that boundary. Exact fetch and Prediction resolution reject absent and out-of-scope IDs without revealing foreign data.
+
+Dream jobs persist a credential-free authority snapshot. Worker evidence reads, status updates, reasoning inbox, audits and canonical writeback retain that scope. Sessions with identical names in different identity partitions are separate jobs. Legacy owner jobs cannot be claimed by a broader-mode worker. Approval requires both review and canonical write authority; reason-task leases do not bypass task scope.
+
+Runtime quotas are reserved atomically before foreground dispatch or background work. Over-budget background jobs are deferred without consuming retry attempts or touching evidence. MCP session/body ceilings use the supported SDK transport controls. Scoped metrics expose numeric data for the authorized tenant/user partition only. Operational details and upgrade/backup boundaries are in `../docs/TENANCY_OPERATIONS.md`.

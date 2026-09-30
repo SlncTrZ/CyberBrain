@@ -19,6 +19,8 @@ from cyberbrain.schemas.models import (
 )
 from cyberbrain.storage.base import PointRepository
 from cyberbrain.tenancy import TrustedIdentityEvidence
+from cyberbrain.tenancy.enforcement import TenancyOperation
+from cyberbrain.tenancy.runtime import enforce_operation, scope_conditions
 from cyberbrain.working_memory.models import (
     TaskRelevance,
     WorkingMemoryCandidate,
@@ -190,6 +192,7 @@ class SelfModelPersistence:
         return abs(current_confidence - confidence) > 1e-12
 
     def load_active(self, *, agent_id: str, limit: int = 100) -> tuple[dict[str, Any], ...]:
+        plan = enforce_operation(TenancyOperation.KNOWLEDGE_GET, {"agent": agent_id})
         points = self._repository.scroll(
             self._collection,
             qdrant_filter={
@@ -200,6 +203,7 @@ class SelfModelPersistence:
                     },
                     {"key": "status", "match": {"value": KnowledgeStatus.ACTIVE.value}},
                     {"key": "agent", "match": {"value": agent_id}},
+                    *scope_conditions(plan),
                 ]
             },
             limit=limit,

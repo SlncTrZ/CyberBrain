@@ -29,7 +29,9 @@ from cyberbrain.self_model import (
     extract_self_model_evidence,
 )
 from cyberbrain.storage.base import PointRepository
-from cyberbrain.tenancy import TrustedIdentityEvidence
+from cyberbrain.tenancy import TrustedIdentityEvidence, current_authority
+from cyberbrain.tenancy.enforcement import TenancyOperation
+from cyberbrain.tenancy.runtime import enforce_operation, scope_conditions
 from cyberbrain.working_memory import (
     TaskRelevance,
     WorkingMemoryCandidate,
@@ -380,9 +382,12 @@ class CognitiveRuntimePath:
         if agent is None:
             self.metrics.increment("self_model_active_identity_missing_total")
             return {"status": "insufficient_evidence", "generated": 0, "persisted": 0}
+        plan = enforce_operation(TenancyOperation.MEMORY_SEARCH, {"agent": agent})
         points = self._repository.scroll(
             self.episodic_collection,
-            qdrant_filter={"must": [{"key": "agent", "match": {"value": agent}}]},
+            qdrant_filter={"must": [
+                {"key": "agent", "match": {"value": agent}}, *scope_conditions(plan),
+            ]},
             limit=10_000,
         )
         evidence = extract_self_model_evidence(
@@ -564,6 +569,16 @@ class CognitiveRuntimePath:
 
     @staticmethod
     def _scope_marker(identity: TrustedIdentityEvidence | None, *, project: str | None) -> str:
+        authority = current_authority()
+        if authority is not None and authority.grant.scope.as_dict():
+            import json
+
+            marker = json.dumps(
+                [authority.grant.scope.as_dict(),
+                 identity.scope.as_dict() if identity else {}, project],
+                sort_keys=True, separators=(",", ":"),
+            )
+            return "scoped|" + hashlib.sha256(marker.encode("utf-8")).hexdigest()
         if identity is None:
             return f"single_owner|project={project or '-'}"
         parts = []

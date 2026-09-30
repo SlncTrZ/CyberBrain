@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: MPL-2.0
+# Send only the explicit package build inputs to the Docker daemon.
+*
+!Dockerfile
+!pyproject.toml
+!README.md
+!LICENSE
+!TOOL_GUIDE.md
+!cyberbrain/
+!cyberbrain/**
+cyberbrain/**/__pycache__/
+cyberbrain/**/*.pyc
+cyberbrain/**/*.pyo

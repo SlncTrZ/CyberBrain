@@ -13,7 +13,9 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from cyberbrain.memory.service import MemoryService
 from cyberbrain.schemas.models import EpisodeRecord, IdentityTrust
 from cyberbrain.storage.base import PointRepository
-from cyberbrain.tenancy import normalize_identifier
+from cyberbrain.tenancy import current_authority, normalize_identifier
+from cyberbrain.tenancy.enforcement import TenancyOperation
+from cyberbrain.tenancy.runtime import enforce_operation, scope_conditions
 
 
 class PredictionAssessment(StrEnum):
@@ -236,6 +238,8 @@ class PredictionLearningService:
             event_time=event_time,
             channel=prediction.channel,
             agent=prediction.agent,
+            tenant=prediction.tenant,
+            user=prediction.user,
             project=prediction.project,
             topic=prediction.topic,
             identity_trust=prediction.identity_trust,
@@ -489,7 +493,8 @@ class PredictionLearningService:
         limit: int,
         filters: dict[str, str],
     ) -> list[tuple[EpisodeRecord, dict[str, Any]]]:
-        conditions = [{"key": "source", "match": {"value": source}}]
+        plan = enforce_operation(TenancyOperation.MEMORY_SEARCH, filters)
+        conditions = [{"key": "source", "match": {"value": source}}, *scope_conditions(plan)]
         conditions.extend({"key": key, "match": {"value": value}} for key, value in filters.items())
         points = self._repository.scroll(
             self._episodic_collection,
@@ -517,10 +522,17 @@ class PredictionLearningService:
         return round(sum(values) / len(values), 6)
 
     def _load_prediction(self, prediction_id: UUID) -> EpisodeRecord:
-        point = self._repository.retrieve(
-            self._episodic_collection,
-            point_id=prediction_id,
-        )
+        authority = current_authority()
+        if authority is None:
+            point = self._repository.retrieve(
+                self._episodic_collection, point_id=prediction_id,
+            )
+        else:
+            plan = enforce_operation(TenancyOperation.MEMORY_GET)
+            point = self._repository.retrieve(
+                self._episodic_collection, point_id=prediction_id,
+                qdrant_filter={"must": scope_conditions(plan)},
+            )
         if point is None:
             raise ValueError(f"prediction not found: {prediction_id}")
         payload = point.get("payload") or {}

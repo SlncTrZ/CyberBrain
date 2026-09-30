@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import json
 from dataclasses import asdict
 from datetime import datetime
@@ -35,11 +36,34 @@ class DreamOperations:
     def status(self, *, session_id: str) -> dict:
         return asdict(self._queue.get_by_session(session_id.strip()))
 
-    def pending_reviews(self, *, limit: int = 100) -> list[dict]:
+    def pending_reviews(self, *, limit: int = 100, cursor: str | None = None) -> list[dict]:
         if limit < 1 or limit > 500:
             raise ValueError("limit must be between 1 and 500")
-        rows = self._audit.pending_reviews(limit=limit)
-        return [self._normalize_review_row(row) for row in rows]
+        after = None
+        if cursor is not None:
+            try:
+                if not 1 <= len(cursor) <= 1024:
+                    raise ValueError("cursor length")
+                value = json.loads(base64.b64decode(cursor, altchars=b"-_", validate=True))
+                if (
+                    not isinstance(value, list) or len(value) != 3
+                    or not isinstance(value[0], str) or not isinstance(value[1], str)
+                    or not value[1] or type(value[2]) is not int or value[2] < 0
+                    or datetime.fromisoformat(value[0]).tzinfo is None
+                ):
+                    raise ValueError("cursor shape")
+                after = tuple(value)
+            except (ValueError, TypeError):
+                raise ValueError("invalid review cursor") from None
+        rows = self._audit.pending_reviews(limit=limit, after=after)
+        result = []
+        for row in rows:
+            item = self._normalize_review_row(row)
+            item["review_cursor"] = base64.urlsafe_b64encode(json.dumps([
+                row["created_at"], row["dream_run_id"], row["candidate_index"],
+            ], separators=(",", ":")).encode()).decode()
+            result.append(item)
+        return result
 
     def review(
         self,

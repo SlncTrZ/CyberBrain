@@ -8,6 +8,8 @@ from uuid import UUID
 from cyberbrain.dreaming.planner import EpisodeSnippet
 from cyberbrain.schemas.models import DreamStatus
 from cyberbrain.storage.base import PointRepository
+from cyberbrain.tenancy.enforcement import TenancyOperation
+from cyberbrain.tenancy.runtime import enforce_operation, scope_conditions
 
 
 class QdrantSessionEpisodeLoader:
@@ -29,11 +31,15 @@ class QdrantSessionEpisodeLoader:
         if not value:
             raise ValueError("session_id must not be empty")
 
+        plan = enforce_operation(
+            TenancyOperation.BACKGROUND_EVIDENCE_READ, {"session_id": value},
+        )
         points = self._repository.scroll(
             self._collection,
             qdrant_filter={
                 "must": [
                     {"key": "session_id", "match": {"value": value}},
+                    *scope_conditions(plan),
                 ]
             },
             limit=self._limit,
@@ -74,10 +80,14 @@ class QdrantSessionEpisodeLoader:
         value = session_id.strip()
         if not value:
             raise ValueError("session_id must not be empty")
+        enforce_operation(TenancyOperation.MEMORY_WRITE, {"session_id": value})
+        plan = enforce_operation(
+            TenancyOperation.BACKGROUND_EVIDENCE_READ, {"session_id": value},
+        )
         points = self._repository.scroll(
             self._collection,
             qdrant_filter={
-                "must": [{"key": "session_id", "match": {"value": value}}]
+                "must": [{"key": "session_id", "match": {"value": value}}, *scope_conditions(plan)]
             },
             limit=self._limit,
         )

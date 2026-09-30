@@ -5,6 +5,9 @@ services:
     container_name: cyberbrain
     restart: unless-stopped
     command: ["python", "-m", "cyberbrain.api.main"]
+    env_file:
+      - path: .env
+        required: false
     ports:
       - "8767:8767"
     environment:
@@ -27,11 +30,14 @@ services:
       CYBERBRAIN_COGNITION_PREFETCH_MULTIPLIER: ${CYBERBRAIN_COGNITION_PREFETCH_MULTIPLIER:-3}
       CYBERBRAIN_COGNITION_CONCEPT_EVIDENCE_LIMIT: ${CYBERBRAIN_COGNITION_CONCEPT_EVIDENCE_LIMIT:-256}
       CYBERBRAIN_TRUSTED_AGENT_ID: ${CYBERBRAIN_TRUSTED_AGENT_ID:-coding-agents}
-      CYBERBRAIN_MCP_AUTH_TOKEN: ${CYBERBRAIN_MCP_AUTH_TOKEN:?CYBERBRAIN_MCP_AUTH_TOKEN is required}
+      CYBERBRAIN_MCP_AUTH_TOKEN: ${CYBERBRAIN_MCP_AUTH_TOKEN:-}
       CYBERBRAIN_REQUIRE_AUTH: "true"
+      CYBERBRAIN_DEPLOYMENT_MODE: ${CYBERBRAIN_DEPLOYMENT_MODE:-single_owner}
+      CYBERBRAIN_PRINCIPAL_REGISTRY_FILE: ${CYBERBRAIN_PRINCIPAL_REGISTRY_FILE:-}
       CYBERBRAIN_KNOWLEDGE_EVOLUTION_LOCK_FILE: /data/knowledge_evolution.lock
     volumes:
       - ./TOOL_GUIDE.md:/app/TOOL_GUIDE.md:ro
+      - ./config:/config:ro
       - cyberbrain-data:/data
     depends_on:
       qdrant:
@@ -68,6 +74,9 @@ services:
     restart: unless-stopped
     profiles: ["dreaming"]
     command: ["python", "-m", "cyberbrain.dreaming.main"]
+    env_file:
+      - path: .env
+        required: false
     healthcheck:
       test: ["CMD", "python", "-c", "import os; os.kill(1, 0)"]
       interval: 30s
@@ -82,8 +91,10 @@ services:
       CYBERBRAIN_EMBEDDING_MODEL: nomic-embed-text
       CYBERBRAIN_EMBEDDING_DIMENSION: 768
       CYBERBRAIN_EMBEDDING_VERSION: nomic-embed-text@v1
-      CYBERBRAIN_MCP_AUTH_TOKEN: ${CYBERBRAIN_MCP_AUTH_TOKEN:?CYBERBRAIN_MCP_AUTH_TOKEN is required}
+      CYBERBRAIN_MCP_AUTH_TOKEN: ${CYBERBRAIN_MCP_AUTH_TOKEN:-}
       CYBERBRAIN_REQUIRE_AUTH: "true"
+      CYBERBRAIN_DEPLOYMENT_MODE: ${CYBERBRAIN_DEPLOYMENT_MODE:-single_owner}
+      CYBERBRAIN_PRINCIPAL_REGISTRY_FILE: ${CYBERBRAIN_PRINCIPAL_REGISTRY_FILE:-}
       CYBERBRAIN_KNOWLEDGE_EVOLUTION_LOCK_FILE: /data/knowledge_evolution.lock
       CYBERBRAIN_DREAM_QUEUE_DB: /data/dream_queue.sqlite
       CYBERBRAIN_DREAM_AUDIT_DB: /data/dream_audit.sqlite
@@ -98,6 +109,7 @@ services:
       CYBERBRAIN_DREAM_WORKER_POLL_SECONDS: ${CYBERBRAIN_DREAM_WORKER_POLL_SECONDS:-2}
       CYBERBRAIN_DREAM_WORKER_MAX_ATTEMPTS: ${CYBERBRAIN_DREAM_WORKER_MAX_ATTEMPTS:-3}
     volumes:
+      - ./config:/config:ro
       - cyberbrain-data:/data
     depends_on:
       qdrant:
@@ -113,11 +125,19 @@ services:
     restart: unless-stopped
     profiles: ["dreaming"]
     command: ["python", "-m", "cyberbrain.dreaming.scheduler"]
+    healthcheck:
+      test: ["CMD", "python", "-m", "cyberbrain.dreaming.scheduler", "--check-heartbeat", "/data/dream_scheduler_heartbeat.json"]
+      interval: 60s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
     environment:
       CYBERBRAIN_QDRANT_URL: http://qdrant:6333
       CYBERBRAIN_QDRANT_API_KEY: ${CYBERBRAIN_QDRANT_API_KEY:-}
       CYBERBRAIN_EPISODIC_COLLECTION: cyberbrain_episodic
       CYBERBRAIN_DREAM_QUEUE_DB: /data/dream_queue.sqlite
+      CYBERBRAIN_DEPLOYMENT_MODE: ${CYBERBRAIN_DEPLOYMENT_MODE:-single_owner}
+      CYBERBRAIN_DREAM_SCHEDULER_HEARTBEAT: /data/dream_scheduler_heartbeat.json
       CYBERBRAIN_DREAM_SCHEDULER_UTC: ${CYBERBRAIN_DREAM_SCHEDULER_UTC:-23:50}
       CYBERBRAIN_DREAM_SCHEDULER_QUIET_MINUTES: ${CYBERBRAIN_DREAM_SCHEDULER_QUIET_MINUTES:-60}
       CYBERBRAIN_DREAM_SCHEDULER_TOPIC_LIMIT: ${CYBERBRAIN_DREAM_SCHEDULER_TOPIC_LIMIT:-3}

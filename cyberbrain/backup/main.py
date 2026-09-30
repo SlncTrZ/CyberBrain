@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 from dataclasses import asdict
+from pathlib import Path
 
 from cyberbrain.backup.service import BackupService, QdrantSnapshotClient
 from cyberbrain.core.settings import Settings
@@ -40,23 +41,23 @@ def main() -> None:
     settings.validate_runtime()
     service = build_service(settings)
 
+    sqlite_paths = {
+        "dream_queue": settings.dream_queue_db,
+        "dream_audit": settings.dream_audit_db,
+        "dream_reason_tasks": settings.dream_reason_task_db,
+        "quotas": settings.quota_db,
+    }
     if args.command == "backup":
         manifest = service.create(
             destination=args.destination,
-            sqlite_files={
-                "dream_queue": settings.dream_queue_db,
-                "dream_audit": settings.dream_audit_db,
-            },
+            sqlite_files={key: path for key, path in sqlite_paths.items() if Path(path).is_file()},
         )
     else:
         if not args.confirm_overwrite:
             parser.error("restore requires --confirm-overwrite")
         manifest = service.restore(
             source=args.source,
-            sqlite_destinations={
-                "dream_queue": settings.dream_queue_db,
-                "dream_audit": settings.dream_audit_db,
-            },
+            sqlite_destinations=sqlite_paths,
         )
 
     print(json.dumps(asdict(manifest), ensure_ascii=False, indent=2))

@@ -19,6 +19,7 @@ from cyberbrain.retrieval.shadow import KnowledgeLiteralShadowObserver
 from cyberbrain.self_model import SelfModelPersistence, SelfModelService
 from cyberbrain.storage.base import PointRepository
 from cyberbrain.storage.qdrant import QdrantRepository
+from cyberbrain.tenancy.limiter import SQLiteQuotaLimiter
 
 
 @dataclass
@@ -35,6 +36,7 @@ class RuntimeServices:
     self_model_persistence: SelfModelPersistence
     memory_lifecycle: MemoryLifecycleService
     cognition_path: CognitiveRuntimePath
+    quota_limiter: SQLiteQuotaLimiter | None = None
 
 
 def build_runtime(settings: Settings) -> RuntimeServices:
@@ -119,7 +121,10 @@ def build_runtime(settings: Settings) -> RuntimeServices:
         prefetch_multiplier=settings.cognition_prefetch_multiplier,
         concept_evidence_limit=settings.cognition_concept_evidence_limit,
     )
+    policy = settings.quota_policy()
+    quota_limiter = SQLiteQuotaLimiter(settings.quota_db, policy) if policy.limits else None
     return RuntimeServices(
+        quota_limiter=quota_limiter,
         metrics=metrics,
         repository=repository,
         embedding=embedding,

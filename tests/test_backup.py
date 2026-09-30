@@ -145,3 +145,54 @@ def test_manifest_is_plain_json_without_credentials(tmp_path) -> None:
 
     raw = json.loads((backup_dir / "manifest.json").read_text())
     assert set(raw) == {"format_version", "created_at", "files"}
+
+
+def test_cli_backup_restores_reason_tombstones_and_quota_usage(tmp_path, monkeypatch):
+    from cyberbrain.backup import main as cli
+    from cyberbrain.core.settings import Settings
+    from cyberbrain.dreaming.reason_task_inbox import DreamReasonTaskInbox
+    from cyberbrain.tenancy.limiter import SQLiteQuotaLimiter
+    from cyberbrain.tenancy.quota import QuotaLimit, QuotaPolicy, QuotaResource
+    from tests.tenancy.test_runtime_enforcement import authority
+
+    settings = Settings(
+        mcp_auth_token="fixture", dream_queue_db=str(tmp_path / "queue.sqlite"),
+        dream_audit_db=str(tmp_path / "audit.sqlite"),
+        dream_reason_task_db=str(tmp_path / "reason.sqlite"),
+        quota_db=str(tmp_path / "quota.sqlite"),
+    )
+    _make_sqlite(Path(settings.dream_queue_db), "queue")
+    _make_sqlite(Path(settings.dream_audit_db), "audit")
+    inbox = DreamReasonTaskInbox(settings.dream_reason_task_db)
+    with inbox._connect() as db:
+        db.execute(
+            "INSERT INTO dream_reason_runs "
+            "(request_id, request_json, expected_task_count, deadline_at, created_at, "
+            "updated_at, retired_at) VALUES ('retired', '{}', 0, 'old', 'old', 'old', 'retired')"
+        )
+    policy = QuotaPolicy((QuotaLimit(QuotaResource.REQUESTS, 1, 60),))
+    limiter = SQLiteQuotaLimiter(settings.quota_db, policy)
+    limiter.reserve(authority(tenant="t", user="u"), {QuotaResource.REQUESTS: 1}, now=10)
+    fake = FakeSnapshotClient()
+    service = BackupService(qdrant=fake, collections=["knowledge", "episode"])
+    monkeypatch.setattr(cli, "Settings", lambda: settings)
+    monkeypatch.setattr(cli, "build_service", lambda settings: service)
+    monkeypatch.setattr("sys.argv", ["cyberbrain-backup", "backup", str(tmp_path / "backup")])
+    cli.main()
+    manifest = json.loads((tmp_path / "backup" / "manifest.json").read_text())
+    assert {row["source"] for row in manifest["files"] if row["kind"] == "sqlite"} == {
+        "dream_queue", "dream_audit", "dream_reason_tasks", "quotas",
+    }
+    restored = {name: tmp_path / ("restored-" + name + ".sqlite") for name in (
+        "dream_queue", "dream_audit", "dream_reason_tasks", "quotas",
+    )}
+    service.restore(source=tmp_path / "backup", sqlite_destinations=restored)
+    with sqlite3.connect(restored["dream_reason_tasks"]) as db:
+        assert db.execute(
+            "SELECT retired_at FROM dream_reason_runs WHERE request_id='retired'"
+        ).fetchone()[0] == "retired"
+    from cyberbrain.core.errors import ConfigurationError
+    with pytest.raises(ConfigurationError):
+        SQLiteQuotaLimiter(restored["quotas"], policy).reserve(
+            authority(tenant="t", user="u"), {QuotaResource.REQUESTS: 1}, now=11,
+        )

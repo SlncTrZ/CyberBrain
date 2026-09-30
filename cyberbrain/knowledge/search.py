@@ -9,15 +9,11 @@ from cyberbrain.embedding.base import EmbeddingProvider
 from cyberbrain.retrieval.shadow import KnowledgeLiteralShadowObserver
 from cyberbrain.schemas.models import KnowledgeRecordClass
 from cyberbrain.storage.base import PointRepository
-from cyberbrain.storage.scoping import storage_filter_to_repository_filter
 from cyberbrain.tenancy import (
     CallerAuthority,
-    DeploymentMode,
-    IdentityScope,
-    OperationClass,
-    ScopeAuthorizationPolicy,
-    build_storage_filter,
 )
+from cyberbrain.tenancy.enforcement import TenancyOperation
+from cyberbrain.tenancy.runtime import enforce_operation, scope_conditions
 
 
 class KnowledgeSearchService:
@@ -41,19 +37,9 @@ class KnowledgeSearchService:
         return self._collection
 
     def get(self, *, point_id: UUID, authority: CallerAuthority) -> dict[str, Any] | None:
-        if authority.deployment_mode is DeploymentMode.MULTI_USER:
-            return None
-        decision = ScopeAuthorizationPolicy.decide(
-            authority.grant,
-            requested_scope=IdentityScope(),
-            operation=OperationClass.READ,
-        )
-        if not decision.allow or decision.effective_scope is None:
-            return None
-        qdrant_filter = storage_filter_to_repository_filter(
-            build_storage_filter(decision.effective_scope),
-            include_fields=frozenset({"project"}),
-        )
+        plan = enforce_operation(TenancyOperation.KNOWLEDGE_GET, authority=authority)
+        conditions = scope_conditions(plan)
+        qdrant_filter = {"must": conditions} if conditions else None
         point = self._repository.retrieve(
             self._collection,
             point_id,
@@ -70,6 +56,7 @@ class KnowledgeSearchService:
         limit: int = 5,
         **filters: Any,
     ) -> list[dict[str, Any]]:
+        plan = enforce_operation(TenancyOperation.KNOWLEDGE_SEARCH, filters)
         status = filters.pop("status", "active")
         normalized_filters = {
             "status": status,
@@ -99,6 +86,7 @@ class KnowledgeSearchService:
             if value is not None:
                 conditions.append({"key": key, "match": {"value": value}})
 
+        conditions.extend(scope_conditions(plan))
         vector = self._embedding.embed(query)
         points = self._repository.search(
             self._collection,
@@ -115,7 +103,7 @@ class KnowledgeSearchService:
             }
             for point in points
         ]
-        if self._literal_shadow is not None:
+        if self._literal_shadow is not None and not scope_conditions(plan):
             self._literal_shadow.submit(
                 query=query,
                 vector_rows=rows,
@@ -132,7 +120,9 @@ class KnowledgeSearchService:
         entity_type: str,
         entity_name: str,
         limit: int = 100,
+        **filters: Any,
     ) -> list[dict[str, Any]]:
+        plan = enforce_operation(TenancyOperation.KNOWLEDGE_TIMELINE, filters)
         qdrant_filter = {
             "must": [
                 {"key": "domain", "match": {"value": domain}},
@@ -141,6 +131,11 @@ class KnowledgeSearchService:
                 {"key": "entity_name", "match": {"value": entity_name}},
             ]
         }
+        qdrant_filter["must"].extend(scope_conditions(plan))
+        qdrant_filter["must"].extend(
+            {"key": key, "match": {"value": value}}
+            for key, value in filters.items() if value is not None
+        )
         points = self._repository.scroll(
             self._collection,
             qdrant_filter=qdrant_filter,

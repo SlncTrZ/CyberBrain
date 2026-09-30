@@ -24,7 +24,17 @@ from cyberbrain.schemas.models import (
     Origin,
     Verification,
 )
-from cyberbrain.tenancy import current_authority, current_trusted_identity, normalize_identifier
+from cyberbrain.tenancy import (
+    IdentityScope,
+    OperationClass,
+    ScopeAuthorizationPolicy,
+    current_authority,
+    current_trusted_identity,
+    normalize_identifier,
+)
+from cyberbrain.tenancy.enforcement import TenancyOperation
+from cyberbrain.tenancy.quota import QuotaResource
+from cyberbrain.tenancy.runtime import enforce_operation, scope_conditions
 
 PROVIDER_NAME = "cyberbrain"
 CONTRACT_VERSION = "1"
@@ -580,7 +590,10 @@ async def list_tools() -> list[types.Tool]:
             description="List unresolved Dreaming candidates requiring manual review.",
             inputSchema={
                 "type": "object",
-                "properties": {"limit": {"type": "integer", "minimum": 1, "maximum": 500}},
+                "properties": {
+                    "limit": {"type": "integer", "minimum": 1, "maximum": 500},
+                    "cursor": {"type": "string", "maxLength": 1024},
+                },
                 "additionalProperties": False,
             },
         ),
@@ -608,9 +621,84 @@ async def call_tool(name: str, arguments: dict | None) -> list[types.TextContent
     if name == "help":
         return [types.TextContent(type="text", text=_help_payload())]
     try:
-        return _dispatch_tool(name, dict(arguments or {}))
+        _authorize_tool(name)
+        args = dict(arguments or {})
+        if name == "dream_review_resolve" and args.get("resolution") == "approved":
+            authority = current_authority()
+            if authority is None or OperationClass.WRITE not in authority.grant.operations:
+                raise ConfigurationError("approval requires canonical write authority")
+        _reserve_tool_quota(name, args)
+        return _dispatch_tool(name, args)
     except Exception as exc:
         return _error_text(exc)
+
+
+def _reserve_tool_quota(name: str, args: dict) -> None:
+    limiter = getattr(_runtime, "quota_limiter", None)
+    authority = current_authority()
+    if limiter is None or authority is None:
+        return
+    charges = {QuotaResource.REQUESTS: 1}
+    if name in {
+        "knowledge_store", "memory_store", "tech_store", "conversation_save",
+        "prediction_record", "prediction_resolve", "dream_review_resolve",
+    }:
+        charges[QuotaResource.WRITES] = 1
+    if name in {
+        "knowledge_search", "memory_search", "tech_find", "ai_memory_read",
+        "conversation_recall", "knowledge_timeline",
+    }:
+        default_limit = 100 if name == "knowledge_timeline" else 5
+        limit = args.get("limit", default_limit)
+        if type(limit) is not int or limit < 1:
+            raise ValueError("recall limit must be a positive integer")
+        charges[QuotaResource.RECALL_LIMIT] = limit
+    if name == "dream_enqueue":
+        charges[QuotaResource.DREAM_ENQUEUE] = 1
+    if name == "dream_reason_claim":
+        charges[QuotaResource.BACKGROUND_REASONING] = 1
+    try:
+        limiter.reserve(authority, charges)
+    except Exception:
+        if _runtime is not None:
+            _runtime.metrics.increment("quota_rejections_total")
+        raise
+
+
+def _reject_identity_trust_override(args: dict) -> None:
+    trust = args.get("identity_trust")
+    if trust in (IdentityTrust.AUTHENTICATED, IdentityTrust.SYSTEM_DERIVED):
+        raise ConfigurationError("identity trust is assigned by the server")
+
+
+def _authorize_tool(name: str) -> None:
+    reads = {
+        "knowledge_search", "memory_search", "knowledge_get", "memory_get",
+        "knowledge_timeline", "tech_find", "ai_memory_read", "conversation_recall",
+        "prediction_observe", "prediction_pending", "calibration_observe", "dream_status",
+    }
+    writes = {
+        "knowledge_store", "memory_store", "tech_store", "conversation_save",
+        "prediction_record", "prediction_resolve", "dream_enqueue", "dream_reason_submit",
+    }
+    reviews = {"dream_reviews", "dream_review_resolve"}
+    background = {"dream_reason_claim"}
+    operation = (
+        OperationClass.READ if name in reads else
+        OperationClass.WRITE if name in writes else
+        OperationClass.ADMIN_REVIEW if name in reviews else
+        OperationClass.BACKGROUND_REASONING if name in background else None
+    )
+    if operation is None:
+        return
+    authority = current_authority()
+    if authority is None:
+        raise ConfigurationError("caller authority is not bound")
+    decision = ScopeAuthorizationPolicy.decide(
+        authority.grant, requested_scope=IdentityScope(), operation=operation,
+    )
+    if not decision.allow:
+        raise ConfigurationError("caller authority does not allow this operation")
 
 
 def _current_trusted_prediction_agent() -> str | None:
@@ -688,6 +776,11 @@ def _dispatch_tool(name: str, args: dict) -> list[types.TextContent]:
                     query=query,
                     limit=fetch_limit,
                     topic=args.pop("topic", None),
+                    project=args.get("project"),
+                    agent=args.get("agent"),
+                    tenant=args.get("tenant"),
+                    user=args.get("user"),
+                    session_id=args.get("session_id"),
                 )
                 rows = _cognitive_recall(
                     runtime,
@@ -730,6 +823,7 @@ def _dispatch_tool(name: str, args: dict) -> list[types.TextContent]:
         return _json_text(row)
 
     if name == "knowledge_store":
+        _reject_identity_trust_override(args)
         verification = Verification(args.pop("verification", Verification.UNVERIFIED.value))
         origin = Origin(args.pop("origin", Origin.INGESTION.value))
         wing = args.pop("wing", None)
@@ -762,7 +856,9 @@ def _dispatch_tool(name: str, args: dict) -> list[types.TextContent]:
         source_file = args.pop("source_file", None)
         if wing is None:
             return _json_text(runtime.knowledge_search.timeline(**args))
+        plan = enforce_operation(TenancyOperation.KNOWLEDGE_TIMELINE, args)
         conditions = [{"key": "domain", "match": {"value": _legacy_domain(str(wing))}}]
+        conditions.extend(scope_conditions(plan))
         if args.get("entity_name"):
             conditions.append({"key": "entity_name", "match": {"value": args["entity_name"]}})
         if source_file:
@@ -815,6 +911,7 @@ def _dispatch_tool(name: str, args: dict) -> list[types.TextContent]:
         return _json_text(row)
 
     if name == "memory_store":
+        _reject_identity_trust_override(args)
         event_time = datetime.fromisoformat(str(args.pop("event_time")).replace("Z", "+00:00"))
         role_value = args.pop("role", None)
         role = EpisodeRole(role_value) if role_value is not None else None
@@ -827,6 +924,7 @@ def _dispatch_tool(name: str, args: dict) -> list[types.TextContent]:
         return _json_text(record.model_dump(mode="json"))
 
     if name == "prediction_record":
+        _reject_identity_trust_override(args)
         event_time = datetime.fromisoformat(str(args.pop("event_time")).replace("Z", "+00:00"))
         trusted_agent = _apply_trusted_prediction_agent(args)
         if trusted_agent is not None:
@@ -1042,7 +1140,10 @@ def _dispatch_tool(name: str, args: dict) -> list[types.TextContent]:
 
     if name == "dream_reviews":
         operations = _require_dream_operations()
-        return _json_text(operations.pending_reviews(limit=int(args.pop("limit", 100))))
+        review_args = {"limit": int(args.pop("limit", 100))}
+        if "cursor" in args:
+            review_args["cursor"] = args.pop("cursor")
+        return _json_text(operations.pending_reviews(**review_args))
 
     if name == "dream_review_resolve":
         operations = _require_dream_operations()

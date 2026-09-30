@@ -10,6 +10,7 @@ from pathlib import Path
 
 from cyberbrain.dreaming.gate import DreamGateResult
 from cyberbrain.dreaming.reasoner import DreamReasoningRequest, DreamReasoningResult
+from cyberbrain.tenancy.durable import authority_snapshot, snapshot_sql_filter, snapshot_visible
 
 
 @dataclass(frozen=True)
@@ -94,8 +95,18 @@ class DreamRunAuditStore:
                 str(row["name"])
                 for row in connection.execute("PRAGMA table_info(dream_runs)").fetchall()
             }
+            if "authority_json" not in columns:
+                connection.execute("ALTER TABLE dream_runs ADD COLUMN authority_json TEXT")
             if "request_json" not in columns:
                 connection.execute("ALTER TABLE dream_runs ADD COLUMN request_json TEXT")
+
+    def assert_visible(self, dream_run_id: str) -> None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT authority_json FROM dream_runs WHERE id=?", (dream_run_id,),
+            ).fetchone()
+        if row is None or not snapshot_visible(row["authority_json"]):
+            raise KeyError(dream_run_id)
 
     def start(self, *, dream_run_id: str, request: DreamReasoningRequest) -> DreamRun:
         evidence_ids = sorted(
@@ -112,8 +123,8 @@ class DreamRunAuditStore:
                 INSERT INTO dream_runs (
                     id, session_id, request_id, status,
                     input_evidence_ids_json, request_json, candidate_count,
-                    created_at, completed_at
-                ) VALUES (?, ?, ?, 'processing', ?, ?, 0, ?, NULL)
+                    created_at, completed_at, authority_json
+                ) VALUES (?, ?, ?, 'processing', ?, ?, 0, ?, NULL, ?)
                 ON CONFLICT(request_id) DO NOTHING
                 """,
                 (
@@ -123,6 +134,7 @@ class DreamRunAuditStore:
                     json.dumps(evidence_ids, ensure_ascii=False),
                     json.dumps(asdict(request), ensure_ascii=False, default=str),
                     now,
+                    authority_snapshot(),
                 ),
             )
         return self.get_by_request(request.request_id)
@@ -134,6 +146,7 @@ class DreamRunAuditStore:
         result: DreamReasoningResult,
         gate: DreamGateResult,
     ) -> DreamRun:
+        self.assert_visible(dream_run_id)
         now = datetime.now(UTC).isoformat()
         with self._connect() as connection:
             for decision in gate.candidates:
@@ -170,6 +183,7 @@ class DreamRunAuditStore:
         return self.get(dream_run_id)
 
     def mark_failed(self, dream_run_id: str) -> None:
+        self.assert_visible(dream_run_id)
         now = datetime.now(UTC).isoformat()
         with self._connect() as connection:
             connection.execute(
@@ -182,6 +196,7 @@ class DreamRunAuditStore:
             )
 
     def get(self, dream_run_id: str) -> DreamRun:
+        self.assert_visible(dream_run_id)
         with self._connect() as connection:
             row = connection.execute(
                 "SELECT * FROM dream_runs WHERE id=?",
@@ -192,6 +207,7 @@ class DreamRunAuditStore:
         return self._row_to_run(row)
 
     def request_snapshot(self, dream_run_id: str) -> dict:
+        self.assert_visible(dream_run_id)
         with self._connect() as connection:
             row = connection.execute(
                 "SELECT request_json FROM dream_runs WHERE id=?",
@@ -215,9 +231,12 @@ class DreamRunAuditStore:
             ).fetchone()
         if row is None:
             raise KeyError(request_id)
+        if not snapshot_visible(row["authority_json"]):
+            raise KeyError(request_id)
         return self._row_to_run(row)
 
     def decisions(self, dream_run_id: str) -> list[dict]:
+        self.assert_visible(dream_run_id)
         with self._connect() as connection:
             rows = connection.execute(
                 """
@@ -230,6 +249,7 @@ class DreamRunAuditStore:
         return [dict(row) for row in rows]
 
     def decision(self, dream_run_id: str, candidate_index: int) -> dict:
+        self.assert_visible(dream_run_id)
         with self._connect() as connection:
             row = connection.execute(
                 """
@@ -253,6 +273,7 @@ class DreamRunAuditStore:
         knowledge_id: str | None = None,
         previous_knowledge_id: str | None = None,
     ) -> None:
+        self.assert_visible(dream_run_id)
         now = datetime.now(UTC).isoformat()
         with self._connect() as connection:
             connection.execute(
@@ -275,6 +296,7 @@ class DreamRunAuditStore:
             )
 
     def write(self, dream_run_id: str, candidate_index: int) -> dict | None:
+        self.assert_visible(dream_run_id)
         with self._connect() as connection:
             row = connection.execute(
                 """
@@ -286,6 +308,7 @@ class DreamRunAuditStore:
         return dict(row) if row is not None else None
 
     def writes(self, dream_run_id: str) -> list[dict]:
+        self.assert_visible(dream_run_id)
         with self._connect() as connection:
             rows = connection.execute(
                 """
@@ -297,22 +320,40 @@ class DreamRunAuditStore:
             ).fetchall()
         return [dict(row) for row in rows]
 
-    def pending_reviews(self, *, limit: int = 100) -> list[dict]:
+    def pending_reviews(self, *, limit: int = 100, after: tuple | None = None) -> list[dict]:
+        if not 1 <= limit <= 500:
+            raise ValueError("limit must be between 1 and 500")
+        clause = ""
+        parameters = []
+        if after is not None:
+            clause = " AND (d.created_at, d.dream_run_id, d.candidate_index) > (?, ?, ?)"
+            parameters.extend(after)
+        scope_clause, scope_params = snapshot_sql_filter("a.authority_json")
+        clause += scope_clause
+        parameters.extend(scope_params)
+        parameters.append(limit)
         with self._connect() as connection:
             rows = connection.execute(
                 """
-                SELECT d.*
+                SELECT d.*, a.authority_json AS _authority_json
                 FROM dream_candidate_decisions AS d
+                JOIN dream_runs AS a ON a.id=d.dream_run_id
                 LEFT JOIN dream_candidate_reviews AS r
                   ON r.dream_run_id=d.dream_run_id
                  AND r.candidate_index=d.candidate_index
                 WHERE d.decision='review' AND r.dream_run_id IS NULL
-                ORDER BY d.created_at ASC, d.candidate_index ASC
+                """ + clause + """
+                ORDER BY d.created_at ASC, d.dream_run_id ASC, d.candidate_index ASC
                 LIMIT ?
                 """,
-                (limit,),
+                parameters,
             ).fetchall()
-        return [dict(row) for row in rows]
+        visible = []
+        for row in rows:
+            value = dict(row)
+            if snapshot_visible(value.pop("_authority_json")):
+                visible.append(value)
+        return visible
 
     def resolve_review(
         self,
@@ -323,6 +364,7 @@ class DreamRunAuditStore:
         reviewer: str,
         reason: str | None = None,
     ) -> None:
+        self.assert_visible(dream_run_id)
         if resolution not in {"approved", "rejected"}:
             raise ValueError("review resolution must be approved or rejected")
         reviewer_value = reviewer.strip()
@@ -367,6 +409,7 @@ class DreamRunAuditStore:
             )
 
     def review_resolution(self, dream_run_id: str, candidate_index: int) -> dict | None:
+        self.assert_visible(dream_run_id)
         with self._connect() as connection:
             row = connection.execute(
                 """

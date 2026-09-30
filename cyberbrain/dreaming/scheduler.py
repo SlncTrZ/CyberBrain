@@ -13,7 +13,15 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from cyberbrain.dreaming.heartbeat import heartbeat_status, write_heartbeat
 from cyberbrain.dreaming.queue import DreamQueue
+from cyberbrain.tenancy import (
+    DeploymentMode,
+    IdentityScope,
+    OperationClass,
+    authority_for_authenticated_scope,
+)
+from cyberbrain.tenancy.durable import authority_snapshot, identity_key
 
 
 @dataclass
@@ -23,6 +31,7 @@ class SessionCandidate:
     episode_count: int = 0
     topics: Counter[str] = field(default_factory=Counter)
     projects: Counter[str] = field(default_factory=Counter)
+    authority_json: str | None = None
 
 
 def parse_time(value: object) -> datetime | None:
@@ -103,6 +112,7 @@ def qdrant_scroll_pending() -> list[dict[str, Any]]:
 
 def collect_candidates(points: list[dict[str, Any]]) -> dict[str, SessionCandidate]:
     sessions: dict[str, SessionCandidate] = {}
+    partitions: dict[tuple[str, str], str] = {}
     for point in points:
         payload = point.get("payload") or {}
         session_id = str(payload.get("session_id") or "").strip()
@@ -110,10 +120,36 @@ def collect_candidates(points: list[dict[str, Any]]) -> dict[str, SessionCandida
         if not session_id or event_time is None:
             continue
 
-        candidate = sessions.get(session_id)
+        identity = {
+            key: payload[key] for key in ("tenant", "user", "agent", "project")
+            if payload.get(key) is not None
+        }
+        mode = DeploymentMode(os.environ.get("CYBERBRAIN_DEPLOYMENT_MODE", "single_owner"))
+        try:
+            scoped_authority = authority_for_authenticated_scope(
+                mode, scope=IdentityScope.from_values(**identity),
+                operations=frozenset(OperationClass),
+            )
+        except ValueError:
+            if mode is DeploymentMode.SINGLE_OWNER:
+                raise
+            # Unknown legacy ownership cannot become a broader-mode job.
+            continue
+        snapshot = authority_snapshot(scoped_authority)
+        partition = (session_id, identity_key(snapshot))
+        group_key = partitions.get(partition)
+        if group_key is None:
+            group_key = (
+                session_id if session_id not in sessions
+                else session_id + ":" + str(len(sessions))
+            )
+            partitions[partition] = group_key
+        candidate = sessions.get(group_key)
         if candidate is None:
-            candidate = SessionCandidate(session_id=session_id, latest_event=event_time)
-            sessions[session_id] = candidate
+            candidate = SessionCandidate(
+                session_id=session_id, latest_event=event_time, authority_json=snapshot,
+            )
+            sessions[group_key] = candidate
         candidate.episode_count += 1
         if event_time > candidate.latest_event:
             candidate.latest_event = event_time
@@ -160,14 +196,15 @@ def run_once(*, dry_run: bool = False) -> dict[str, Any]:
     deferred_active = 0
     skipped_existing = 0
 
-    for session_id in sorted(sessions):
-        candidate = sessions[session_id]
+    for group_key in sorted(sessions):
+        candidate = sessions[group_key]
+        session_id = candidate.session_id
         if candidate.latest_event > cutoff:
             deferred_active += 1
             continue
 
         try:
-            existing = queue.get_by_session(session_id)
+            existing = queue.get_by_session(session_id, authority_json=candidate.authority_json)
         except KeyError:
             existing = None
         if existing is not None:
@@ -188,7 +225,7 @@ def run_once(*, dry_run: bool = False) -> dict[str, Any]:
         }
         print(json.dumps(event, ensure_ascii=False), flush=True)
         if not dry_run:
-            queue.enqueue(session_id, topics)
+            queue.enqueue(session_id, topics, authority_json=candidate.authority_json)
             enqueued += 1
 
     summary = {
@@ -234,6 +271,9 @@ def run_scheduler() -> None:
     schedule = os.environ.get("CYBERBRAIN_DREAM_SCHEDULER_UTC", "23:50").strip()
     hour, minute = parse_schedule(schedule)
 
+    heartbeat_path = os.environ.get("CYBERBRAIN_DREAM_SCHEDULER_HEARTBEAT")
+    last_success = None
+    last_error = None
     while True:
         now = datetime.now(UTC)
         target = next_run(now, hour, minute)
@@ -248,19 +288,36 @@ def run_scheduler() -> None:
             flush=True,
         )
         while True:
+            if heartbeat_path:
+                write_heartbeat(
+                    heartbeat_path, phase="waiting", next_run=target,
+                    last_success=last_success, error=last_error,
+                )
             remaining = (target - datetime.now(UTC)).total_seconds()
             if remaining <= 0:
                 break
             time.sleep(min(remaining, 60.0))
         try:
+            if heartbeat_path:
+                write_heartbeat(
+                    heartbeat_path, phase="running", next_run=target,
+                    last_success=last_success,
+                )
             run_once(dry_run=False)
+            last_success = datetime.now(UTC)
+            last_error = None
         except Exception as exc:
+            last_error = type(exc).__name__
+            if heartbeat_path:
+                write_heartbeat(
+                    heartbeat_path, phase="error", next_run=target,
+                    last_success=last_success, error=last_error,
+                )
             print(
                 json.dumps(
                     {
                         "event": "dream_scheduler_error",
                         "type": type(exc).__name__,
-                        "message": str(exc)[:500],
                     }
                 ),
                 flush=True,
@@ -271,7 +328,12 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--once", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--check-heartbeat", metavar="PATH")
     args = parser.parse_args()
+    if args.check_heartbeat:
+        status = heartbeat_status(args.check_heartbeat)
+        print(json.dumps(status))
+        raise SystemExit(0 if status["healthy"] else 1)
     if args.once:
         run_once(dry_run=args.dry_run)
     else:

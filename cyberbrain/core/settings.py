@@ -8,7 +8,9 @@ from cyberbrain.tenancy import DeploymentMode, IdentityScope
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="CYBERBRAIN_", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_prefix="CYBERBRAIN_", extra="ignore", env_ignore_empty=True,
+    )
 
     host: str = "0.0.0.0"
     port: int = 8767
@@ -37,8 +39,18 @@ class Settings(BaseSettings):
 
     mcp_auth_token: str | None = Field(default=None, repr=False)
     require_auth: bool = True
+    principal_registry_file: str | None = None
+    mcp_max_sessions: int = 256
+    mcp_max_request_bytes: int = 2_097_152
     deployment_mode: DeploymentMode = DeploymentMode.SINGLE_OWNER
     trusted_agent_id: str | None = None
+
+    quota_db: str = "/data/quotas.sqlite"
+    quota_requests_per_minute: int | None = None
+    quota_writes_per_minute: int | None = None
+    quota_recall_limit: int | None = None
+    quota_dream_enqueues_per_hour: int | None = None
+    quota_background_runs_per_hour: int | None = None
 
     dream_queue_db: str = "/data/dream_queue.sqlite"
     dream_audit_db: str = "/data/dream_audit.sqlite"
@@ -58,8 +70,34 @@ class Settings(BaseSettings):
     dream_per_bucket_limit: int = 5
     dream_retrieval_score_threshold: float | None = 0.55
 
+    def quota_policy(self):
+        from cyberbrain.tenancy.quota import QuotaLimit, QuotaPolicy, QuotaResource
+        values = (
+            (QuotaResource.REQUESTS, self.quota_requests_per_minute, 60),
+            (QuotaResource.WRITES, self.quota_writes_per_minute, 60),
+            (QuotaResource.RECALL_LIMIT, self.quota_recall_limit, None),
+            (QuotaResource.DREAM_ENQUEUE, self.quota_dream_enqueues_per_hour, 3600),
+            (QuotaResource.BACKGROUND_REASONING, self.quota_background_runs_per_hour, 3600),
+        )
+        return QuotaPolicy(tuple(
+            QuotaLimit(resource, amount, window) for resource, amount, window in values
+            if amount is not None
+        ))
+
     def validate_runtime(self) -> None:
-        if self.require_auth and not (self.mcp_auth_token or "").strip():
+        if not 1 <= self.mcp_max_sessions <= 10_000:
+            raise ConfigurationError("mcp_max_sessions must be between 1 and 10000")
+        if not 1024 <= self.mcp_max_request_bytes <= 16_777_216:
+            raise ConfigurationError("mcp_max_request_bytes must be between 1024 and 16777216")
+        try:
+            self.quota_policy()
+        except (TypeError, ValueError) as exc:
+            raise ConfigurationError("invalid runtime quota policy") from exc
+        if self.principal_registry_file and not self.require_auth:
+            raise ConfigurationError("principal registry requires authenticated MCP transport")
+        if self.require_auth and not (
+            (self.mcp_auth_token or "").strip() or self.principal_registry_file
+        ):
             raise ConfigurationError("CYBERBRAIN_MCP_AUTH_TOKEN is required when auth is enabled")
         if self.trusted_agent_id is not None:
             if not self.require_auth:
@@ -73,10 +111,18 @@ class Settings(BaseSettings):
             if len(trusted_scope.agent) != 1:
                 raise ConfigurationError("CYBERBRAIN_TRUSTED_AGENT_ID must identify one agent")
         if self.deployment_mode is not DeploymentMode.SINGLE_OWNER:
-            raise ConfigurationError(
-                f"deployment mode {self.deployment_mode.value!r} remains disabled until full "
-                "P3 read/write/background isolation and persisted identity requirements are wired"
-            )
+            if not self.require_auth or not self.principal_registry_file:
+                raise ConfigurationError(
+                    "deployment mode remains disabled without an authenticated principal registry"
+                )
+            from cyberbrain.tenancy.quota import QuotaResource
+            if {limit.resource for limit in self.quota_policy().limits} != set(QuotaResource):
+                raise ConfigurationError(
+                    "deployment mode remains disabled without all runtime quota limits"
+                )
+        if self.principal_registry_file:
+            from cyberbrain.tenancy.principals import PrincipalRegistry
+            PrincipalRegistry.load(self.principal_registry_file, mode=self.deployment_mode)
         if self.embedding_dimension <= 0:
             raise ConfigurationError("embedding_dimension must be > 0")
         for name, value in (

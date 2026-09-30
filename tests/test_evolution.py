@@ -65,13 +65,21 @@ class FakeRepository:
                 continue
             if qdrant_filter:
                 matches = all(
-                    payload.get(condition["key"]) == condition["match"]["value"]
+                    self._matches(payload, condition)
                     for condition in qdrant_filter.get("must", [])
                 )
                 if not matches:
                     continue
             result.append(point)
         return result[:limit]
+
+    @staticmethod
+    def _matches(payload, condition):
+        if "should" in condition:
+            return any(FakeRepository._matches(payload, child) for child in condition["should"])
+        if "is_empty" in condition:
+            return payload.get(condition["is_empty"]["key"]) is None
+        return payload.get(condition["key"]) == condition["match"]["value"]
 
     def scroll(
         self,

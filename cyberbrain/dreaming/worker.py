@@ -14,6 +14,10 @@ from cyberbrain.dreaming.promotion import DreamPromotionCoordinator
 from cyberbrain.dreaming.queue import DreamJob, DreamQueue
 from cyberbrain.dreaming.writeback import DreamWritebackCoordinator, DreamWriteResult
 from cyberbrain.schemas.models import DreamStatus
+from cyberbrain.tenancy.auth import DeploymentMode, current_authority
+from cyberbrain.tenancy.durable import bind_job_authority, restore_authority
+from cyberbrain.tenancy.limiter import QuotaExceededError, SQLiteQuotaLimiter
+from cyberbrain.tenancy.quota import QuotaResource
 
 
 class SessionEpisodeLoader(Protocol):
@@ -49,6 +53,8 @@ class DreamWorker:
         promotion: DreamPromotionCoordinator,
         writeback: DreamWritebackCoordinator,
         metrics: MetricsRegistry | None = None,
+        quota_limiter: SQLiteQuotaLimiter | None = None,
+        deployment_mode: DeploymentMode = DeploymentMode.SINGLE_OWNER,
     ) -> None:
         self._queue = queue
         self._session_loader = session_loader
@@ -56,14 +62,25 @@ class DreamWorker:
         self._promotion = promotion
         self._writeback = writeback
         self._metrics = metrics
+        self._quota_limiter = quota_limiter
+        self._deployment_mode = deployment_mode
 
     def process_next(self) -> DreamWorkerResult | None:
-        job = self._queue.claim_next()
+        job = self._queue.claim_next(deployment_mode=self._deployment_mode)
         if job is None:
             return None
         return self.process_job(job)
 
     def process_job(self, job: DreamJob) -> DreamWorkerResult:
+        if self._deployment_mode is not DeploymentMode.SINGLE_OWNER:
+            if job.authority_json is None or (
+                restore_authority(job.authority_json).deployment_mode is not self._deployment_mode
+            ):
+                raise ValueError("legacy or incompatible job requires an explicit migration")
+        with bind_job_authority(job.authority_json):
+            return self._process_scoped_job(job)
+
+    def _process_scoped_job(self, job: DreamJob) -> DreamWorkerResult:
         if job.status != "processing":
             raise ValueError("Dream job must be claimed before processing")
         started = monotonic()
@@ -71,6 +88,10 @@ class DreamWorker:
             self._metrics.increment("dream_jobs_started_total")
         dream_run_id: str | None = None
         try:
+            if self._quota_limiter is not None:
+                self._quota_limiter.reserve(
+                    current_authority(), {QuotaResource.BACKGROUND_REASONING: 1},
+                )
             episodes = self._session_loader.load(job.session_id)
             dry_run = self._engine.dry_run(
                 episodes,
@@ -105,6 +126,14 @@ class DreamWorker:
                 status="processed",
                 dream_run_id=dream_run_id,
                 writes=writes,
+            )
+        except QuotaExceededError as exc:
+            self._queue.defer(job.id, retry_after=exc.retry_after)
+            if self._metrics is not None:
+                self._metrics.increment("dream_quota_deferred_total")
+            return DreamWorkerResult(
+                job_id=job.id, session_id=job.session_id, status="deferred",
+                dream_run_id=None, writes=[], error="quota_exceeded",
             )
         except Exception as exc:
             try:

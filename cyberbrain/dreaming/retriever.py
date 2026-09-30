@@ -9,6 +9,8 @@ from cyberbrain.dreaming.planner import TemporalBucket
 from cyberbrain.dreaming.reasoner import EvidenceItem
 from cyberbrain.embedding.base import EmbeddingProvider
 from cyberbrain.storage.base import PointRepository
+from cyberbrain.tenancy.enforcement import TenancyOperation
+from cyberbrain.tenancy.runtime import enforce_operation, scope_conditions
 
 
 class QdrantEvidenceRetriever:
@@ -40,20 +42,21 @@ class QdrantEvidenceRetriever:
     ) -> list[EvidenceItem]:
         if limit < 1:
             return []
+        plan = enforce_operation(TenancyOperation.BACKGROUND_EVIDENCE_READ)
         vector = self._embedding.embed(topic)
 
         episodic = self._repository.search(
             self._episodic_collection,
             vector=vector,
             limit=limit,
-            qdrant_filter=self._episodic_filter(bucket),
+            qdrant_filter=self._scoped_filter(self._episodic_filter(bucket), plan),
             score_threshold=self._score_threshold,
         )
         knowledge = self._repository.search(
             self._knowledge_collection,
             vector=vector,
             limit=limit,
-            qdrant_filter=self._knowledge_filter(bucket),
+            qdrant_filter=self._scoped_filter(self._knowledge_filter(bucket), plan),
             score_threshold=self._score_threshold,
         )
 
@@ -141,6 +144,9 @@ class QdrantEvidenceRetriever:
     @staticmethod
     def _metadata(payload: dict[str, Any]) -> dict[str, Any]:
         keys = (
+            "tenant",
+            "user",
+            "identity_trust",
             "domain",
             "topic",
             "project",
@@ -173,3 +179,8 @@ class QdrantEvidenceRetriever:
             seen.add(item.id)
             result.append(item)
         return result
+
+    @staticmethod
+    def _scoped_filter(query: dict, plan) -> dict:
+        query["must"].extend(scope_conditions(plan))
+        return query

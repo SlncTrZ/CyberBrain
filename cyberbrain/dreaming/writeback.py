@@ -163,7 +163,16 @@ class DreamKnowledgeWriter:
                 reason="missing_or_ambiguous_domain",
             )
 
-        project = self._single_metadata_value(selected, "project", allow_missing=True)
+        attribution = {}
+        for key in ("tenant", "user", "agent", "project"):
+            values = {item.metadata.get(key) for item in selected}
+            if len(values) > 1:
+                return DreamWriteResult(
+                    candidate_index=candidate_index,
+                    status=DreamWriteStatus.BLOCKED_METADATA,
+                    reason=f"mixed_identity_{key}",
+                )
+            attribution[key] = next(iter(values), None)
         verification = self._verification_for(selected)
         topic = self._topic_for(candidate, request, selected)
         context = dict(candidate.context)
@@ -177,7 +186,7 @@ class DreamKnowledgeWriter:
             topic=topic,
             entity_type=candidate.entity_type,
             entity_name=candidate.entity_name,
-            project=project,
+            **attribution,
             change_reason="promoted from Dreaming evidence gate",
             verification=verification,
             confidence=decision.promotion_confidence,

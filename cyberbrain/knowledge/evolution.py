@@ -11,7 +11,7 @@ from typing import Any
 from uuid import UUID
 
 from cyberbrain.core.content import content_hash, normalize_content
-from cyberbrain.core.errors import ConflictError
+from cyberbrain.core.errors import ConfigurationError, ConflictError
 from cyberbrain.core.secrets import SecretScanner
 from cyberbrain.embedding.base import EmbeddingProvider
 from cyberbrain.schemas.models import (
@@ -25,6 +25,9 @@ from cyberbrain.schemas.models import (
     utc_now,
 )
 from cyberbrain.storage.base import PointRepository
+from cyberbrain.tenancy import current_authority
+from cyberbrain.tenancy.enforcement import TenancyOperation
+from cyberbrain.tenancy.runtime import IDENTITY_FIELDS, scoped_values
 
 _EVOLUTION_STATE_KEY = "_evolution_state"
 _EVOLUTION_PREVIOUS_ID_KEY = "_evolution_previous_id"
@@ -72,6 +75,7 @@ class KnowledgeEvolutionService:
         entity_type: str,
         entity_name: str,
         context: dict[str, Any] | None,
+        identity_values: dict[str, Any] | None = None,
     ) -> str:
         context_items = sorted((context or {}).items())
         return "|".join(
@@ -81,6 +85,7 @@ class KnowledgeEvolutionService:
                 entity_type.strip().lower(),
                 entity_name.strip().lower(),
                 repr(context_items),
+                repr(sorted((identity_values or {}).items())),
             ]
         )
 
@@ -113,8 +118,9 @@ class KnowledgeEvolutionService:
         topic: str,
         entity_type: str,
         entity_name: str,
+        identity_values: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        return {
+        result = {
             "must": [
                 {"key": "domain", "match": {"value": domain}},
                 {"key": "topic", "match": {"value": topic}},
@@ -124,6 +130,10 @@ class KnowledgeEvolutionService:
             ]
         }
 
+        if identity_values is not None:
+            result["must"].extend(self._partition_conditions(identity_values))
+        return result
+
     def _pending_filter(
         self,
         *,
@@ -131,8 +141,9 @@ class KnowledgeEvolutionService:
         topic: str,
         entity_type: str,
         entity_name: str,
+        identity_values: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        return {
+        result = {
             "must": [
                 {"key": "domain", "match": {"value": domain}},
                 {"key": "topic", "match": {"value": topic}},
@@ -146,7 +157,14 @@ class KnowledgeEvolutionService:
             ]
         }
 
+        if identity_values is not None:
+            result["must"].extend(self._partition_conditions(identity_values))
+        return result
+
     def reconcile_pending(self, *, max_pending: int = 1000) -> int:
+        authority = current_authority()
+        if authority is not None and authority.grant.scope.as_dict():
+            raise ConfigurationError("global reconciliation is unavailable to scoped callers")
         if max_pending < 1:
             raise ValueError("max_pending must be >= 1")
         with self._process_guard():
@@ -172,7 +190,7 @@ class KnowledgeEvolutionService:
             if len(pending) > max_pending:
                 raise ConflictError("pending evolution reconciliation limit exceeded")
 
-            identities: dict[str, tuple[str, str, str, str, dict[str, Any]]] = {}
+            identities: dict[str, tuple] = {}
             for point in pending:
                 payload = point.get("payload") or {}
                 required = {
@@ -182,12 +200,15 @@ class KnowledgeEvolutionService:
                 if not all(required.values()):
                     raise ConflictError("pending evolution is missing canonical identity fields")
                 context = dict(payload.get("context") or {})
+                partition = {key: payload.get(key) for key in IDENTITY_FIELDS}
+                partition["record_class"] = payload.get("record_class", "knowledge")
                 identity = self._identity_key(
                     domain=required["domain"],
                     topic=required["topic"],
                     entity_type=required["entity_type"],
                     entity_name=required["entity_name"],
                     context=context,
+                    identity_values=partition,
                 )
                 if identity in identities:
                     raise ConflictError(
@@ -199,10 +220,11 @@ class KnowledgeEvolutionService:
                     required["entity_type"],
                     required["entity_name"],
                     context,
+                    partition,
                 )
 
             for identity, values in identities.items():
-                domain, topic, entity_type, entity_name, context = values
+                domain, topic, entity_type, entity_name, context, partition = values
                 with self._lock_for(identity):
                     self._recover_pending(
                         domain=domain,
@@ -210,6 +232,7 @@ class KnowledgeEvolutionService:
                         entity_type=entity_type,
                         entity_name=entity_name,
                         context=context,
+                        identity_values=partition,
                     )
             return len(identities)
 
@@ -245,6 +268,14 @@ class KnowledgeEvolutionService:
         extensions: dict[str, Any] | None = None,
         force_evolution: bool = False,
     ) -> EvolutionResult:
+        identity_values = scoped_values(
+            dict(tenant=tenant, user=user, agent=agent, project=project, session_id=session_id),
+            operation=TenancyOperation.KNOWLEDGE_WRITE,
+        )
+        tenant, user, agent, project, session_id = (
+            identity_values[field] for field in IDENTITY_FIELDS
+        )
+        identity_values["record_class"] = KnowledgeRecordClass(record_class).value
         normalized = normalize_content(content)
         self._secret_scanner.assert_safe(
             normalized,
@@ -263,6 +294,7 @@ class KnowledgeEvolutionService:
             entity_type=entity_type,
             entity_name=entity_name,
             context=context_value,
+            identity_values=identity_values,
         )
 
         with self._process_guard():
@@ -273,6 +305,7 @@ class KnowledgeEvolutionService:
                     entity_type=entity_type,
                     entity_name=entity_name,
                     context=context_value,
+                    identity_values=identity_values,
                 )
 
                 lookup_vector = self._embedding.embed(f"{topic} {entity_name}")
@@ -285,6 +318,7 @@ class KnowledgeEvolutionService:
                         topic=topic,
                         entity_type=entity_type,
                         entity_name=entity_name,
+                        identity_values=identity_values,
                     ),
                 )
 
@@ -292,6 +326,7 @@ class KnowledgeEvolutionService:
                     point
                     for point in active
                     if (point.get("payload") or {}).get("context", {}) == context_value
+                    and self._same_partition(point.get("payload") or {}, identity_values)
                 ]
                 if len(exact_context) > 1:
                     raise ConflictError(
@@ -393,6 +428,7 @@ class KnowledgeEvolutionService:
         entity_type: str,
         entity_name: str,
         context: dict[str, Any],
+        identity_values: dict[str, Any] | None = None,
     ) -> None:
         pending = self._repository.scroll(
             self._collection,
@@ -401,6 +437,7 @@ class KnowledgeEvolutionService:
                 topic=topic,
                 entity_type=entity_type,
                 entity_name=entity_name,
+                identity_values=identity_values,
             ),
             limit=20,
         )
@@ -409,6 +446,7 @@ class KnowledgeEvolutionService:
             for point in pending
             if (point.get("payload") or {}).get("context", {}) == context
             and self._pending_state(point) == _PENDING
+            and self._same_partition(point.get("payload") or {}, identity_values or {})
         ]
         if not exact:
             return
@@ -427,6 +465,8 @@ class KnowledgeEvolutionService:
         if previous is None:
             raise ConflictError("pending evolution previous knowledge record is missing")
         previous_payload = previous.get("payload") or {}
+        if not self._same_partition(previous_payload, identity_values or {}):
+            raise ConflictError("pending evolution predecessor scope differs")
         previous_status = previous_payload.get("status")
         previous_next = previous_payload.get("superseded_by_id")
 
@@ -516,3 +556,28 @@ class KnowledgeEvolutionService:
         payload = point.get("payload") or {}
         extensions = payload.get("extensions") or {}
         return extensions.get(_EVOLUTION_STATE_KEY)
+
+    @staticmethod
+    def _same_partition(payload: dict[str, Any], identity_values: dict[str, Any]) -> bool:
+        return all(
+            payload.get(key) == identity_values.get(key) for key in IDENTITY_FIELDS
+        ) and payload.get("record_class", "knowledge") == identity_values.get(
+            "record_class", "knowledge"
+        )
+
+    @staticmethod
+    def _partition_conditions(identity_values: dict[str, Any]) -> list[dict]:
+        conditions = [
+            {"key": key, "match": {"value": identity_values[key]}}
+            if identity_values.get(key) is not None else {"is_empty": {"key": key}}
+            for key in IDENTITY_FIELDS
+        ]
+        record_class = identity_values.get("record_class", "knowledge")
+        if record_class == "knowledge":
+            conditions.append({"should": [
+                {"key": "record_class", "match": {"value": record_class}},
+                {"is_empty": {"key": "record_class"}},
+            ]})
+        else:
+            conditions.append({"key": "record_class", "match": {"value": record_class}})
+        return conditions

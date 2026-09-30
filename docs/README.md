@@ -36,3 +36,9 @@ When current and historical documents differ, current guidance and canonical spe
 ## Source versus runtime status
 
 Current local source contains the integrated single-owner caller authority binding, expanded tenancy foundations, scope-safe exact fetch, the MCP Agent Adapter client bridge, literal/fingerprint shadow observation, completed M3 Salience/M4 Concept Formation/M5 Working Memory, complete source-level M6 Agent Self-Model, complete source-level M7 Memory Lifecycle, schema-V2 metadata contracts, V2 migration/validation tooling, the server-owned post-storage cognition boundary, and single software/package version authority. Level-8.0 remains a source-engineering checkpoint, not a deployment claim. M6/M7 controlled fixtures demonstrate contract behavior only; real-corpus assessment follows full V2 migration/validation. Caller-visible lexical promotion and broader multi-user/search/write tenancy enforcement remain pending. `CURRENT_RUNTIME.md`, `../TOOL_GUIDE.md`, and canonical specs describe source state; release, deployed runtime, and migrated-data state remain independent.
+
+## Acceptance and operations
+
+- [Source acceptance](SOURCE_ACCEPTANCE.md): implementation and reproducible QA.
+- [Tenancy operations](TENANCY_OPERATIONS.md): principal configuration, quotas and recovery.
+- [Live evaluation](LIVE_EVALUATION.md): separate longitudinal evidence after rollout.

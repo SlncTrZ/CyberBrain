@@ -64,9 +64,10 @@ class MCPStreamableHTTPInvoker:
         except Exception as exc:
             if self._metrics is not None:
                 self._metrics.increment("reasoner_transport_failures_total")
+                self._metrics.increment("reasoner_transport_" + self._failure_code(exc) + "_total")
                 self._metrics.observe("reasoner_call_seconds", monotonic() - started)
             raise ProviderUnavailableError(
-                f"MCP provider unavailable for tool {tool!r}: {type(exc).__name__}"
+                f"MCP provider unavailable for tool {tool!r}: {self._failure_code(exc)}"
             ) from exc
 
     async def _call_tool(self, tool: str, arguments: dict[str, Any]) -> types.CallToolResult:
@@ -137,3 +138,27 @@ class MCPStreamableHTTPInvoker:
                 error_type=error_type,
             )
         return payload
+
+    @staticmethod
+    def _failure_code(exc: BaseException) -> str:
+        pending = [exc]
+        codes = set()
+        for _ in range(32):
+            if not pending:
+                break
+            current = pending.pop()
+            if isinstance(current, BaseExceptionGroup):
+                pending.extend(current.exceptions)
+            elif isinstance(current, httpx.HTTPStatusError):
+                code = current.response.status_code
+                codes.add(f"http_{code}" if code in {401, 403, 404, 429, 500, 502, 503, 504}
+                          else "http_error")
+            elif isinstance(current, TimeoutError | httpx.TimeoutException):
+                codes.add("timeout")
+            elif isinstance(current, httpx.ConnectError):
+                codes.add("connect_error")
+        for code in ("http_401", "http_403", "http_404", "http_429", "http_503", "timeout",
+                     "connect_error", "http_500", "http_502", "http_504", "http_error"):
+            if code in codes:
+                return code
+        return "transport_error"
