@@ -77,7 +77,7 @@ Search results must expose similarity score when available, but similarity score
 
 ## Hybrid evolution and current source status
 
-The canonical runtime search path currently remains vector retrieval plus metadata/lifecycle filtering. The public domain contract should allow implementation to evolve toward:
+The default runtime search path remains vector retrieval plus metadata/lifecycle filtering. Foreground Knowledge retrieval additionally supports opt-in literal routing and hybrid fusion. The public domain contract should allow implementation to evolve toward:
 
 ```text
 vector + lexical + metadata + deterministic fusion + optional bounded reranking
@@ -93,7 +93,24 @@ Observed benchmark decision:
 - always-on hybrid RRF: Recall@5 1.000000, MRR@5 0.892857, with two rank regressions;
 - deterministic literal/fingerprint router (lexical only for strong commit/version/model/port-style lexical signals, vector otherwise): Recall@5 1.000000, MRR@5 0.934524, no observed rank regressions in the reviewed set, and lower mean returned-token estimate than vector.
 
-Therefore always-on hybrid fusion is **not promoted**. The literal/fingerprint route remains **SHADOW ONLY**: live observation has cleared the recurring shadow-scoring performance blocker, but caller-visible promotion still requires a larger reviewed relevance/reliability sample with zero scope leakage and no material reliability regression. The canonical Knowledge/Memory search backend remains vector retrieval.
+Therefore always-on hybrid fusion is **not promoted**. The literal/fingerprint route remains **SHADOW ONLY**: live observation has cleared the recurring shadow-scoring performance blocker, but caller-visible promotion still requires a larger reviewed relevance/reliability sample with zero scope leakage and no material reliability regression. The default Knowledge/Memory search backend remains vector retrieval. Source now supports explicit foreground Knowledge modes for controlled evaluation; this does not promote always-on fusion as the production default.
+
+### Foreground Knowledge modes
+
+`CYBERBRAIN_KNOWLEDGE_RETRIEVAL_MODE` selects:
+- `vector` (default): existing semantic results and thresholds.
+- `literal`: deterministic fingerprint queries use positive-overlap BM25 candidates first, then semantic candidates to fill remaining slots; ordinary queries retain the vector path.
+- `hybrid`: semantic candidates and positive-overlap BM25 candidates are fused using existing deterministic reciprocal-rank fusion.
+
+These modes are wired into canonical `knowledge_search` and aliases that invoke the same service. `memory_search`, conversation routing, exact reads, timelines and Dream evidence retrieval keep their existing semantics. Caller arguments cannot change the configured mode.
+
+Both channels use the identical storage-side status, ordinary-recall, record-class, explicit selector and principal scope filters. The lexical corpus is fresh per query and contains only storage-admitted records; no shared cross-principal corpus/cache contributes document statistics. Selected IDs are fetched again through the same filter before response projection, so superseded/deleted/out-of-scope records cannot reenter from the earlier scan.
+
+`CYBERBRAIN_KNOWLEDGE_RETRIEVAL_MAX_RECORDS` defaults to 10000, valid range 1–50000. A scoped corpus exceeding the bound produces an explicit storage error, never a silently truncated BM25 ranking. Candidate multiplier defaults to 3, range 1–10; candidate expansion caps at 500 unless the internal requested recall budget already exceeds 500. This bounded scan implementation incurs tokenization and storage reads per lexical request; it is not a sparse-index scalability claim.
+
+`score` remains the semantic similarity score when present and is null for lexical-only rows. `_retrieval.method`, `_retrieval.ranking_score` and `_retrieval.lexical_score` expose the configured route, RRF score (hybrid only), and BM25 score respectively. BM25/RRF scores are not confidence, truth, or cosine similarity. Embedding/search/scan failures surface explicitly. Compact projection preserves these fields.
+
+Source correctness can be verified in controlled tests immediately. Selecting a new production default still requires a larger reviewed relevance/reliability benchmark; longitudinal learning evidence remains a separate evaluation.
 
 ### Literal/fingerprint shadow contract
 

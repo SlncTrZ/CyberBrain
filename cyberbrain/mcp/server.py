@@ -158,7 +158,7 @@ async def list_tools() -> list[types.Tool]:
         ),
         types.Tool(
             name="knowledge_search",
-            description="Semantic search over active canonical CyberBrain knowledge.",
+            description="Search active canonical CyberBrain knowledge using configured retrieval.",
             inputSchema={
                 "type": "object",
                 "properties": {

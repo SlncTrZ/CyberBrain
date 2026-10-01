@@ -177,3 +177,7 @@ fail validation. Cursor pagination never resolves or promotes a review.
 
 
 Source correctness/build acceptance is defined in `docs/SOURCE_ACCEPTANCE.md`. Long-term live effectiveness, evidence maturity and retrieval promotion are evaluated separately under `docs/LIVE_EVALUATION.md`.
+
+### Configured Knowledge ranking
+
+Knowledge search defaults to vector retrieval. A deployment may select foreground literal routing or semantic/BM25 RRF fusion using `CYBERBRAIN_KNOWLEDGE_RETRIEVAL_MODE`; clients use the same tools and arguments. `score` is semantic similarity and may be null for lexical-only results. Optional `_retrieval` metadata distinguishes the method and lexical/fusion scores. Compact recall preserves this metadata. See `specs/RETRIEVAL_POLICY.md` for bounds and failure behavior.

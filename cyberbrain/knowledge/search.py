@@ -6,6 +6,7 @@ from typing import Any
 from uuid import UUID
 
 from cyberbrain.embedding.base import EmbeddingProvider
+from cyberbrain.retrieval.runtime import KnowledgeRetrievalPolicy, rank_knowledge
 from cyberbrain.retrieval.shadow import KnowledgeLiteralShadowObserver
 from cyberbrain.schemas.models import KnowledgeRecordClass
 from cyberbrain.storage.base import PointRepository
@@ -25,12 +26,14 @@ class KnowledgeSearchService:
         collection: str,
         score_threshold: float | None = 0.7,
         literal_shadow: KnowledgeLiteralShadowObserver | None = None,
+        retrieval_policy: KnowledgeRetrievalPolicy | None = None,
     ) -> None:
         self._repository = repository
         self._embedding = embedding
         self._collection = collection
         self._score_threshold = score_threshold
         self._literal_shadow = literal_shadow
+        self._retrieval_policy = retrieval_policy or KnowledgeRetrievalPolicy()
 
     @property
     def collection(self) -> str:
@@ -87,14 +90,21 @@ class KnowledgeSearchService:
                 conditions.append({"key": key, "match": {"value": value}})
 
         conditions.extend(scope_conditions(plan))
+        use_lexical = self._retrieval_policy.uses_lexical(query) and limit > 0
         vector = self._embedding.embed(query)
         points = self._repository.search(
             self._collection,
             vector=vector,
-            limit=limit,
+            limit=(self._retrieval_policy.candidate_limit(limit) if use_lexical else limit),
             qdrant_filter={"must": conditions},
             score_threshold=self._score_threshold,
         )
+        if use_lexical:
+            return rank_knowledge(
+                repository=self._repository, collection=self._collection, query=query,
+                vector_points=points, qdrant_filter={"must": conditions},
+                limit=limit, policy=self._retrieval_policy,
+            )
         rows = [
             {
                 "id": point["id"],

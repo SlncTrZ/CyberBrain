@@ -15,6 +15,7 @@ from cyberbrain.knowledge.evolution import KnowledgeEvolutionService
 from cyberbrain.knowledge.search import KnowledgeSearchService
 from cyberbrain.lifecycle import MemoryLifecycleService
 from cyberbrain.memory.service import MemoryService
+from cyberbrain.retrieval.runtime import KnowledgeRetrievalPolicy
 from cyberbrain.retrieval.shadow import KnowledgeLiteralShadowObserver
 from cyberbrain.self_model import SelfModelPersistence, SelfModelService
 from cyberbrain.storage.base import PointRepository
@@ -135,6 +136,11 @@ def build_runtime(settings: Settings) -> RuntimeServices:
             collection=settings.knowledge_collection,
             score_threshold=settings.knowledge_search_score_threshold,
             literal_shadow=literal_shadow,
+            retrieval_policy=KnowledgeRetrievalPolicy(
+                mode=settings.knowledge_retrieval_mode,
+                max_records=settings.knowledge_retrieval_max_records,
+                candidate_multiplier=settings.knowledge_retrieval_candidate_multiplier,
+            ),
         ),
         memory=memory,
         prediction_learning=prediction_learning,

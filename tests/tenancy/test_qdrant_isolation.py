@@ -10,7 +10,9 @@ import pytest
 
 from cyberbrain.dreaming.session import QdrantSessionEpisodeLoader
 from cyberbrain.knowledge.evolution import KnowledgeEvolutionService
+from cyberbrain.knowledge.search import KnowledgeSearchService
 from cyberbrain.memory.service import MemoryService
+from cyberbrain.retrieval.runtime import KnowledgeRetrievalPolicy
 from cyberbrain.schemas.models import DreamStatus
 from cyberbrain.storage.qdrant import QdrantRepository
 from cyberbrain.tenancy import (
@@ -75,3 +77,35 @@ def test_real_qdrant_isolates_versions_exact_reads_and_session_updates():
     untouched = repo.retrieve("cyberbrain_knowledge", point_id=knowledge["two"].record.id)
     assert untouched["payload"]["status"] == "active"
     assert untouched["payload"]["content"] == "policy two"
+
+    # Exercise BM25 recovery and has_id revalidation against real Qdrant.
+    from uuid import UUID
+    fingerprint_id = UUID(int=1000)
+    repo.upsert(
+        "cyberbrain_knowledge", point_id=fingerprint_id,
+        vector=[-value for value in embedding.embed("opposite")],
+        payload={
+            "content": "commit abc1234", "status": "active", "record_class": "knowledge",
+            "ordinary_recall": True, "tenant": "one", "user": "same",
+            "agent": "shared", "project": "same",
+        },
+    )
+    repo.upsert(
+        "cyberbrain_knowledge", point_id=UUID(int=1001),
+        vector=[-value for value in embedding.embed("opposite")],
+        payload={
+            "content": "commit abc1234 " * 30, "status": "active",
+            "tenant": "two", "user": "same", "agent": "shared", "project": "same",
+        },
+    )
+    for mode in ("hybrid", "literal"):
+        search = KnowledgeSearchService(
+            repository=repo, embedding=embedding, collection="cyberbrain_knowledge",
+            score_threshold=0.55, retrieval_policy=KnowledgeRetrievalPolicy(mode=mode),
+        )
+        with bind_authority(authorities["one"]):
+            rows = search.search(query="commit abc1234", limit=10)
+        assert all(row["tenant"] == "one" and row["status"] == "active" for row in rows)
+        recovered = next(row for row in rows if row["id"] == str(fingerprint_id))
+        assert recovered["score"] is None
+        assert recovered["_retrieval"]["lexical_score"] > 0

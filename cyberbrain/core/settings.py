@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     embedding_version: str = "nomic-embed-text@v1"
     knowledge_search_score_threshold: float | None = 0.55
     memory_search_score_threshold: float | None = 0.55
+    knowledge_retrieval_mode: str = "vector"
+    knowledge_retrieval_max_records: int = 10_000
+    knowledge_retrieval_candidate_multiplier: int = 3
     retrieval_literal_shadow_enabled: bool = False
     retrieval_literal_shadow_cache_ttl_seconds: float = 300.0
     retrieval_literal_shadow_max_records: int = 5_000
@@ -131,6 +134,15 @@ class Settings(BaseSettings):
         ):
             if value is not None and not 0 <= value <= 1:
                 raise ConfigurationError(f"{name} must be between 0 and 1 or null")
+        from cyberbrain.retrieval.runtime import KnowledgeRetrievalPolicy
+        try:
+            KnowledgeRetrievalPolicy(
+                mode=self.knowledge_retrieval_mode,
+                max_records=self.knowledge_retrieval_max_records,
+                candidate_multiplier=self.knowledge_retrieval_candidate_multiplier,
+            )
+        except ValueError as exc:
+            raise ConfigurationError(str(exc)) from exc
         if self.retrieval_literal_shadow_cache_ttl_seconds <= 0:
             raise ConfigurationError("retrieval_literal_shadow_cache_ttl_seconds must be > 0")
         if self.retrieval_literal_shadow_max_records < 1:
