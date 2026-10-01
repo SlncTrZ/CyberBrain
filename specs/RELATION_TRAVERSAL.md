@@ -1,6 +1,6 @@
 # Typed Relation Traversal
 
-Canonical source contract. Relation assertion models and Knowledge Evolution persistence are implemented. Indexed adjacency, traversal, caller path output, automated proposals/review integration and production activation remain planned.
+Canonical source contract. Relation models, Knowledge Evolution persistence, indexed adjacency/reverse lookup and bounded traversal are implemented in source. Public caller/Dream wiring, automated proposals/review integration, comparative benchmark and production activation remain planned.
 
 ## Boundaries
 
@@ -57,20 +57,39 @@ An identical content plus canonical relation bundle is NO_CHANGE. An omitted bun
 
 Unrelated extension metadata retains existing compatibility semantics. The relation namespace is reserved and validated before new embedding/persistence effects. Secret scanning remains on the normal Knowledge write boundary. Parent payload schema stays compatible; readers can retain the extension while ordinary search ranking ignores edges.
 
-## Planned indexed traversal
+## Indexed adjacency and bounded traversal
 
-Slice 3 provides bounded batch adjacency/reverse lookup behind an adapter, with scope filtering before LIMIT, exact identity resolution and stale/index completeness handling. No per-hop corpus scan is accepted as the final implementation. Any derived index must be rebuildable from canonical Knowledge and must not become an independent truth store.
+New canonical Knowledge writes generate the server-owned `extensions._relation_index` projection, including records with no assertions so withdrawal and version-head resolution remain visible. It stores schema version, scoped owner key, accepted target keys and canonical bundle digest. Caller-supplied projection is rejected. Non-indexable ordinary identities without assertions receive an ineligible marker; they cannot become graph nodes.
 
-Slice 4 implements bounded BFS, allowed kinds/direction, cycle detection and path provenance. Proposed starting limits: depth 2, 32 nodes, 64 edges and 8 storage calls. These limits are design targets, not active settings; exceeding budgets must expose truncation.
+`RelationIndex` uses native Qdrant keyword/integer indexes for source/reverse lookup and a datetime index for created_at. `prepare_indexes` requires authenticated admin_review and read authority; `verify_indexes` checks actual field types before serving traversal. Schema verification is a setup operation, outside per-request read counts. No third canonical collection is created. Every hop uses bounded batch lookups rather than a corpus scan.
+
+A scoped completeness check runs before seeds are read. Missing/unknown projection schema fails with rebuild-required. Loaded owners and version heads must match their canonical projection exactly. This assumes server-controlled canonical writes; a scope census/backfill must audit legacy namespace collisions and out-of-band corruption before activation. The bounded maintenance `rebuild(maximum_records<=256)` validates the complete scoped batch before modifying it, refuses a continuation, and preserves all other extension fields. It requires read/write/admin_review and quiesced writers. It is not a production-scale backfill or transaction; partial storage write failures are explicit and require retry/audit. Existing NO_CHANGE retries do not silently backfill.
+
+`RelationTraversal.traverse(seed_ids, TraversalPolicy(...))` is an internal source API requiring bound authenticated read authority. Seeds must share the same exact partition. Directed kinds support out/in/both; contradicts permits both traversal directions while retaining the original assertion owner. Only accepted, effective assertions contribute paths. Evidence remains typed, authorized, canonical and eligible for ordinary recall; episodic proof additionally requires Memory read authority and an event time no later than evaluation time.
+
+| Limit | Default | Hard maximum |
+| --- | --- | --- |
+| Depth | 2 | 3 |
+| Unique nodes, including seeds | 32 | 128 |
+| Unique relationship identities | 64 | 256 |
+| Returned path prefixes | 128 | 512 |
+| Physical storage reads | 8 | 32 |
+| Points per physical page | 256 | 256 |
+
+Limits apply before appending results. A page continuation abandons that incomplete phase and reports candidate_capacity rather than picking an arbitrary partial head. Exhausted storage budgets preserve only paths from completed earlier hops. Node/edge/path limits report explicit reasons. Reaching depth with an unexpanded frontier conservatively reports depth truncation. Storage and authorization failures propagate. Diamond paths retain distinct provenance; cycles are stopped per path, allowing multiple legitimate routes to a node.
+
+Each path contains node keys, ordered version UUIDs and per-step relation ID/kind/direction, owning UUID/version, immutable target anchor, typed proof IDs and validity interval. Graph path metadata is separate from cosine similarity and confidence; chaining causes does not infer a transitive causal fact.
+
+Current mode requires one unique active version per entity and exact target UUID equality. It never redirects stale anchors to successors. Explicit historical as_of selects the highest non-staged version created by that time, with unique version resolution, accepted assertions and [valid_from, valid_until) intervals. Knowledge/episode proof creation times and episode event times cannot exceed as_of. Mutable lifecycle/privacy suppression remains enforced today: historical mode does not replay former privacy grants or restore hidden/deprecated/rejected data. Results explicitly state snapshot_consistent=false because Qdrant reads are not an atomic multi-record snapshot.
 
 Slice 5 adds explicit caller relation recall and integrates the same engine with Dreaming under a separate temporal/evidence policy. Every source/edge/target/evidence in a path must be authorized; inaccessible intermediaries cannot bridge a visible path. Eligibility precedes ranking and context packing. Graph ranking scores remain distinct from semantic similarity and confidence.
 
-Current mode requires accepted, effective assertions and valid targets. Historical mode requires explicit as_of and version/time-consistent evidence. Ambiguous resolution, unknown schema and incomplete authority fail closed. Storage failures are explicit.
+Ambiguous resolution, unknown schema and incomplete authority fail closed. Storage failures are explicit.
 
 ## Acceptance gates
 
-Controlled fixtures and real isolated Qdrant must verify schema validation, scope isolation, review authority, relation-only evolution, restart recovery, native-reader compatibility and idempotency. Later gates cover multi-hop paths, reverse dependencies, cycles/diamonds, temporal updates, hidden intermediaries, truncation and bounded storage calls.
+Controlled fixtures and real isolated Qdrant must verify schema validation, scope isolation, review authority, relation-only evolution, restart recovery, native-reader compatibility and idempotency. Source gates now cover 1–3 hops, reverse dependencies, symmetric contradiction, cycles/diamonds, temporal updates, typed episode proof, hidden intermediaries, truncation and physical storage read bounds. The real isolated Qdrant gate exercises indexed diamond/reverse paths, historical selection and foreign-seed rejection.
 
 Benchmark against vector/hybrid baselines on identical evidence and context budgets: path correctness, evidence precision, Recall@K, temporal/update behavior, isolation, p50/p95 Latency, storage calls and tokens. Scalability needs separate fan-out/corpus-size measurement.
 
-Deployment requires reserved-namespace compatibility census, protected backups, canary and rollback checks. No corpus backfill or production activation is part of slices 1–2. Longitudinal live learning evidence is recorded separately and never deducted from source acceptance.
+Deployment requires reserved-namespace compatibility census, protected backups, canary and rollback checks. No corpus backfill or production activation is part of slices 1–4. Longitudinal live learning evidence is recorded separately and never deducted from source acceptance.

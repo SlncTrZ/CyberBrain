@@ -102,7 +102,7 @@ class QdrantRepository:
             if info is None:
                 raise StorageError(f"Qdrant collection was not created: {name}")
 
-        vectors = (((info.get("config") or {}).get("params") or {}).get("vectors"))
+        vectors = ((info.get("config") or {}).get("params") or {}).get("vectors")
         if not isinstance(vectors, dict):
             raise StorageError(f"Qdrant collection {name!r} has unsupported vector config")
         actual_size = vectors.get("size")
@@ -240,3 +240,36 @@ class QdrantRepository:
             offset = next_offset
 
         return points[:limit]
+
+    def scroll_page(
+        self,
+        collection: str,
+        *,
+        qdrant_filter: dict[str, Any] | None = None,
+        limit: int = 256,
+        offset: Any = None,
+    ) -> tuple[list[dict[str, Any]], Any]:
+        """One physical request, with continuation exposed for bounded callers."""
+        if not 1 <= limit <= 256:
+            raise ValueError("scroll_page limit must be between 1 and 256")
+        body = {"limit": limit, "with_payload": True, "with_vector": False}
+        if qdrant_filter:
+            body["filter"] = qdrant_filter
+        if offset is not None:
+            body["offset"] = offset
+        result = (
+            self._request(
+                "POST",
+                f"/collections/{collection}/points/scroll",
+                json=body,
+            ).get("result")
+            or {}
+        )
+        return list(result.get("points") or []), result.get("next_page_offset")
+
+    def create_payload_index(self, collection: str, *, field: str, schema: str) -> None:
+        self._request(
+            "PUT",
+            f"/collections/{collection}/index?wait=true",
+            json={"field_name": field, "field_schema": schema},
+        )

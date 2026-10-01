@@ -170,3 +170,29 @@ def test_real_qdrant_isolates_versions_exact_reads_and_session_updates():
         assert (
             repo.retrieve("cyberbrain_knowledge", linked.record.id)["payload"]["status"] == "active"
         )
+
+    # Indexed traversal uses the same two collections and a separate fixture scope.
+    from cyberbrain.relations.storage import RelationIndex
+    from cyberbrain.relations.traversal import RelationTraversal, TraversalPolicy
+    from tests.relations.test_traversal import check_diamond, graph
+
+    graph_scope = dict(tenant="graph", user="same", agent="shared", project="same")
+    graph_caller = authority_for_authenticated_scope(
+        DeploymentMode.MULTI_USER, scope=IdentityScope.from_values(**graph_scope),
+        operations=frozenset(OperationClass),
+    )
+    fixtures = graph(repo, "cyberbrain_knowledge", graph_scope)
+    index = RelationIndex(repo, "cyberbrain_knowledge", "cyberbrain_episodic")
+    with bind_authority(graph_caller):
+        index.prepare_indexes()
+        index.verify_indexes()
+        engine = RelationTraversal(index)
+        check_diamond(engine, fixtures)
+        historical = engine.traverse([fixtures["a"].id],
+            TraversalPolicy(as_of=datetime(2021, 1, 1, tzinfo=UTC)))
+        assert len(historical["paths"]) == 4
+        assert historical["storage_calls"] == 6
+        with pytest.raises(ConfigurationError, match="seed unavailable"):
+            engine.traverse([linked.record.id])
+    collections = httpx.get(url + "/collections", headers=headers).json()["result"]["collections"]
+    assert len(collections) == 2

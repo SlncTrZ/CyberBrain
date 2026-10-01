@@ -15,6 +15,7 @@ from cyberbrain.core.errors import ConfigurationError, ConflictError
 from cyberbrain.core.secrets import SecretScanner
 from cyberbrain.embedding.base import EmbeddingProvider
 from cyberbrain.relations.admission import admit_relations, require_review_authority
+from cyberbrain.relations.index import INDEX_KEY, project_relations
 from cyberbrain.relations.models import (
     RELATIONS_KEY,
     EntityRef,
@@ -296,6 +297,8 @@ class KnowledgeEvolutionService:
             repr(extensions or {}),
         )
         extensions_value = dict(extensions or {})
+        if INDEX_KEY in extensions_value:
+            raise ConfigurationError("relation index is server-owned")
         relation_bundle = None
         if RELATIONS_KEY in extensions_value:
             if KnowledgeRecordClass(record_class) != KnowledgeRecordClass.KNOWLEDGE:
@@ -403,7 +406,19 @@ class KnowledgeEvolutionService:
 
                 version = int(previous_payload.get("version", 0)) + 1 if previous else 1
                 now = utc_now()
-                base_extensions = extensions_value
+                base_extensions = dict(extensions_value)
+                if KnowledgeRecordClass(record_class) == KnowledgeRecordClass.KNOWLEDGE:
+                    base_extensions[INDEX_KEY] = project_relations(
+                        {
+                            "domain": domain,
+                            "topic": topic,
+                            "entity_type": entity_type,
+                            "entity_name": entity_name,
+                            "context": context_value,
+                            **{key: identity_values[key] for key in IDENTITY_FIELDS},
+                            "extensions": base_extensions,
+                        }
+                    )
                 record = KnowledgeRecord(
                     content=normalized,
                     summary=summary,
