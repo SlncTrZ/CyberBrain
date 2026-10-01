@@ -299,3 +299,7 @@ extensions: {}
 created_at: 2026-09-04T15:20:31.123Z
 updated_at: 2026-09-04T15:20:31.123Z
 ```
+
+## Typed relation extension
+
+`extensions.relations` is a reserved, strict schema-v1 namespace for canonical Knowledge assertions. It carries stable scoped entity references, target version anchors, typed evidence, relationship kind/status and validity intervals. Parent Knowledge schema remains unchanged. Admission, review authority and relation-only Evolution are specified in `RELATION_TRAVERSAL.md`. Indexed traversal and caller path output are planned; ordinary retrieval does not follow these assertions yet.

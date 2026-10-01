@@ -109,3 +109,64 @@ def test_real_qdrant_isolates_versions_exact_reads_and_session_updates():
         recovered = next(row for row in rows if row["id"] == str(fingerprint_id))
         assert recovered["score"] is None
         assert recovered["_retrieval"]["lexical_score"] > 0
+
+    # Typed assertions use the same scoped get boundary and native Evolution.
+    from cyberbrain.relations import EntityRef, EvidenceRef, RelationBundle, RelationEdge
+
+    with bind_authority(authorities["one"]):
+        target_record = evolution.store(
+            content="Dependency target.",
+            **{**common, "entity_name": "dependency"},
+        ).record
+        relation = RelationEdge(
+            kind="depends_on",
+            source=EntityRef.from_payload(revised.record.model_dump(mode="json")),
+            target=EntityRef.from_payload(target_record.model_dump(mode="json")),
+            target_record_id=target_record.id,
+            evidence=(EvidenceRef(record_type="knowledge", id=target_record.id),),
+            status="accepted",
+            review_note="Explicit fixture review.",
+            valid_from=datetime(2026, 10, 1, tzinfo=UTC),
+        )
+        bundle = RelationBundle(schema_version=1, edges=(relation,)).model_dump(mode="json")
+        linked = evolution.store(
+            content=revised.record.content,
+            **common,
+            extensions={"relations": bundle},
+        )
+        retry = evolution.store(
+            content=revised.record.content,
+            **common,
+            extensions={"relations": bundle},
+        )
+        assert linked.record.version == revised.record.version + 1
+        assert linked.record.content_hash == revised.record.content_hash
+        assert retry.record.id == linked.record.id
+        persisted = repo.retrieve(
+            "cyberbrain_knowledge",
+            linked.record.id,
+            qdrant_filter={"must": [{"key": "tenant", "match": {"value": "one"}}]},
+        )
+        assert persisted["payload"]["extensions"]["relations"] == bundle
+        foreign_evidence = {
+            **bundle,
+            "edges": [
+                {
+                    **bundle["edges"][0],
+                    "evidence": [
+                        {"record_type": "knowledge", "id": str(knowledge["two"].record.id)},
+                    ],
+                },
+            ],
+        }
+        from cyberbrain.core.errors import ConfigurationError
+
+        with pytest.raises(ConfigurationError, match="endpoint or evidence unavailable"):
+            evolution.store(
+                content=revised.record.content,
+                **common,
+                extensions={"relations": foreign_evidence},
+            )
+        assert (
+            repo.retrieve("cyberbrain_knowledge", linked.record.id)["payload"]["status"] == "active"
+        )

@@ -76,6 +76,7 @@ def build_runtime(settings: Settings) -> RuntimeServices:
         embedding=embedding,
         collection=settings.knowledge_collection,
         process_lock_file=settings.knowledge_evolution_lock_file,
+        episodic_collection=settings.episodic_collection,
     )
     knowledge_evolution.reconcile_pending()
 

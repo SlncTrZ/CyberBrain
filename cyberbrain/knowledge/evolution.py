@@ -14,6 +14,13 @@ from cyberbrain.core.content import content_hash, normalize_content
 from cyberbrain.core.errors import ConfigurationError, ConflictError
 from cyberbrain.core.secrets import SecretScanner
 from cyberbrain.embedding.base import EmbeddingProvider
+from cyberbrain.relations.admission import admit_relations, require_review_authority
+from cyberbrain.relations.models import (
+    RELATIONS_KEY,
+    EntityRef,
+    RelationStatus,
+    bundle_from_extensions,
+)
 from cyberbrain.schemas.models import (
     IdentityTrust,
     KnowledgeRecord,
@@ -58,10 +65,12 @@ class KnowledgeEvolutionService:
         collection: str,
         secret_scanner: SecretScanner | None = None,
         process_lock_file: str | None = None,
+        episodic_collection: str | None = None,
     ) -> None:
         self._repository = repository
         self._embedding = embedding
         self._collection = collection
+        self._episodic_collection = episodic_collection
         self._secret_scanner = secret_scanner or SecretScanner()
         self._process_lock_file = process_lock_file
         self._locks: dict[str, Lock] = {}
@@ -286,6 +295,25 @@ class KnowledgeEvolutionService:
             repr(context or {}),
             repr(extensions or {}),
         )
+        extensions_value = dict(extensions or {})
+        relation_bundle = None
+        if RELATIONS_KEY in extensions_value:
+            if KnowledgeRecordClass(record_class) != KnowledgeRecordClass.KNOWLEDGE:
+                raise ConfigurationError("relations require canonical Knowledge")
+            try:
+                source_ref = EntityRef.from_payload({
+                    "domain": domain, "topic": topic, "entity_type": entity_type,
+                    "entity_name": entity_name, "context": context or {},
+                    **{key: identity_values[key] for key in IDENTITY_FIELDS},
+                })
+            except (TypeError, ValueError) as exc:
+                raise ConfigurationError("invalid relation source identity") from exc
+            relation_bundle = admit_relations(
+                raw=extensions_value[RELATIONS_KEY], source=source_ref,
+                repository=self._repository, knowledge_collection=self._collection,
+                episodic_collection=self._episodic_collection,
+            )
+            extensions_value[RELATIONS_KEY] = relation_bundle.model_dump(mode="json")
         digest = content_hash(normalized)
         context_value = context or {}
         identity = self._identity_key(
@@ -337,9 +365,34 @@ class KnowledgeEvolutionService:
                 previous_payload = (previous or {}).get("payload") or {}
                 previous_id = UUID(str(previous["id"])) if previous else None
 
+                same_content = previous_payload.get("content_hash") == digest
+                previous_relations = bundle_from_extensions(
+                    previous_payload.get("extensions") or {}
+                )
+                if previous_relations.edges and relation_bundle is not None and (
+                    EntityRef.from_payload(previous_payload).key != source_ref.key
+                ):
+                    raise ConflictError(
+                        "relation entity context changed; explicit migration required"
+                    )
+                # Omitted relation metadata preserves an exact retry. A content change
+                # without explicit relations drops old assertions instead of inheriting them.
+                relations_changed = (
+                    relation_bundle is not None
+                    and relation_bundle.digest != previous_relations.digest
+                ) or (
+                    relation_bundle is None and (not same_content or force_evolution)
+                    and bool(previous_relations.edges)
+                )
+                if relations_changed and any(
+                    edge.status != RelationStatus.PROPOSED for edge in previous_relations.edges
+                ):
+                    require_review_authority()
+
                 if (
                     previous
-                    and previous_payload.get("content_hash") == digest
+                    and same_content
+                    and not relations_changed
                     and not force_evolution
                 ):
                     return EvolutionResult(
@@ -350,7 +403,7 @@ class KnowledgeEvolutionService:
 
                 version = int(previous_payload.get("version", 0)) + 1 if previous else 1
                 now = utc_now()
-                base_extensions = dict(extensions or {})
+                base_extensions = extensions_value
                 record = KnowledgeRecord(
                     content=normalized,
                     summary=summary,

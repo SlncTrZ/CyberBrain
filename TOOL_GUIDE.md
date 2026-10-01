@@ -181,3 +181,7 @@ Source correctness/build acceptance is defined in `docs/SOURCE_ACCEPTANCE.md`. L
 ### Configured Knowledge ranking
 
 Knowledge search defaults to vector retrieval. A deployment may select foreground literal routing or semantic/BM25 RRF fusion using `CYBERBRAIN_KNOWLEDGE_RETRIEVAL_MODE`; clients use the same tools and arguments. `score` is semantic similarity and may be null for lexical-only results. Optional `_retrieval` metadata distinguishes the method and lexical/fusion scores. Compact recall preserves this metadata. See `specs/RETRIEVAL_POLICY.md` for bounds and failure behavior.
+
+### Explicit typed relation assertions
+
+`knowledge_store.extensions.relations` accepts the strict assertion schema documented in `specs/RELATION_TRAVERSAL.md`. Proposed assertions require readable canonical endpoints and evidence. Accepted/rejected assertions additionally require authenticated `admin_review` and a review note; relation-only changes create a Knowledge version. Relation persistence does not enable traversal in `knowledge_search` yet.

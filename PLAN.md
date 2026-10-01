@@ -273,3 +273,7 @@ Historical development and migration evidence lives under docs/history/ and is n
 The original V1 development plan is preserved at:
 
 docs/history/DEVELOPMENT_PLAN_V1.md
+
+## Typed relation traversal program
+
+Slices 1–2 implement strict typed assertion contracts, scoped entity Fingerprinting, explicit endpoint/evidence admission and relation-aware Knowledge Evolution within the existing collections. Source tests distinguish referential validity from reviewed semantic acceptance. Indexed adjacency/reverse lookup, bounded traversal, caller/Dream integration and controlled benchmark/rollout remain pending. The full normative boundary is `specs/RELATION_TRAVERSAL.md`; ordinary search does not follow typed edges yet.
