@@ -29,6 +29,9 @@ The provider fails closed when authentication is required but not configured. An
 ```text
 help
 knowledge_search
+knowledge_relations
+knowledge_relation_propose
+knowledge_relation_review
 knowledge_get
 knowledge_store
 knowledge_timeline
