@@ -12,6 +12,7 @@ Source acceptance evaluates implemented contracts and reproducible engineering b
 | Resource safety | Atomic persisted tenant/user quotas, deferred background work, SDK body/session bounds, bounded numeric telemetry |
 | Operations | Stable review pagination, read-only diagnostics, explicit retirement/tombstones, scheduler heartbeat, redacted transport errors |
 | Recovery and packaging | SQLite backup/restore including reason inbox and quotas; wheel/sdist privacy; clean Docker build; Compose validation |
+| Typed relations | Scoped endpoint/proof validation, reviewed assertions, version/time paths, whole-path budgets, real backfill/vector preservation and isolated restore/reapply |
 | Documentation | Current source contract and upgrade path agree with code; live evaluation kept separately |
 
 Run the default tests and lint/diff checks, build wheel and sdist, inspect distribution manifests, and build the Docker image. Real-storage isolation has an optional test in `tests/tenancy/test_qdrant_isolation.py`: it requires an explicitly supplied new empty loopback Qdrant endpoint, checks that the instance is empty before writing, and creates only the two canonical collections. It must never target an existing deployment.

@@ -3,6 +3,71 @@
 > Historical operational record: measured deployment snapshot, not source guidance.
 > Earlier measurements are retained below; re-measure before relying on this record.
 
+## Measured 2026-10-01 18:31 ICT — typed relations slices 5–6
+
+| Field | Measured value |
+| --- | --- |
+| Implementation commit | bfacb8d6583c91d938aedef8bccb2b1c5bae9b3d |
+| Deployed source commit, including catalog guide correction | 48429e5730095a251cbeae04194d0f826b242724 |
+| Image tag | cyberbrain:git-48429e573009 |
+| Image ID | sha256:21d476d242bec1e46b2be2ecef42bec6ac27833a3d2700d590f2170f2428f0f4 |
+| Deployment Compose SHA256 | 92600555dde718ae42bb18869b243d75cd26443051b3ff9880ed42fd9102f694 |
+| Package version derived from source authority | 0.2.1 |
+| Python source equality / embedded guide equality | 139/139 files and guide SHA256 match in each of five containers |
+| API / worker / scheduler / router / reasoner | All healthy, restart count 0 |
+| Health / readiness / unauthenticated MCP | HTTP 200 / 200 / 401 |
+| Authenticated provider catalog | 27 tools: all 24 existing tools retained, 3 relation tools added |
+| Authenticated provider relation canary | 0 paths, 4 physical reads, 83 estimated tokens, no truncation |
+| Gateway authenticated help | PASS after read-only provider_unavailable retry |
+| Provider contract hash | 0bd0253ce7a5f01b5b5d8c1b421f4c4671d53004da878dcd73c79dcd605bb4fc |
+| Caller relation flag / worker Dream relation flag | Enabled / enabled |
+| Ordinary Knowledge retrieval mode | vector, preserved |
+| Projection census | 5311 canonical Knowledge, 5311 eligible, missing 5311 → 0, assertions 0 |
+| Knowledge total / Episodic points | 5312 (including one quarantine) / 1110 |
+| Canonical collections present | Exactly two existing V2 stage-named collections |
+| Queue snapshot | 495 processed, 2 historical failed jobs |
+| Scheduler heartbeat age at measurement | 44.666 seconds; explicit heartbeat check passed |
+
+The rollout changed only the five CyberBrain image references and two relation flags. Authentication,
+identity, collection names, embedding settings, ordinary ranking mode and dependency services were
+preserved. No assertions were inferred, proposed or accepted in production.
+
+Before projection writes, canonical writers were stopped. Protected verified snapshots cover both
+collections and all three existing operational SQLite files. The initial host-side metadata write
+was denied by backup-directory permissions; old services resumed safely, metadata was subsequently
+written through the operator container, and the unchanged canonical source hash was required
+before application. API and worker exited cleanly; the waiting scheduler needed force-stop after
+the 45-second timeout. All three SQLite quick checks passed and its post-upgrade heartbeat is fresh.
+
+Canonical source hash before/after projection application:
+`2c98a9d23622ffb5dd80450ac2095744d1043f7bd578a5d953370d4e63749d70`.
+Independent complete-corpus payload/vector fingerprints, excluding only the disposable projection,
+also matched before/after:
+
+- Knowledge: `61b2381a97c370483308219d83c9ecff04e4cc5168e2411108007caf4307953f`.
+- Episodic: `c02c3d114976563a47b20627a95b33e1f6568bde69f4aebb9b76dbc29f9e745c`.
+
+The protected checkpoint and previous image are retained. Real isolated Qdrant exercised snapshot
+restore/reapply and exact vector/payload preservation; no production snapshot rollback drill is
+claimed. Feature rollback restores the prior image/flags while retaining subsequent canonical
+work. Snapshot restore after writers resume requires separate authority because it can erase work.
+
+Source acceptance: 799 default tests passed, one optional gate skipped in that run; the expanded
+real isolated storage gate separately passed. Ruff/diff checks, wheel/sdist privacy and both
+Docker builds passed. The final controlled 10-iteration benchmark matches the deployed Python
+source hash; see [controlled benchmark](../benchmarks/RELATIONS_CONTROLLED.md). Synthetic
+known-seed path correctness is separate from trained embedding accuracy and external competitors.
+
+Provider-local tools are available and authenticated calls were verified. The current ChatGPT
+connector session still advertises its previously discovered tool list; availability of the
+three new names through a refreshed gateway/client catalog was not verified in this session.
+Existing gateway help continued to work.
+
+Zero production assertions means the canary demonstrates availability, not positive-path quality
+or long-term usefulness. Day-30/day-60 evidence remains outside source acceptance.
+
+---
+
 ## Measured 2026-09-30 17:04 ICT
 
 | Field | Measured value |
