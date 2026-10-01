@@ -17,6 +17,7 @@ CURRENT_DOC_FILES = {
     "TENANCY_OPERATIONS.md",
     "DREAMING_ROUTING.md",
     "V2_MIGRATION_RUNBOOK.md",
+    "RELATION_ROLLOUT.md",
 }
 
 REFERENCE_PATTERN = re.compile(r"`([^`]+.(?:md|json|ya?ml))`")

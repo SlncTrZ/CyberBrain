@@ -23,6 +23,7 @@ from cyberbrain.dreaming.run_reasoner import MCPFirstDreamReasoner
 from cyberbrain.dreaming.session import QdrantSessionEpisodeLoader
 from cyberbrain.dreaming.worker import DreamWorker
 from cyberbrain.dreaming.writeback import DreamKnowledgeWriter, DreamWritebackCoordinator
+from cyberbrain.relations.dream import DreamRelationRecall
 
 
 @dataclass(frozen=True)
@@ -98,6 +99,10 @@ def build_dream_worker_runtime(settings: Settings) -> DreamWorkerRuntime:
         retriever=retriever,
         reasoner=reasoner,
         associative_expander=associative,
+        relation_expander=(
+            DreamRelationRecall(services.dream_relation_recall)
+            if services.dream_relation_recall is not None else None
+        ),
         per_bucket_limit=settings.dream_per_bucket_limit,
     )
     promotion = DreamPromotionCoordinator(

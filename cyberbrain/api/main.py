@@ -34,7 +34,10 @@ def main() -> None:
         metrics=runtime.metrics,
         readiness_probe=readiness_probe,
     )
-    uvicorn.run(app, host=settings.host, port=settings.port)
+    try:
+        uvicorn.run(app, host=settings.host, port=settings.port)
+    finally:
+        runtime.close()
 
 
 if __name__ == "__main__":

@@ -27,7 +27,7 @@ from tests.tenancy.test_runtime_enforcement import CountingEmbedding
 
 @pytest.mark.skipif(not os.environ.get("CYBERBRAIN_QA_QDRANT_URL"),
                     reason="isolated empty Qdrant QA endpoint required")
-def test_real_qdrant_isolates_versions_exact_reads_and_session_updates():
+def test_real_qdrant_isolates_versions_exact_reads_and_session_updates(tmp_path):
     url = os.environ["CYBERBRAIN_QA_QDRANT_URL"]
     parsed = urlsplit(url)
     assert parsed.hostname in {"127.0.0.1", "localhost"}
@@ -196,3 +196,95 @@ def test_real_qdrant_isolates_versions_exact_reads_and_session_updates():
             engine.traverse([linked.record.id])
     collections = httpx.get(url + "/collections", headers=headers).json()["result"]["collections"]
     assert len(collections) == 2
+
+    # Caller packing and proposal/review execute against real storage.
+    from cyberbrain.backup.service import BackupService, QdrantSnapshotClient
+    from cyberbrain.relations.maintenance import RelationMaintenance
+    from cyberbrain.relations.models import RelationStatus
+    from cyberbrain.relations.recall import RelationRecallRequest, RelationRecallService
+    from cyberbrain.relations.review import RelationReviewService
+
+    with bind_authority(graph_caller):
+        review = RelationReviewService(index, evolution)
+        proposed_edge = RelationEdge(
+            kind="supports",
+            source=EntityRef.from_payload(fixtures["a"].model_dump(mode="json")),
+            target=EntityRef.from_payload(fixtures["d"].model_dump(mode="json")),
+            target_record_id=fixtures["d"].id,
+            evidence=(EvidenceRef(record_type="knowledge", id=fixtures["d"].id),),
+            valid_from=datetime(2020, 1, 1, tzinfo=UTC),
+        )
+        proposal = review.propose(
+            fixtures["a"].id, RelationBundle(schema_version=1, edges=(proposed_edge,))
+        ).record
+        reviewed = review.review(
+            proposal.id,
+            proposed_edge.relation_id,
+            RelationStatus.ACCEPTED,
+            "Explicit controlled fixture review.",
+        ).record
+        recalled = RelationRecallService(engine).recall(
+            RelationRecallRequest(
+                seed_ids=(reviewed.id,), policy=TraversalPolicy(depth=1, kinds={"supports"})
+            )
+        )
+        assert recalled["returned_path_count"] == 1
+        assert recalled["storage_calls"] == 5
+        assert recalled["estimated_tokens"] <= recalled["context_budget"]
+
+        # Exercise a protected pre-backfill snapshot and real snapshot rollback.
+        scoped = repo.scroll(
+            "cyberbrain_knowledge",
+            qdrant_filter={"must": [{"key": "tenant", "match": {"value": "graph"}}]},
+            limit=100,
+        )
+        ids = [point["id"] for point in scoped]
+        before = repo._request(
+            "POST",
+            "/collections/cyberbrain_knowledge/points",
+            json={"ids": ids, "with_payload": True, "with_vector": True},
+        )["result"]
+        for point in scoped:
+            extensions = dict(point["payload"]["extensions"])
+            extensions.pop("_relation_index")
+            repo.set_payload(
+                "cyberbrain_knowledge",
+                point_id=UUID(point["id"]),
+                payload={"extensions": extensions},
+            )
+        maintenance = RelationMaintenance(index)
+        snapshots = QdrantSnapshotClient(base_url=url)
+        checkpoint = tmp_path / "relation-checkpoint"
+        census = maintenance.checkpoint(
+            destination=checkpoint, snapshots=snapshots, writers_quiesced=True
+        )
+        assert census.missing == len(ids)
+        applied = maintenance.apply(
+            checkpoint=checkpoint, expected_source_hash=census.source_hash, writers_quiesced=True
+        )
+        assert applied.missing == 0 and applied.source_hash == census.source_hash
+        after = repo._request(
+            "POST",
+            "/collections/cyberbrain_knowledge/points",
+            json={"ids": ids, "with_payload": True, "with_vector": True},
+        )["result"]
+        assert {p["id"]: p["vector"] for p in before} == {p["id"]: p["vector"] for p in after}
+        assert {p["id"]: p["payload"] for p in before} == {p["id"]: p["payload"] for p in after}
+        BackupService(qdrant=snapshots, collections=[]).restore(
+            source=checkpoint, sqlite_destinations={}
+        )
+        rolled_back = maintenance.census()
+        assert rolled_back.missing == census.missing
+        assert rolled_back.source_hash == census.source_hash
+        assert (
+            maintenance.apply(
+                checkpoint=checkpoint,
+                expected_source_hash=census.source_hash,
+                writers_quiesced=True,
+            ).missing
+            == 0
+        )
+        assert (
+            len(httpx.get(url + "/collections", headers=headers).json()["result"]["collections"])
+            == 2
+        )

@@ -185,3 +185,30 @@ Knowledge search defaults to vector retrieval. A deployment may select foregroun
 ### Explicit typed relation assertions
 
 `knowledge_store.extensions.relations` accepts the strict assertion schema documented in `specs/RELATION_TRAVERSAL.md`. Proposed assertions require readable canonical endpoints and evidence. Accepted/rejected assertions additionally require authenticated `admin_review` and a review note; relation-only changes create a Knowledge version. Relation persistence does not enable traversal in `knowledge_search` yet.
+
+### Typed relation recall and explicit review
+
+Use `knowledge_relations` when you know the seed Knowledge UUIDs and need typed paths,
+reverse dependencies or historical anchors. Input is `seed_ids`, optional `policy`
+(depth/direction/kinds/as_of/node/edge/path/storage limits), `context_tokens` and
+`record_tokens`. The response contains paths, typed proof records, physical read counts,
+token estimates and truncation reasons. Default context is 4096 estimated tokens,
+256 per record; path metadata and proof text count toward the same budget. An incomplete
+proof set is never packed as a complete path. Graph metadata is separate from similarity
+and confidence. Ordinary `knowledge_search` continues configured vector/literal/hybrid
+ranking; compact results retain a small relation summary rather than full assertions/index.
+
+`knowledge_relation_propose` merges a strict proposed bundle into the active `source_id`.
+It requires read/write authority and cannot replace a different existing assertion.
+`knowledge_relation_review` accepts/rejects one `relation_id` with a nonblank `note`;
+it requires admin_review plus read/write. Both use native Evolution and return the new
+version. A concurrent edit or stale source UUID requires reloading the current version;
+the API does not silently overwrite it. Evidence existence is not semantic proof.
+An LLM may submit proposals, but the service never automatically accepts them.
+
+Operator activation is explicit: `CYBERBRAIN_RELATION_RETRIEVAL_ENABLED=true` for caller
+recall and `CYBERBRAIN_DREAM_RELATION_ENABLED=true` for Dream. Defaults are false and
+require authenticated transport, verified indexes and complete scoped projections.
+Dream expansion uses bucket-end as_of, background authority and separate read/item/token
+budgets. It preserves typed path/proof provenance; it does not generate or accept relations.
+Preparation, protected backfill and rollback are in `docs/RELATION_ROLLOUT.md`.

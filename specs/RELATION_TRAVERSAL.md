@@ -1,6 +1,6 @@
 # Typed Relation Traversal
 
-Canonical source contract. Relation models, Knowledge Evolution persistence, indexed adjacency/reverse lookup and bounded traversal are implemented in source. Public caller/Dream wiring, automated proposals/review integration, comparative benchmark and production activation remain planned.
+Canonical source contract. Relation models, Knowledge Evolution persistence, indexed adjacency/reverse lookup and bounded traversal are implemented in source. Public caller/Dream wiring, explicit proposal/review workflows and controlled benchmark/rollout tooling are implemented. Deployment acceptance is recorded separately from source gates. Automated extraction/acceptance is not provided.
 
 ## Boundaries
 
@@ -82,7 +82,7 @@ Each path contains node keys, ordered version UUIDs and per-step relation ID/kin
 
 Current mode requires one unique active version per entity and exact target UUID equality. It never redirects stale anchors to successors. Explicit historical as_of selects the highest non-staged version created by that time, with unique version resolution, accepted assertions and [valid_from, valid_until) intervals. Knowledge/episode proof creation times and episode event times cannot exceed as_of. Mutable lifecycle/privacy suppression remains enforced today: historical mode does not replay former privacy grants or restore hidden/deprecated/rejected data. Results explicitly state snapshot_consistent=false because Qdrant reads are not an atomic multi-record snapshot.
 
-Slice 5 adds explicit caller relation recall and integrates the same engine with Dreaming under a separate temporal/evidence policy. Every source/edge/target/evidence in a path must be authorized; inaccessible intermediaries cannot bridge a visible path. Eligibility precedes ranking and context packing. Graph ranking scores remain distinct from semantic similarity and confidence.
+Slice 5 provides explicit caller relation recall and the same engine in Dreaming under separate temporal/evidence and background-authority policies. Every source/edge/target/evidence in a path must be authorized; inaccessible intermediaries cannot bridge a visible path. Eligibility precedes ranking and context packing. Graph ranking scores remain distinct from semantic similarity and confidence.
 
 Ambiguous resolution, unknown schema and incomplete authority fail closed. Storage failures are explicit.
 
@@ -93,3 +93,34 @@ Controlled fixtures and real isolated Qdrant must verify schema validation, scop
 Benchmark against vector/hybrid baselines on identical evidence and context budgets: path correctness, evidence precision, Recall@K, temporal/update behavior, isolation, p50/p95 Latency, storage calls and tokens. Scalability needs separate fan-out/corpus-size measurement.
 
 Deployment requires reserved-namespace compatibility census, protected backups, canary and rollback checks. No corpus backfill or production activation is part of slices 1–4. Longitudinal live learning evidence is recorded separately and never deducted from source acceptance.
+
+## Source integration and controlled measurement
+
+Caller recall rehydrates every selected node/owner/proof within principal scope, checks
+canonical identity/status/interval/proof agreement, then packs whole paths and typed records
+under one estimated JSON context budget. It never returns a path with missing hydrated proof.
+Current/historical and snapshot_consistent=false semantics remain unchanged.
+
+Proposal/review tools merge explicit assertions, preserve canonical metadata and use an
+expected active UUID checked under existing Evolution locks. Read/write authority is required;
+accept/reject additionally requires admin_review. No similarity/LLM output triggers acceptance.
+
+Dream integration is opt-in and uses BACKGROUND_EVIDENCE_READ instead of foreground READ.
+Seeds first pass direct topic eligibility. Full reviewed paths justify related evidence without
+requiring neighbors to repeat the query's lexical terms. Complete path/proof groups fit the
+actual serialized EvidenceItem token and item budget. The reasoner retains independent claim
+relevance/evidence gates; no relationship is invented or promoted.
+
+Qdrant owns a reusable HTTP client by default; caller-supplied clients keep their external
+lifetime. API/worker process shutdown closes repository-owned connections. The controlled
+benchmark records current vector/hybrid/typed modes with equal text/context budgets, known
+seeds, synthetic 3D vectors, path gold labels, native target updates and real Qdrant timings.
+Unsupported historical ordinary-search modes are omitted rather than scored as zero.
+It measures source mechanics, not general embedding quality or superiority to other projects.
+
+Rollout requires a quiesced census, protected verified snapshots of both existing collections,
+a matching canonical source hash and bounded paginated backfill. Namespace collision, unknown
+parent/assertion schema, source drift and checkpoint corruption fail before projection writes.
+Partial projection writes can retry with the same checkpoint because source hashes exclude the
+derived index; canonical changes require a new checkpoint. ID/vector/content/other extension
+preservation and a real snapshot restore/reapply are verified on isolated Qdrant.

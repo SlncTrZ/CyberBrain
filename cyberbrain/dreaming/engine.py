@@ -51,11 +51,13 @@ class DreamingEngine:
         associative_expander: AssociativeExpander | None = None,
         relevance_guard: TopicRelevanceGuard | None = None,
         per_bucket_limit: int = 5,
+        relation_expander: AssociativeExpander | None = None,
     ) -> None:
         self._retriever = retriever
         self._reasoner = reasoner
         self._planner = planner or DreamingPlanner()
         self._associative_expander = associative_expander
+        self._relation_expander = relation_expander
         self._relevance_guard = relevance_guard or TopicRelevanceGuard()
         self._per_bucket_limit = per_bucket_limit
 
@@ -105,6 +107,14 @@ class DreamingEngine:
                             ),
                         )
                     )
+                if self._relation_expander is not None:
+                    # Direct seeds already passed focal-topic relevance. Related evidence
+                    # stays anchored by reviewed, authorized temporal paths; it is not
+                    # forced to repeat the focal query's lexical terms.
+                    topic_evidence.extend(self._filter_project_scope(
+                        self._relation_expander.expand(seed=direct, bucket=bucket),
+                        session_project=session_project,
+                    ))
             evidence[topic] = self._deduplicate(topic_evidence)
 
         return DreamReasoningRequest(

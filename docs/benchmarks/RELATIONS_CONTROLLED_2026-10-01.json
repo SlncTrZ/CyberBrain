@@ -1,0 +1,308 @@
+{
+  "schema_version": 1,
+  "measured_at": "2026-10-01T11:09:35.179911+00:00",
+  "source_tree_hash": "db5cd48a26ccce10ea72b5994dddd30da26b96070a6608e14487c0ca25346b82",
+  "fixture_hash": "108c61d2bb3de22e223e0ed884b3d263242f29479e4d97d3f175cbae4d1d7117",
+  "backend": "real isolated Qdrant",
+  "qdrant_version": "1.19.0",
+  "embedding": "deterministic synthetic 3D; no trained embedding quality claim",
+  "transport": "runtime-default pooled HTTP client; setup and one warm-up excluded",
+  "scope": "known-seed structural retrieval; no query-to-seed resolution tested",
+  "longitudinal_live_evidence": "outside this source gate",
+  "canonical_collections": 2,
+  "comparison_corpus_points": 1006,
+  "equal_context_budget": 4096,
+  "equal_record_text_budget": 256,
+  "k": 8,
+  "cases": [
+    {
+      "case_id": "current-out",
+      "modes": {
+        "vector": {
+          "supported": true,
+          "iterations": 10,
+          "recall_at_k": 0.0,
+          "retrieval_precision": 0.0,
+          "contamination_rate": 1.0,
+          "storage_calls": 2,
+          "embedding_calls": 1,
+          "context_tokens": 141,
+          "temporal_correct_rate": 1,
+          "latency_p50_ms": 93.908,
+          "latency_p95_ms": 102.368,
+          "path_precision": null,
+          "path_recall": null,
+          "truncation_rate": 0
+        },
+        "hybrid": {
+          "supported": true,
+          "iterations": 10,
+          "recall_at_k": 0.0,
+          "retrieval_precision": 0.0,
+          "contamination_rate": 1.0,
+          "storage_calls": 7,
+          "embedding_calls": 1,
+          "context_tokens": 141,
+          "temporal_correct_rate": 1,
+          "latency_p50_ms": 442.39,
+          "latency_p95_ms": 494.178,
+          "path_precision": null,
+          "path_recall": null,
+          "truncation_rate": 0
+        },
+        "relations": {
+          "supported": true,
+          "iterations": 10,
+          "recall_at_k": 1.0,
+          "retrieval_precision": 1.0,
+          "contamination_rate": 0.0,
+          "storage_calls": 7,
+          "embedding_calls": 0,
+          "context_tokens": 765,
+          "temporal_correct_rate": 1,
+          "latency_p50_ms": 220.826,
+          "latency_p95_ms": 257.986,
+          "path_precision": 1.0,
+          "path_recall": 1.0,
+          "truncation_rate": 1
+        }
+      }
+    },
+    {
+      "case_id": "current-reverse",
+      "modes": {
+        "vector": {
+          "supported": true,
+          "iterations": 10,
+          "recall_at_k": 0.5,
+          "retrieval_precision": 0.5,
+          "contamination_rate": 0.5,
+          "storage_calls": 2,
+          "embedding_calls": 1,
+          "context_tokens": 211,
+          "temporal_correct_rate": 1,
+          "latency_p50_ms": 104.146,
+          "latency_p95_ms": 123.909,
+          "path_precision": null,
+          "path_recall": null,
+          "truncation_rate": 0
+        },
+        "hybrid": {
+          "supported": true,
+          "iterations": 10,
+          "recall_at_k": 0.5,
+          "retrieval_precision": 0.5,
+          "contamination_rate": 0.5,
+          "storage_calls": 7,
+          "embedding_calls": 1,
+          "context_tokens": 211,
+          "temporal_correct_rate": 1,
+          "latency_p50_ms": 511.929,
+          "latency_p95_ms": 609.658,
+          "path_precision": null,
+          "path_recall": null,
+          "truncation_rate": 0
+        },
+        "relations": {
+          "supported": true,
+          "iterations": 10,
+          "recall_at_k": 1.0,
+          "retrieval_precision": 1.0,
+          "contamination_rate": 0.0,
+          "storage_calls": 7,
+          "embedding_calls": 0,
+          "context_tokens": 764,
+          "temporal_correct_rate": 1,
+          "latency_p50_ms": 218.524,
+          "latency_p95_ms": 225.133,
+          "path_precision": 1.0,
+          "path_recall": 1.0,
+          "truncation_rate": 1
+        }
+      }
+    },
+    {
+      "case_id": "direct-out",
+      "modes": {
+        "vector": {
+          "supported": true,
+          "iterations": 10,
+          "recall_at_k": 0.0,
+          "retrieval_precision": 0.0,
+          "contamination_rate": 1.0,
+          "storage_calls": 2,
+          "embedding_calls": 1,
+          "context_tokens": 141,
+          "temporal_correct_rate": 1,
+          "latency_p50_ms": 97.762,
+          "latency_p95_ms": 115.59,
+          "path_precision": null,
+          "path_recall": null,
+          "truncation_rate": 0
+        },
+        "hybrid": {
+          "supported": true,
+          "iterations": 10,
+          "recall_at_k": 0.0,
+          "retrieval_precision": 0.0,
+          "contamination_rate": 1.0,
+          "storage_calls": 7,
+          "embedding_calls": 1,
+          "context_tokens": 141,
+          "temporal_correct_rate": 1,
+          "latency_p50_ms": 547.54,
+          "latency_p95_ms": 635.135,
+          "path_precision": null,
+          "path_recall": null,
+          "truncation_rate": 0
+        },
+        "relations": {
+          "supported": true,
+          "iterations": 10,
+          "recall_at_k": 1.0,
+          "retrieval_precision": 1.0,
+          "contamination_rate": 0.0,
+          "storage_calls": 5,
+          "embedding_calls": 0,
+          "context_tokens": 394,
+          "temporal_correct_rate": 1,
+          "latency_p50_ms": 157.65,
+          "latency_p95_ms": 176.198,
+          "path_precision": 1.0,
+          "path_recall": 1.0,
+          "truncation_rate": 1
+        }
+      }
+    },
+    {
+      "case_id": "lexical-control",
+      "modes": {
+        "vector": {
+          "supported": true,
+          "iterations": 10,
+          "recall_at_k": 0.0,
+          "retrieval_precision": 0.0,
+          "contamination_rate": 1.0,
+          "storage_calls": 2,
+          "embedding_calls": 1,
+          "context_tokens": 141,
+          "temporal_correct_rate": 1,
+          "latency_p50_ms": 100.481,
+          "latency_p95_ms": 111.748,
+          "path_precision": null,
+          "path_recall": null,
+          "truncation_rate": 0
+        },
+        "hybrid": {
+          "supported": true,
+          "iterations": 10,
+          "recall_at_k": 1.0,
+          "retrieval_precision": 0.5,
+          "contamination_rate": 0.5,
+          "storage_calls": 7,
+          "embedding_calls": 1,
+          "context_tokens": 212,
+          "temporal_correct_rate": 1,
+          "latency_p50_ms": 512.553,
+          "latency_p95_ms": 556.191,
+          "path_precision": null,
+          "path_recall": null,
+          "truncation_rate": 0
+        },
+        "relations": {
+          "supported": true,
+          "iterations": 10,
+          "recall_at_k": 1.0,
+          "retrieval_precision": 1.0,
+          "contamination_rate": 0.0,
+          "storage_calls": 5,
+          "embedding_calls": 0,
+          "context_tokens": 394,
+          "temporal_correct_rate": 1,
+          "latency_p50_ms": 155.456,
+          "latency_p95_ms": 168.929,
+          "path_precision": 1.0,
+          "path_recall": 1.0,
+          "truncation_rate": 1
+        }
+      }
+    },
+    {
+      "case_id": "historical-out",
+      "modes": {
+        "vector": {
+          "supported": false,
+          "reason": "ordinary Knowledge search has no historical as_of mode"
+        },
+        "hybrid": {
+          "supported": false,
+          "reason": "ordinary Knowledge search has no historical as_of mode"
+        },
+        "relations": {
+          "supported": true,
+          "iterations": 10,
+          "recall_at_k": 1.0,
+          "retrieval_precision": 1.0,
+          "contamination_rate": 0.0,
+          "storage_calls": 7,
+          "embedding_calls": 0,
+          "context_tokens": 1307,
+          "temporal_correct_rate": 1,
+          "latency_p50_ms": 204.5,
+          "latency_p95_ms": 227.692,
+          "path_precision": 1.0,
+          "path_recall": 1.0,
+          "truncation_rate": 1
+        }
+      }
+    }
+  ],
+  "fanout": [
+    {
+      "fanout": 1,
+      "validated_edges": 1,
+      "returned_paths": 1,
+      "storage_calls": 5,
+      "context_tokens": 386,
+      "truncation_reasons": [
+        "depth"
+      ]
+    },
+    {
+      "fanout": 8,
+      "validated_edges": 8,
+      "returned_paths": 8,
+      "storage_calls": 5,
+      "context_tokens": 2044,
+      "truncation_reasons": [
+        "depth"
+      ]
+    },
+    {
+      "fanout": 64,
+      "validated_edges": 64,
+      "returned_paths": 64,
+      "storage_calls": 5,
+      "context_tokens": 15330,
+      "truncation_reasons": [
+        "depth"
+      ]
+    },
+    {
+      "fanout": 256,
+      "validated_edges": 0,
+      "returned_paths": 0,
+      "storage_calls": 3,
+      "context_tokens": 88,
+      "truncation_reasons": [
+        "candidate_capacity"
+      ]
+    }
+  ],
+  "limitations": [
+    "Curated synthetic distances and labels; does not estimate general retrieval accuracy.",
+    "Historical ordinary-search baselines are unsupported, not scored as zero.",
+    "No competitor implementations, semantic entailment, or long-term utility measured.",
+    "Depth truncation is conservative even when paths match the finite gold set."
+  ]
+}

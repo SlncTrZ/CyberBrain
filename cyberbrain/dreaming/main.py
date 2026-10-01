@@ -19,20 +19,23 @@ def _request_stop(signum: int, frame) -> None:  # noqa: ANN001
 
 def run_worker(settings: Settings) -> None:
     runtime = build_dream_worker_runtime(settings)
-    runtime.queue.recover_processing(max_attempts=settings.dream_worker_max_attempts)
+    try:
+        runtime.queue.recover_processing(max_attempts=settings.dream_worker_max_attempts)
 
-    while not _STOP:
-        result = runtime.worker.process_next()
-        if result is not None:
-            continue
+        while not _STOP:
+            result = runtime.worker.process_next()
+            if result is not None:
+                continue
 
-        retried = runtime.queue.retry_failed(
-            max_attempts=settings.dream_worker_max_attempts,
-            limit=1,
-        )
-        if retried:
-            continue
-        time.sleep(settings.dream_worker_poll_seconds)
+            retried = runtime.queue.retry_failed(
+                max_attempts=settings.dream_worker_max_attempts,
+                limit=1,
+            )
+            if retried:
+                continue
+            time.sleep(settings.dream_worker_poll_seconds)
+    finally:
+        runtime.services.close()
 
 
 def main() -> None:

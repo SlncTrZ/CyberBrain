@@ -15,6 +15,10 @@ from cyberbrain.knowledge.evolution import KnowledgeEvolutionService
 from cyberbrain.knowledge.search import KnowledgeSearchService
 from cyberbrain.lifecycle import MemoryLifecycleService
 from cyberbrain.memory.service import MemoryService
+from cyberbrain.relations.recall import RelationRecallService
+from cyberbrain.relations.review import RelationReviewService
+from cyberbrain.relations.storage import RelationIndex
+from cyberbrain.relations.traversal import RelationTraversal
 from cyberbrain.retrieval.runtime import KnowledgeRetrievalPolicy
 from cyberbrain.retrieval.shadow import KnowledgeLiteralShadowObserver
 from cyberbrain.self_model import SelfModelPersistence, SelfModelService
@@ -38,6 +42,15 @@ class RuntimeServices:
     memory_lifecycle: MemoryLifecycleService
     cognition_path: CognitiveRuntimePath
     quota_limiter: SQLiteQuotaLimiter | None = None
+    relation_recall: RelationRecallService | None = None
+    relation_review: RelationReviewService | None = None
+    dream_relation_recall: RelationRecallService | None = None
+
+
+    def close(self) -> None:
+        close = getattr(self.repository, "close", None)
+        if close is not None:
+            close()
 
 
 def build_runtime(settings: Settings) -> RuntimeServices:
@@ -123,9 +136,25 @@ def build_runtime(settings: Settings) -> RuntimeServices:
         prefetch_multiplier=settings.cognition_prefetch_multiplier,
         concept_evidence_limit=settings.cognition_concept_evidence_limit,
     )
+    relation_index = RelationIndex(
+        repository, settings.knowledge_collection, settings.episodic_collection,
+    )
+    relation_recall = None
+    if settings.relation_retrieval_enabled:
+        relation_index.verify_indexes()
+        relation_recall = RelationRecallService(RelationTraversal(relation_index))
+    dream_relation_recall = None
+    if settings.dream_relation_enabled:
+        background_index = RelationIndex(repository, settings.knowledge_collection,
+                                         settings.episodic_collection, background=True)
+        background_index.verify_indexes()
+        dream_relation_recall = RelationRecallService(RelationTraversal(background_index))
     policy = settings.quota_policy()
     quota_limiter = SQLiteQuotaLimiter(settings.quota_db, policy) if policy.limits else None
     return RuntimeServices(
+        relation_recall=relation_recall,
+        relation_review=RelationReviewService(relation_index, knowledge_evolution),
+        dream_relation_recall=dream_relation_recall,
         quota_limiter=quota_limiter,
         metrics=metrics,
         repository=repository,

@@ -17,6 +17,10 @@ from cyberbrain.core.errors import ConfigurationError
 from cyberbrain.core.runtime import RuntimeServices
 from cyberbrain.dreaming.operations import DreamOperations
 from cyberbrain.dreaming.reason_task_inbox import DreamReasonTaskInbox
+from cyberbrain.relations.index import INDEX_KEY
+from cyberbrain.relations.models import RELATIONS_KEY, RelationStatus, bundle_from_extensions
+from cyberbrain.relations.recall import RelationRecallRequest
+from cyberbrain.relations.review import RelationProposalRequest, RelationReviewRequest
 from cyberbrain.schemas.models import (
     CURRENT_SCHEMA_VERSION,
     EpisodeRole,
@@ -123,6 +127,21 @@ def _project_recall_rows(rows: list[dict], *, view: str) -> list[dict]:
     projected_rows: list[dict] = []
     for row in rows:
         projected = dict(row)
+        extensions = projected.get("extensions")
+        if isinstance(extensions, dict):
+            projected["extensions"] = {
+                key: value for key, value in extensions.items()
+                if key not in {INDEX_KEY, RELATIONS_KEY}
+            }
+            if RELATIONS_KEY in extensions:
+                bundle = bundle_from_extensions(extensions)
+                projected["relation_summary"] = {
+                    "total": len(bundle.edges),
+                    "accepted": sum(
+                        edge.status == RelationStatus.ACCEPTED for edge in bundle.edges
+                    ),
+                    "kinds": sorted({edge.kind.value for edge in bundle.edges}),
+                }
         content = str(projected.pop("content", "") or "")
         summary = str(projected.pop("summary", "") or "").strip()
         if summary:
@@ -181,6 +200,28 @@ async def list_tools() -> list[types.Tool]:
                 "required": ["query"],
                 "additionalProperties": False,
             },
+        ),
+        types.Tool(
+            name="knowledge_relations",
+            description=(
+                "Explicit scoped typed relation paths and evidence from known seed IDs; "
+                "requires enabled relation recall and reports budgets/truncation."
+            ),
+            inputSchema=RelationRecallRequest.model_json_schema(),
+        ),
+        types.Tool(
+            name="knowledge_relation_propose",
+            description=(
+                "Merge proposed assertions through Knowledge Evolution; no auto-acceptance. "
+                "source_id must be the active version."
+            ),
+            inputSchema=RelationProposalRequest.model_json_schema(),
+        ),
+        types.Tool(
+            name="knowledge_relation_review",
+            description="Accept/reject one explicit assertion with reviewed evidence and a note; "
+                        "requires admin_review, read/write and active source version.",
+            inputSchema=RelationReviewRequest.model_json_schema(),
         ),
         types.Tool(
             name="knowledge_get",
@@ -642,6 +683,7 @@ def _reserve_tool_quota(name: str, args: dict) -> None:
     if name in {
         "knowledge_store", "memory_store", "tech_store", "conversation_save",
         "prediction_record", "prediction_resolve", "dream_review_resolve",
+        "knowledge_relation_propose", "knowledge_relation_review",
     }:
         charges[QuotaResource.WRITES] = 1
     if name in {
@@ -653,6 +695,9 @@ def _reserve_tool_quota(name: str, args: dict) -> None:
         if type(limit) is not int or limit < 1:
             raise ValueError("recall limit must be a positive integer")
         charges[QuotaResource.RECALL_LIMIT] = limit
+    if name == "knowledge_relations":
+        request = RelationRecallRequest.model_validate(args)
+        charges[QuotaResource.RECALL_LIMIT] = request.policy.max_nodes
     if name == "dream_enqueue":
         charges[QuotaResource.DREAM_ENQUEUE] = 1
     if name == "dream_reason_claim":
@@ -673,15 +718,17 @@ def _reject_identity_trust_override(args: dict) -> None:
 
 def _authorize_tool(name: str) -> None:
     reads = {
+        "knowledge_relations",
         "knowledge_search", "memory_search", "knowledge_get", "memory_get",
         "knowledge_timeline", "tech_find", "ai_memory_read", "conversation_recall",
         "prediction_observe", "prediction_pending", "calibration_observe", "dream_status",
     }
     writes = {
+        "knowledge_relation_propose",
         "knowledge_store", "memory_store", "tech_store", "conversation_save",
         "prediction_record", "prediction_resolve", "dream_enqueue", "dream_reason_submit",
     }
-    reviews = {"dream_reviews", "dream_review_resolve"}
+    reviews = {"dream_reviews", "dream_review_resolve", "knowledge_relation_review"}
     background = {"dream_reason_claim"}
     operation = (
         OperationClass.READ if name in reads else
@@ -759,6 +806,28 @@ def _observe_cognitive_store(runtime, row: dict, *, kind: str) -> None:  # noqa:
 
 def _dispatch_tool(name: str, args: dict) -> list[types.TextContent]:
     runtime = _require_runtime()
+
+    if name == "knowledge_relations":
+        request = RelationRecallRequest.model_validate(args)
+        service = getattr(runtime, "relation_recall", None)
+        if service is None:
+            raise ConfigurationError("typed relation recall is not enabled")
+        return _json_text(service.recall(request))
+
+    if name in {"knowledge_relation_propose", "knowledge_relation_review"}:
+        service = getattr(runtime, "relation_review", None)
+        if service is None:
+            raise ConfigurationError("typed relation review is unavailable")
+        if name == "knowledge_relation_propose":
+            request = RelationProposalRequest.model_validate(args)
+            result = service.propose(request.source_id, request.bundle)
+        else:
+            request = RelationReviewRequest.model_validate(args)
+            result = service.review(request.source_id, request.relation_id,
+                                    RelationStatus(request.status), request.note)
+        return _json_text({"outcome": result.outcome.value,
+                           "record": result.record.model_dump(mode="json"),
+                           "previous_id": result.previous_id})
 
     if name == "knowledge_search":
         limit = int(args.pop("limit", 5))

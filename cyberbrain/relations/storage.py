@@ -41,9 +41,15 @@ class ReadBudget:
 
 class RelationIndex:
     def __init__(
-        self, repository: RelationRepository, knowledge_collection: str, episodic_collection: str
+        self,
+        repository: RelationRepository,
+        knowledge_collection: str,
+        episodic_collection: str,
+        *,
+        background: bool = False,
     ):
         self.repository = repository
+        self.background = background
         self.knowledge_collection = knowledge_collection
         self.episodic_collection = episodic_collection
         self._verified = False
@@ -68,12 +74,15 @@ class RelationIndex:
             )
         self.verify_indexes()
 
-    @staticmethod
-    def conditions(*, episode: bool = False) -> list[dict]:
+    def conditions(self, *, episode: bool = False) -> list[dict]:
         if current_authority() is None:
             raise ConfigurationError("relation reads require authenticated authority")
         plan = enforce_operation(
-            TenancyOperation.MEMORY_GET if episode else TenancyOperation.KNOWLEDGE_GET
+            TenancyOperation.BACKGROUND_EVIDENCE_READ
+            if self.background
+            else TenancyOperation.MEMORY_GET
+            if episode
+            else TenancyOperation.KNOWLEDGE_GET
         )
         return scope_conditions(plan)
 

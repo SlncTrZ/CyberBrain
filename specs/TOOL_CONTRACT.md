@@ -7,6 +7,9 @@ CyberBrain complies with the repository integration standard in `../MCP_PROVIDER
 ```text
 help
 knowledge_search
+knowledge_relations
+knowledge_relation_propose
+knowledge_relation_review
 knowledge_get
 knowledge_store
 knowledge_timeline
@@ -300,3 +303,17 @@ The server-owned principal registry is the identity authority for opt-in broader
 Dream jobs persist a credential-free authority snapshot. Worker evidence reads, status updates, reasoning inbox, audits and canonical writeback retain that scope. Sessions with identical names in different identity partitions are separate jobs. Legacy owner jobs cannot be claimed by a broader-mode worker. Approval requires both review and canonical write authority; reason-task leases do not bypass task scope.
 
 Runtime quotas are reserved atomically before foreground dispatch or background work. Over-budget background jobs are deferred without consuming retry attempts or touching evidence. MCP session/body ceilings use the supported SDK transport controls. Scoped metrics expose numeric data for the authorized tenant/user partition only. Operational details and upgrade/backup boundaries are in `../docs/TENANCY_OPERATIONS.md`.
+
+## Typed relation tools
+
+The strict public schemas derive from RelationRecallRequest, RelationProposalRequest and
+RelationReviewRequest. Recall is explicit from known seeds, not an automatic search side
+effect; it returns bounded paths and complete authorized proof context. Recall quota charges
+the requested node budget. Proposal and review charge a canonical write. Read/write/admin
+checks occur before the corresponding storage visibility or mutation. Review uses an
+optimistic active source UUID checked under native Evolution locks. Unknown fields fail
+validation. Compact ordinary recall omits server indexes/full relation bundles and includes
+a small relation summary; exact/full reads preserve canonical assertions.
+
+See `RELATION_TRAVERSAL.md`, `../TOOL_GUIDE.md` and
+`../docs/RELATION_ROLLOUT.md` for temporal, context-budget and activation boundaries.

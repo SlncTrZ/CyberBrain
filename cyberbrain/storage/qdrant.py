@@ -27,8 +27,14 @@ class QdrantRepository:
         if api_key:
             self._headers["api-key"] = api_key
         self._timeout_seconds = timeout_seconds
-        self._client = client
+        self._owns_client = client is None
+        self._client = client if client is not None else httpx.Client()
         self._metrics = metrics
+
+    def close(self) -> None:
+        """Close only the transport owned by this repository."""
+        if self._owns_client:
+            self._client.close()
 
     def _send(self, method: str, path: str, **kwargs: Any) -> httpx.Response:
         request_kwargs = {
@@ -38,10 +44,7 @@ class QdrantRepository:
         }
         started = monotonic()
         try:
-            if self._client is None:
-                response = httpx.request(method, f"{self._base_url}{path}", **request_kwargs)
-            else:
-                response = self._client.request(method, f"{self._base_url}{path}", **request_kwargs)
+            response = self._client.request(method, f"{self._base_url}{path}", **request_kwargs)
             if self._metrics is not None:
                 self._metrics.increment("qdrant_requests_total")
                 self._metrics.observe("qdrant_request_seconds", monotonic() - started)

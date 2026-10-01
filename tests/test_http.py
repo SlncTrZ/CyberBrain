@@ -251,6 +251,9 @@ def test_tool_catalog_contains_canonical_and_legacy_compatibility_tools() -> Non
     assert [tool.name for tool in tools] == [
         "help",
         "knowledge_search",
+        "knowledge_relations",
+        "knowledge_relation_propose",
+        "knowledge_relation_review",
         "knowledge_get",
         "knowledge_store",
         "knowledge_timeline",

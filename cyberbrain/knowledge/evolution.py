@@ -277,6 +277,7 @@ class KnowledgeEvolutionService:
         context: dict[str, Any] | None = None,
         extensions: dict[str, Any] | None = None,
         force_evolution: bool = False,
+        expected_previous_id: UUID | None = None,
     ) -> EvolutionResult:
         identity_values = scoped_values(
             dict(tenant=tenant, user=user, agent=agent, project=project, session_id=session_id),
@@ -367,6 +368,9 @@ class KnowledgeEvolutionService:
                 previous = exact_context[0] if exact_context else None
                 previous_payload = (previous or {}).get("payload") or {}
                 previous_id = UUID(str(previous["id"])) if previous else None
+
+                if expected_previous_id is not None and previous_id != expected_previous_id:
+                    raise ConflictError("Knowledge source version changed; reload before review")
 
                 same_content = previous_payload.get("content_hash") == digest
                 previous_relations = bundle_from_extensions(

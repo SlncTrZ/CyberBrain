@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     knowledge_retrieval_mode: str = "vector"
     knowledge_retrieval_max_records: int = 10_000
     knowledge_retrieval_candidate_multiplier: int = 3
+    relation_retrieval_enabled: bool = False
+    dream_relation_enabled: bool = False
     retrieval_literal_shadow_enabled: bool = False
     retrieval_literal_shadow_cache_ttl_seconds: float = 300.0
     retrieval_literal_shadow_max_records: int = 5_000
@@ -88,6 +90,11 @@ class Settings(BaseSettings):
         ))
 
     def validate_runtime(self) -> None:
+        if (
+            (self.relation_retrieval_enabled or self.dream_relation_enabled)
+            and not self.require_auth
+        ):
+            raise ConfigurationError("typed relation recall requires authenticated transport")
         if not 1 <= self.mcp_max_sessions <= 10_000:
             raise ConfigurationError("mcp_max_sessions must be between 1 and 10000")
         if not 1024 <= self.mcp_max_request_bytes <= 16_777_216:

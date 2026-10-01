@@ -43,4 +43,4 @@ Current local source contains the integrated single-owner caller authority bindi
 - [Tenancy operations](TENANCY_OPERATIONS.md): principal configuration, quotas and recovery.
 - [Live evaluation](LIVE_EVALUATION.md): separate longitudinal evidence after rollout.
 
-Typed relation models, persistence, indexed adjacency and bounded traversal are implemented in source; public caller/Dream integration and rollout remain pending. Refer to `../specs/RELATION_TRAVERSAL.md` for entity identity, review/evidence gates, Evolution and remaining slices.
+Typed relation models, persistence, indexed adjacency and bounded traversal are implemented in source; explicit caller/Dream integration, review and protected rollout tooling are source-complete. See RELATION_ROLLOUT.md and benchmarks/RELATIONS_CONTROLLED.md for operator preparation and controlled measurements. Refer to `../specs/RELATION_TRAVERSAL.md` for entity identity, review/evidence gates, Evolution and remaining slices.

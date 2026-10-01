@@ -185,3 +185,31 @@ def test_scroll_paginates_until_requested_limit() -> None:
 
     assert len(points) == 300
     assert offsets == [None, "page-2"]
+
+
+def test_default_transport_reuses_client_and_closes_only_owned_pool(monkeypatch):
+    calls = []
+    def handle(request):
+        calls.append(request)
+        return httpx.Response(200, json={
+            "status": "ok", "result": {"points": [], "next_page_offset": None},
+        })
+    owned = httpx.Client(transport=httpx.MockTransport(handle))
+    factories = []
+    def factory():
+        factories.append(True)
+        return owned
+    monkeypatch.setattr(httpx, "Client", factory)
+    repository = QdrantRepository(base_url="http://fixture.invalid")
+    repository.scroll_page("knowledge")
+    repository.scroll_page("knowledge")
+    assert len(factories) == 1 and len(calls) == 2
+    repository.close()
+    assert owned.is_closed
+
+    # A caller-supplied transport retains its independent lifetime.
+    external = type(owned)(transport=httpx.MockTransport(handle))
+    supplied = QdrantRepository(base_url="http://fixture.invalid", client=external)
+    supplied.close()
+    assert not external.is_closed
+    external.close()
