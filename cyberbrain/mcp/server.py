@@ -17,6 +17,7 @@ from cyberbrain.core.errors import ConfigurationError
 from cyberbrain.core.runtime import RuntimeServices
 from cyberbrain.dreaming.operations import DreamOperations
 from cyberbrain.dreaming.reason_task_inbox import DreamReasonTaskInbox
+from cyberbrain.mcp.help_reference import render_tool_reference
 from cyberbrain.relations.index import INDEX_KEY
 from cyberbrain.relations.models import RELATIONS_KEY, RelationStatus, bundle_from_extensions
 from cyberbrain.relations.recall import RelationRecallRequest
@@ -95,7 +96,14 @@ def _legacy_domain(value: str) -> str:
 
 def _help_payload() -> str:
     guide = _guide_path().read_text(encoding="utf-8")
-    contract_hash = hashlib.sha256(guide.encode("utf-8")).hexdigest()
+    reference = render_tool_reference(_tool_catalog())
+    content = f"{guide.rstrip()}\n\n{reference}"
+    contract_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
+    updated_at = next(
+        (line.removeprefix("> Contract guide updated: ").strip()
+         for line in guide.splitlines() if line.startswith("> Contract guide updated: ")),
+        "not declared",
+    )
     return (
         f"provider_name: {PROVIDER_NAME}\n"
         f"provider_version: {__version__}\n"
@@ -103,9 +111,10 @@ def _help_payload() -> str:
         f"contract_version: {CONTRACT_VERSION}\n"
         f"schema_version: {SCHEMA_VERSION}\n"
         f"contract_hash: {contract_hash}\n"
+        f"updated_at: {updated_at}\n"
         f"authentication: Bearer token; optional X-API-Key compatibility\n"
         f"capabilities: knowledge, episodic-memory, cognitive-learning, dreaming\n\n"
-        f"{guide}"
+        f"{content}"
     )
 
 
@@ -169,6 +178,10 @@ def _error_text(exc: Exception) -> list[types.TextContent]:
 
 @server.list_tools()
 async def list_tools() -> list[types.Tool]:
+    return _tool_catalog()
+
+
+def _tool_catalog() -> list[types.Tool]:
     return [
         types.Tool(
             name="help",

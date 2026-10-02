@@ -1,5 +1,7 @@
 # CyberBrain Tool Guide
 
+> Contract guide updated: 2026-10-02
+
 CyberBrain exposes an authenticated MCP Streamable HTTP provider at `/mcp`.
 
 Gateway canonical namespace:
@@ -215,3 +217,119 @@ require authenticated transport, verified indexes and complete scoped projection
 Dream expansion uses bucket-end as_of, background authority and separate read/item/token
 budgets. It preserves typed path/proof provenance; it does not generate or accept relations.
 Preparation, protected backfill and rollback are in `docs/RELATION_ROLLOUT.md`.
+
+## Quick start with JSON examples
+
+These examples show MCP `tools/call` parameters, not complete JSON-RPC envelopes.
+Names are provider-local; use the gateway's namespaced equivalent when required.
+UUIDs, times and text below are illustrative fixtures, not production evidence.
+Replace them with authorized real records and real event times. Read/write/review
+grants and deployment feature flags remain mandatory. Examples are not executed by help.
+
+Read the contract:
+
+```json
+{"name":"help","arguments":{}}
+```
+
+Search compact context (an empty successful result is `[]`, not an error):
+
+```json
+{"name":"knowledge_search","arguments":{"query":"deployment rollback","project":"ExampleProject","limit":5,"view":"compact"}}
+```
+
+Fetch one selected full record using the UUID returned by search:
+
+```json
+{"name":"knowledge_get","arguments":{"id":"00000000-0000-4000-8000-000000000001"}}
+```
+
+Persist a verified useful fact using a stable entity identity. Supply a verification
+level only when the evidence actually supports it; this example leaves the default:
+
+```json
+{"name":"knowledge_store","arguments":{"content":"Illustrative operating rule: retain the previous image before a rollout.","domain":"ops","topic":"deployment","entity_type":"procedure","entity_name":"rollout-backup","project":"ExampleProject"}}
+```
+
+Search episodic context:
+
+```json
+{"name":"memory_search","arguments":{"query":"rollout outcome","project":"ExampleProject","limit":5}}
+```
+
+Persist an observed event. A real caller must supply its actual event time:
+
+```json
+{"name":"memory_store","arguments":{"content":"Illustrative event: a rollout check completed.","session_id":"example-session","event_time":"2026-10-02T07:00:00Z","project":"ExampleProject"}}
+```
+
+Explore typed relations from a known seed; empty paths are valid if no eligible
+accepted assertions exist. Check `truncated` and `truncation_reasons` before
+treating the returned paths as complete:
+
+```json
+{"name":"knowledge_relations","arguments":{"seed_ids":["00000000-0000-4000-8000-000000000001"],"context_tokens":4096,"record_tokens":256}}
+```
+
+Review an existing proposal only after checking its evidence. Replace both the source
+UUID with the current active version and the relation ID with the proposed assertion ID:
+
+```json
+{"name":"knowledge_relation_review","arguments":{"source_id":"00000000-0000-4000-8000-000000000001","relation_id":"0000000000000000000000000000000000000000000000000000000000000000","status":"rejected","note":"Illustrative review: supplied evidence does not establish this relationship."}}
+```
+
+Read one page of pending Dream reviews without approving or promoting anything:
+
+```json
+{"name":"dream_reviews","arguments":{"limit":10}}
+```
+
+For proposals, follow the generated `RelationBundle`, `RelationAssertion` and
+referenced definitions below; relation IDs and canonical endpoint identity must
+satisfy domain validation. For Dream submission, use only the task and lease returned
+by `dream_reason_claim`; never invent credentials or evidence references.
+
+### Responses and recovery
+
+Tool responses carry text content containing JSON, except `help`, which returns
+the readable contract. Search/timeline/review lists, exact records, evolution results,
+Prediction reports and relation path envelopes have different shapes; a wrapper must
+not assume every successful response is a list. Store/evolution results include
+`outcome`, `record` and `previous_id`; inspect the outcome before claiming that a
+new active version was created.
+
+A missing or out-of-scope exact fetch uses this shape:
+
+```json
+{"error":{"type":"not_found","message":"Knowledge record not found","retryable":false}}
+```
+
+| Condition | Layer / signal | Correct action |
+| --- | --- | --- |
+| Missing or invalid authentication | HTTP authentication rejection, normally 401 | Repair the authorized connection; do not place credentials in prompts or stored records. |
+| Bad type, unknown field, invalid UUID, enum or bounds | MCP/schema rejection or `validation_error` | Correct the request using the generated schema; do not retry unchanged. |
+| Missing or out-of-scope record | `not_found` | Check the selected ID and authorized scope; the response intentionally does not reveal foreign records. |
+| Concurrent Knowledge/relation edit | `conflict` | Reload the active source version and re-evaluate before submitting again. |
+| Disabled feature, missing service or denied bound authority | `configuration_error` | Check deployment flags and granted operations; a caller payload cannot grant access. |
+| Secret-bearing content | `sensitive_data` | Remove sensitive content; never bypass scanning or persist credentials. |
+| Storage, embedding or provider outage | `unavailable`, `retryable=true` | Use bounded retry; for writes, check whether persistence occurred before resubmitting. |
+| Unexpected provider failure | `internal_error` | Preserve a safe error summary for investigation; do not treat it as an empty match. |
+| Gateway cannot reach provider | Gateway `provider_unavailable` | A bounded read-only retry may recover; repeated failures require connection/health investigation. |
+
+Provider domain errors use `{"error":{"type":...,"message":...,"retryable":...}}`.
+Transport/SDK/gateway errors may use a different envelope. Relation budget exhaustion
+is reported as truncation, not as proof that no relationship exists.
+
+### Omitted values and deployment state
+
+The generated tables show only defaults explicitly declared in the advertised
+schema. Current dispatch defaults include canonical search `limit=5`,
+`view=compact`, `dream_reviews.limit=100`, and
+`dream_reason_claim.lease_seconds=300`. Other omitted values may be resolved by
+domain services or deployment configuration; do not interpret an absent schema
+default as zero, null or permission to choose arbitrary values.
+
+Tool availability in the provider catalog does not prove that a feature is enabled
+or that the gateway/client has refreshed its catalog. This contract describes
+supported behavior, not current collection counts, learned conclusions or live
+effectiveness. Use runtime checks for those questions.
