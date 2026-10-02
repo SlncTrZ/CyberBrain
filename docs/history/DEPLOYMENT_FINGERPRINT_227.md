@@ -3,6 +3,51 @@
 > Historical operational record: measured deployment snapshot, not source guidance.
 > Earlier measurements are retained below; re-measure before relying on this record.
 
+## Measured 2026-10-02 — runtime-derived help reference
+
+| Field | Measured value |
+| --- | --- |
+| Deployed source commit | 9313893582e25347d2b30d52fc7cfd2d4d500256 |
+| Image tag | cyberbrain:git-9313893582e2 |
+| Image ID | sha256:1b61c84659bce1d4d028ca248eb1082c8b165f465da973aa21c876c873d25a87 |
+| Deployment completed (UTC) | 2026-10-02T08:01:50.859332+00:00 |
+| Deployment Compose SHA256 | 9dd447e9d8a4ad8a4bb48aafbc5a318d88ad9a3980e0c73fcaab65112659e696 |
+| Source equality | 140/140 Python files and TOOL_GUIDE.md SHA256 match in each of five containers |
+| API / worker / scheduler / router / reasoner | All healthy; restart count 0 at rollout acceptance |
+| Health / readiness / unauthenticated MCP | HTTP 200 / 200 / 401 |
+| Authenticated provider catalog | 27 tools; all names retained |
+| Direct authenticated help | PASS; 47976 UTF-8 bytes, runtime parameter tables, examples and recovery guide |
+| Provider contract hash | b49ee7905d9d7ffc66a2aca0d0573252adf44aa0b57220c186a652a2fa4b6b1b |
+| Gateway authenticated help | PASS, untruncated; same contract hash |
+| Gateway configured / ready providers | 1 / 1 after graceful process recovery |
+| Gateway manifest catalog | Existing 24 tools retained; three relation names remain outside this manifest |
+| Production environment and mounts | Preserved; resolved Compose differs only in five image references |
+| Previous rollback image | cyberbrain:git-48429e573009, retained |
+
+Source acceptance and clean-image QA each passed 803 tests with one optional storage gate
+skipped. Ruff and diff checks passed. The clean image suite emitted one Starlette test-client
+deprecation warning; no test failure. No schema/data migration, relation proposal/review,
+credential change, retention sweep or long-term evidence claim is part of this rollout.
+
+The first rollout was reverted by a strict post-rollout preservation check after service
+health passed. Final acceptance compares mount contents independently of array order;
+the router's two unchanged mounts were returned in a different order. The prior image
+remains available. No production snapshot restore was performed.
+
+During provider interruption the gateway advertised zero extension tools despite the
+provider being healthy. A graceful restart of the existing gateway process restored one
+ready provider and the unchanged 24-tool manifest. Gateway policy, provider configuration
+and credentials were not changed. Provider-local authenticated help and subsequent
+gateway help both passed. This is recovery evidence, not a proven diagnosis of every
+earlier intermittent provider_unavailable response.
+
+The help fingerprint now covers the readable guide and the generated public-schema
+reference, rather than the guide file alone. Guide SHA256 and runtime contract hash
+therefore intentionally differ. The software/package version authority remains
+cyberbrain/_version.py; no release or version bump was performed.
+
+---
+
 ## Measured 2026-10-01 18:31 ICT — typed relations slices 5–6
 
 | Field | Measured value |
