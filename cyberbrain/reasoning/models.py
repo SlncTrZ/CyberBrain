@@ -50,3 +50,4 @@ class CounterfactualSandboxResult:
     derived_inferences: list[DerivedAssertion]
     is_consistent: bool
     summary: str
+    is_incomplete: bool = False

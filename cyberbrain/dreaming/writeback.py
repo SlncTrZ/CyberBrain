@@ -143,8 +143,9 @@ class DreamKnowledgeWriter:
         lookup = evidence_by_id or {
             item.id: item for items in request.evidence_by_topic.values() for item in items
         }
+        target_evidence_ids = decision.evidence_ids or candidate.evidence_ids
         try:
-            selected = [lookup[evidence_id] for evidence_id in candidate.evidence_ids]
+            selected = [lookup[evidence_id] for evidence_id in target_evidence_ids]
         except KeyError:
             return DreamWriteResult(
                 candidate_index=candidate_index,

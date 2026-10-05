@@ -257,18 +257,28 @@ class UniversalAgentAdapter:
             )
             return OutcomeMatch(observation.prediction_id, "direct_prediction_id"), record
 
-        pending_result = await self.client.prediction_pending(
-            session_id=scope.session_id,
-            agent=scope.agent,
-            project=scope.project,
-            limit=20,
-        )
-        may_be_incomplete = False
-        if isinstance(pending_result, dict):
-            pending_items = list(pending_result.get("items") or [])
-            may_be_incomplete = bool(pending_result.get("may_be_incomplete"))
+        if hasattr(self.client, "prediction_pending_envelope"):
+            envelope = await self.client.prediction_pending_envelope(
+                session_id=scope.session_id,
+                agent=scope.agent,
+                project=scope.project,
+                limit=20,
+            )
+            pending_items = list(envelope.get("items") or [])
+            may_be_incomplete = bool(envelope.get("may_be_incomplete"))
         else:
-            pending_items = list(pending_result)
+            pending_result = await self.client.prediction_pending(
+                session_id=scope.session_id,
+                agent=scope.agent,
+                project=scope.project,
+                limit=20,
+            )
+            if isinstance(pending_result, dict):
+                pending_items = list(pending_result.get("items") or [])
+                may_be_incomplete = bool(pending_result.get("may_be_incomplete"))
+            else:
+                pending_items = list(pending_result)
+                may_be_incomplete = False
 
         if observation.correlation_id and may_be_incomplete:
             return (

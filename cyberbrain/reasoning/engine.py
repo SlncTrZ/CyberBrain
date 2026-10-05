@@ -41,8 +41,17 @@ class BoundedReasoningEngine:
         candidate_edges: list[RelationEdge],
         existing_edges: list[RelationEdge],
     ) -> list[ContradictionConflict]:
+        conflicts, _ = self._detect_contradictions_bounded(candidate_edges, existing_edges)
+        return conflicts
+
+    def _detect_contradictions_bounded(
+        self,
+        candidate_edges: list[RelationEdge],
+        existing_edges: list[RelationEdge],
+    ) -> tuple[list[ContradictionConflict], bool]:
         conflicts: list[ContradictionConflict] = []
         comparisons = 0
+        budget_exceeded = False
 
         for cand in candidate_edges:
             cand_pair = self._endpoint_key(cand.source, cand.target)
@@ -50,6 +59,7 @@ class BoundedReasoningEngine:
             for exist in existing_edges:
                 comparisons += 1
                 if comparisons > self._max_comparisons:
+                    budget_exceeded = True
                     break
                 if cand.relation_id and cand.relation_id == exist.relation_id:
                     continue
@@ -80,7 +90,8 @@ class BoundedReasoningEngine:
                 if (cand_pair == exist_pair or cand_pair == exist_rev) and (
                     (cand.kind == RelationKind.PART_OF and exist.kind == RelationKind.CONTRADICTS)
                     or (
-                        cand.kind == RelationKind.CONTRADICTS and exist.kind == RelationKind.PART_OF
+                        cand.kind == RelationKind.CONTRADICTS
+                        and exist.kind == RelationKind.PART_OF
                     )
                 ):
                     conflicts.append(
@@ -110,7 +121,10 @@ class BoundedReasoningEngine:
                             )
                         )
 
-        return conflicts
+            if budget_exceeded:
+                break
+
+        return conflicts, budget_exceeded
 
     def derive_inferences(
         self,
@@ -119,15 +133,29 @@ class BoundedReasoningEngine:
         max_depth: int = 2,
         source_record_ids: dict[str, UUID] | None = None,
     ) -> list[DerivedAssertion]:
+        derived, _ = self._derive_inferences_bounded(
+            edges, max_depth=max_depth, source_record_ids=source_record_ids
+        )
+        return derived
+
+    def _derive_inferences_bounded(
+        self,
+        edges: list[RelationEdge],
+        *,
+        max_depth: int = 2,
+        source_record_ids: dict[str, UUID] | None = None,
+    ) -> tuple[list[DerivedAssertion], bool]:
         if not 0 <= max_depth <= 5:
             raise ValueError("max_depth must be between 0 and 5")
         if max_depth == 0:
-            return []
+            return [], False
 
         # Reject any premise that is explicitly rejected (F04)
         eligible = [e for e in edges if e.status != RelationStatus.REJECTED]
         derived: list[DerivedAssertion] = []
         seen_derived_keys: set[str] = set()
+        budget_exceeded = False
+        comparisons = 0
 
         # Map known target entity keys to their verified record IDs
         known_record_ids: dict[str, UUID] = dict(source_record_ids or {})
@@ -137,7 +165,9 @@ class BoundedReasoningEngine:
         # Rule 1: Symmetric contradiction (depth >= 1)
         # contradicts(A, B) => contradicts(B, A)
         for edge in eligible:
-            if len(derived) >= self._max_inferences:
+            comparisons += 1
+            if len(derived) >= self._max_inferences or comparisons > self._max_comparisons:
+                budget_exceeded = True
                 break
             if edge.kind == RelationKind.CONTRADICTS:
                 # F08: Target of reversed edge is edge.source.
@@ -174,7 +204,7 @@ class BoundedReasoningEngine:
 
         # Rule 2: Transitive dependency (requires depth >= 2)
         # depends_on(A, B) & depends_on(B, C) => depends_on(A, C)
-        if max_depth >= 2:
+        if max_depth >= 2 and not budget_exceeded:
             depends_edges = [e for e in eligible if e.kind == RelationKind.DEPENDS_ON]
             by_source: dict[str, list[RelationEdge]] = {}
             for e in depends_edges:
@@ -182,12 +212,15 @@ class BoundedReasoningEngine:
                 by_source.setdefault(src_key, []).append(e)
 
             for edge_ab in depends_edges:
-                if len(derived) >= self._max_inferences:
+                if len(derived) >= self._max_inferences or comparisons > self._max_comparisons:
+                    budget_exceeded = True
                     break
                 b_key = self._entity_key(edge_ab.target)
                 next_edges = by_source.get(b_key, [])
                 for edge_bc in next_edges:
-                    if len(derived) >= self._max_inferences:
+                    comparisons += 1
+                    if len(derived) >= self._max_inferences or comparisons > self._max_comparisons:
+                        budget_exceeded = True
                         break
                     c_key = self._entity_key(edge_bc.target)
                     a_key = self._entity_key(edge_ab.source)
@@ -215,7 +248,11 @@ class BoundedReasoningEngine:
                             (ev.record_type, ev.id): ev
                             for ev in (edge_ab.evidence + edge_bc.evidence)
                         }
-                        all_ev: tuple[EvidenceRef, ...] = tuple(all_ev_map.values())[:32]
+                        if len(all_ev_map) > 32:
+                            # F09: Capacity exceeded: refuse to derive assertion; do NOT cut proofs
+                            budget_exceeded = True
+                            continue
+                        all_ev: tuple[EvidenceRef, ...] = tuple(all_ev_map.values())
                         derived_edge = RelationEdge(
                             kind=RelationKind.DEPENDS_ON,
                             source=edge_ab.source,
@@ -243,7 +280,7 @@ class BoundedReasoningEngine:
                             )
                         )
 
-        return derived
+        return derived, budget_exceeded
 
     def evaluate_counterfactual(
         self,
@@ -252,13 +289,13 @@ class BoundedReasoningEngine:
         base_edges: list[RelationEdge],
     ) -> CounterfactualSandboxResult:
         """Evaluate hypothetical assertions in an isolated non-canonical sandbox."""
-        contradictions = self.detect_contradictions(
+        contradictions, base_budget_hit = self._detect_contradictions_bounded(
             candidate_edges=hypothetical_edges,
             existing_edges=base_edges,
         )
 
         # Internal conflict detection within hypothetical_edges (F03)
-        internal_conflicts = self.detect_contradictions(
+        internal_conflicts, internal_budget_hit = self._detect_contradictions_bounded(
             candidate_edges=hypothetical_edges,
             existing_edges=hypothetical_edges,
         )
@@ -274,7 +311,7 @@ class BoundedReasoningEngine:
                 contradictions.append(c)
 
         all_edges = base_edges + hypothetical_edges
-        inferences = self.derive_inferences(all_edges)
+        inferences, inference_budget_hit = self._derive_inferences_bounded(all_edges)
         counterfactual_inferences = [
             DerivedAssertion(
                 edge=inf.edge,
@@ -286,12 +323,24 @@ class BoundedReasoningEngine:
             for inf in inferences
         ]
 
-        is_consistent = len(contradictions) == 0
-        summary = (
-            f"Counterfactual sandbox consistent: {is_consistent}. "
-            f"{len(contradictions)} contradiction(s) detected, "
-            f"{len(counterfactual_inferences)} derived inference(s) generated."
-        )
+        budget_exceeded = base_budget_hit or internal_budget_hit or inference_budget_hit
+        if budget_exceeded:
+            is_consistent = False
+            is_incomplete = True
+            summary = (
+                "Counterfactual sandbox incomplete: evaluation budget exceeded. "
+                "Cannot conclude consistent. "
+                f"{len(contradictions)} contradiction(s) detected, "
+                f"{len(counterfactual_inferences)} derived inference(s) generated."
+            )
+        else:
+            is_consistent = len(contradictions) == 0
+            is_incomplete = False
+            summary = (
+                f"Counterfactual sandbox consistent: {is_consistent}. "
+                f"{len(contradictions)} contradiction(s) detected, "
+                f"{len(counterfactual_inferences)} derived inference(s) generated."
+            )
 
         return CounterfactualSandboxResult(
             hypothetical_edges_count=len(hypothetical_edges),
@@ -299,6 +348,7 @@ class BoundedReasoningEngine:
             contradictions=contradictions,
             derived_inferences=counterfactual_inferences,
             is_consistent=is_consistent,
+            is_incomplete=is_incomplete,
             summary=summary,
         )
 

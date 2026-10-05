@@ -6,7 +6,7 @@ from __future__ import annotations
 from datetime import datetime
 from enum import StrEnum
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -160,25 +160,19 @@ class PredictionLearningService:
             correlation_id=correlation_id,
         )
         if data.correlation_id:
-            filters = {
-                key: value
-                for key, value in {
-                    "session_id": session_id,
-                    "agent": agent,
-                    "project": project,
-                }.items()
-                if value is not None
-            }
-            existing = self._scroll_cognition(
-                source="cognitive_prediction",
-                limit=1000,
-                filters=filters,
-            )
-            for record, cognition in existing:
-                if str(cognition.get("correlation_id") or "") == data.correlation_id:
-                    return record
-
-        prediction_id = uuid4()
+            scope_key = f"{session_id}:{agent or ''}:{project or ''}:{data.correlation_id}"
+            prediction_id = uuid5(NAMESPACE_URL, f"cyberbrain:prediction:{scope_key}")
+            try:
+                point = self._repository.retrieve(
+                    self._episodic_collection, point_id=prediction_id
+                )
+                if point is not None:
+                    payload = point.get("payload") or {}
+                    return EpisodeRecord.model_validate(payload)
+            except (KeyError, TypeError, ValueError):
+                point = None
+        else:
+            prediction_id = uuid4()
         cognition: dict[str, Any] = {
             "kind": "prediction",
             "prediction_id": str(prediction_id),

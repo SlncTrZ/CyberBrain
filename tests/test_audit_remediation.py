@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime, timedelta
-from typing import Any
 from uuid import uuid4
 
 import pytest
@@ -259,8 +258,40 @@ def test_f02_duplicate_fingerprint_does_not_reject_distinct_content() -> None:
     eval_dup = gate.evaluate(request, result_true_dup)
     assert eval_dup.candidates[1].decision == PromotionDecision.REJECT
     assert "duplicate_candidate_in_run" in eval_dup.candidates[1].reasons
+    assert "evidence_merged_from_duplicate" in eval_dup.candidates[0].reasons
     # First candidate merged both evidence IDs without evidence loss
     assert set(eval_dup.candidates[0].evidence_ids) == {
+        "11111111-1111-4111-8111-111111111111",
+        "22222222-2222-4222-8222-222222222222",
+    }
+    assert set(result_true_dup.candidates[0].evidence_ids) == {
+        "11111111-1111-4111-8111-111111111111",
+        "22222222-2222-4222-8222-222222222222",
+    }
+
+    # Verify evidence union transfers through to writeback
+    from cyberbrain.dreaming.writeback import DreamKnowledgeWriter
+    from cyberbrain.knowledge.evolution import KnowledgeEvolutionService
+
+    repo = FakeRepository()
+    writer = DreamKnowledgeWriter(
+        KnowledgeEvolutionService(
+            repository=repo,
+            embedding=FakeEmbedding(),
+            collection="cyberbrain_knowledge",
+        )
+    )
+    writes = writer.write_promoted(
+        request=request,
+        result=result_true_dup,
+        gate=eval_dup,
+        dream_run_id="run-dup-writeback",
+    )
+    assert len(writes) == 2
+    assert writes[0].status.value == "written"
+    assert writes[0].evolution is not None
+    written_ev = {str(eid) for eid in writes[0].evolution.record.evidence_ids}
+    assert written_ev == {
         "11111111-1111-4111-8111-111111111111",
         "22222222-2222-4222-8222-222222222222",
     }
@@ -402,6 +433,16 @@ def test_f07_max_depth_enforcement_and_validation() -> None:
     with pytest.raises(ValueError, match="max_depth must be between 0 and 5"):
         engine.derive_inferences([edge_ab, edge_bc], max_depth=-1)
 
+    # When budget is exceeded, counterfactual sandbox must report incomplete and NOT consistent
+    engine_low_budget = BoundedReasoningEngine(max_comparisons=1)
+    sandbox_res = engine_low_budget.evaluate_counterfactual(
+        hypothetical_edges=[edge_ab],
+        base_edges=[edge_bc],
+    )
+    assert sandbox_res.is_incomplete is True
+    assert sandbox_res.is_consistent is False
+    assert "Cannot conclude consistent" in sandbox_res.summary
+
 
 # --- F08: Symmetric inference requires verified target anchor ---
 def test_f08_symmetric_inference_requires_verified_target_anchor() -> None:
@@ -463,41 +504,92 @@ def test_f09_typed_evidence_union_preserves_both_knowledge_and_episode() -> None
     assert types == {"knowledge", "episode"}
     assert all(ev.id == shared_uuid for ev in derived_ev)
 
+    # When capacity (32) exceeded, engine refuses assertion and does NOT slice proofs
+    ev_many_1 = tuple(EvidenceRef(record_type="knowledge", id=uuid4()) for _ in range(20))
+    ev_many_2 = tuple(EvidenceRef(record_type="episode", id=uuid4()) for _ in range(15))
+    edge_large_1 = RelationEdge(
+        kind=RelationKind.DEPENDS_ON,
+        source=ent_a,
+        target=ent_b,
+        target_record_id=uuid4(),
+        evidence=ev_many_1,
+        status=RelationStatus.ACCEPTED,
+        valid_from=NOW,
+        review_note="Verified note",
+    )
+    edge_large_2 = RelationEdge(
+        kind=RelationKind.DEPENDS_ON,
+        source=ent_b,
+        target=ent_c,
+        target_record_id=uuid4(),
+        evidence=ev_many_2,
+        status=RelationStatus.ACCEPTED,
+        valid_from=NOW,
+        review_note="Verified note",
+    )
+    inferred_over = engine.derive_inferences([edge_large_1, edge_large_2])
+    assert inferred_over == []
+
 
 # --- F10: Adapter resolve path refuses heuristic correlation on incomplete scan ---
 @pytest.mark.asyncio
-async def test_f10_partial_pending_scan_refuses_heuristic_correlation() -> None:
+async def test_f10_real_invoker_adapter_chain_refuses_heuristic_on_partial_scan() -> None:
     from cyberbrain.agent_adapter.adapter import UniversalAgentAdapter
+    from cyberbrain.agent_adapter.mcp_client import MCPAgentClient
     from cyberbrain.agent_adapter.models import AgentScope, Observation
-    from tests.agent_adapter.fakes import FakeCyberBrainClient
+    from tests.agent_adapter.test_mcp_client import FakeAsyncInvoker
 
-    # Fake client returns a dict with items and may_be_incomplete=True
-    class PartialClient(FakeCyberBrainClient):
-        async def prediction_pending(self, **kwargs: Any) -> dict[str, Any]:
-            return {
-                "items": [
-                    {
-                        "id": "p-single",
-                        "correlation_id": "corr-partial-1",
-                        "expected_outcome": "Outcome",
-                    }
-                ],
-                "may_be_incomplete": True,
-                "returned": 1,
+    invoker = FakeAsyncInvoker()
+    invoker.responses["prediction_pending"] = {
+        "items": [
+            {
+                "id": "pred-env-1",
+                "correlation_id": "corr-env-100",
+                "expected_outcome": "Outcome",
             }
-
-    adapter = UniversalAgentAdapter(PartialClient())
-    scope = AgentScope(session_id="s-part", agent="agent-pi")
+        ],
+        "returned": 1,
+        "may_be_incomplete": True,
+        "scan_limit": 10000,
+        "filters": {"session_id": "s-env"},
+    }
+    client = MCPAgentClient(invoker)
+    adapter = UniversalAgentAdapter(client)
+    scope = AgentScope(session_id="s-env", agent="agent-pi")
     obs = Observation(
         observed_outcome="Completed",
         assessment="confirmed",
         event_time=NOW,
-        correlation_id="corr-partial-1",
+        correlation_id="corr-env-100",
     )
 
+    # 1. Partial scan: refuses heuristic correlation
     match, record = await adapter.resolve_prediction(observation=obs, scope=scope)
-
-    # Incomplete scan: must fail closed, NOT resolve based on partial list!
     assert match.prediction_id is None
     assert match.reason_code == "incomplete_scan_cannot_verify_correlation_uniqueness"
     assert record is None
+    assert not any(call[0] == "prediction_resolve" for call in invoker.calls)
+
+    # 2. Complete scan: verifies uniqueness and executes resolve
+    invoker.responses["prediction_pending"] = {
+        "items": [
+            {
+                "id": "pred-env-1",
+                "correlation_id": "corr-env-100",
+                "expected_outcome": "Outcome",
+            }
+        ],
+        "returned": 1,
+        "may_be_incomplete": False,
+        "scan_limit": 10000,
+        "filters": {"session_id": "s-env"},
+    }
+    invoker.responses["prediction_resolve"] = {
+        "id": "outcome-env-1",
+        "prediction_id": "pred-env-1",
+    }
+    match2, record2 = await adapter.resolve_prediction(observation=obs, scope=scope)
+    assert match2.prediction_id == "pred-env-1"
+    assert match2.reason_code == "correlation_id_match"
+    assert record2 is not None
+    assert any(call[0] == "prediction_resolve" for call in invoker.calls)

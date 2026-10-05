@@ -98,15 +98,11 @@ class FakeCyberBrainClient:
         self._record("prediction_resolve", payload)
         return {"id": "outcome-new", **payload}
 
-    async def prediction_pending(
-        self, **kwargs: Any
-    ) -> list[dict[str, Any]]:
+    async def prediction_pending(self, **kwargs: Any) -> list[dict[str, Any]]:
         self._record("prediction_pending", kwargs)
         return self.pending_rows[: int(kwargs.get("limit", 5))]
 
-    async def prediction_pending_envelope(
-        self, **kwargs: Any
-    ) -> dict[str, Any]:
+    async def prediction_pending_envelope(self, **kwargs: Any) -> dict[str, Any]:
         self._record("prediction_pending_envelope", kwargs)
         items = self.pending_rows[: int(kwargs.get("limit", 5))]
         return {

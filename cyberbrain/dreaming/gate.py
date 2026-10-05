@@ -70,34 +70,36 @@ class DreamEvidenceGate:
             fp = self._candidate_fingerprint(candidate)
             if fp in seen_fingerprints:
                 first_idx = seen_fingerprints[fp]
-                first_decision = decisions[first_idx]
+                first_candidate = result.candidates[first_idx]
                 merged_ids = list(
-                    dict.fromkeys(first_decision.evidence_ids + list(candidate.evidence_ids))
+                    dict.fromkeys(first_candidate.evidence_ids + list(candidate.evidence_ids))
                 )
-                merged_ev = [evidence_by_id[eid] for eid in merged_ids if eid in evidence_by_id]
-                new_strength = self._evidence_strength(merged_ev)
-                new_promo_conf = self._promotion_confidence(
-                    first_decision.reasoner_confidence,
-                    new_strength,
+                merged_candidate = DreamCandidate(
+                    entity_name=first_candidate.entity_name,
+                    entity_type=first_candidate.entity_type,
+                    summary=first_candidate.summary,
+                    content=first_candidate.content,
+                    evidence_ids=merged_ids,
+                    confidence=max(first_candidate.confidence, candidate.confidence),
+                    classification=first_candidate.classification,
+                    negative_knowledge=first_candidate.negative_knowledge,
+                    context=dict(first_candidate.context),
                 )
-                new_decision = first_decision.decision
-                reasons = list(first_decision.reasons)
-                if (
-                    first_decision.decision == PromotionDecision.REVIEW
-                    and new_promo_conf >= self._policy.promote_threshold
-                ):
-                    new_decision = PromotionDecision.PROMOTE
-                    reasons = [r for r in reasons if r != "promotion_confidence_requires_review"]
-                    reasons.append("promotion_threshold_met_after_evidence_merge")
+                result.candidates[first_idx] = merged_candidate
+
+                reevaluated = self._evaluate_candidate(
+                    first_idx, merged_candidate, evidence_by_id
+                )
+                reasons = list(reevaluated.reasons)
                 if "evidence_merged_from_duplicate" not in reasons:
                     reasons.append("evidence_merged_from_duplicate")
 
                 decisions[first_idx] = CandidateGateResult(
-                    candidate_index=first_decision.candidate_index,
-                    decision=new_decision,
-                    reasoner_confidence=first_decision.reasoner_confidence,
-                    evidence_strength=new_strength,
-                    promotion_confidence=new_promo_conf,
+                    candidate_index=first_idx,
+                    decision=reevaluated.decision,
+                    reasoner_confidence=reevaluated.reasoner_confidence,
+                    evidence_strength=reevaluated.evidence_strength,
+                    promotion_confidence=reevaluated.promotion_confidence,
                     evidence_ids=merged_ids,
                     reasons=reasons,
                 )
