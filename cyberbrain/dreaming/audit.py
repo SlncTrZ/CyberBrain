@@ -103,18 +103,15 @@ class DreamRunAuditStore:
     def assert_visible(self, dream_run_id: str) -> None:
         with self._connect() as connection:
             row = connection.execute(
-                "SELECT authority_json FROM dream_runs WHERE id=?", (dream_run_id,),
+                "SELECT authority_json FROM dream_runs WHERE id=?",
+                (dream_run_id,),
             ).fetchone()
         if row is None or not snapshot_visible(row["authority_json"]):
             raise KeyError(dream_run_id)
 
     def start(self, *, dream_run_id: str, request: DreamReasoningRequest) -> DreamRun:
         evidence_ids = sorted(
-            {
-                item.id
-                for items in request.evidence_by_topic.values()
-                for item in items
-            }
+            {item.id for items in request.evidence_by_topic.values() for item in items}
         )
         now = datetime.now(UTC).isoformat()
         with self._connect() as connection:
@@ -218,7 +215,10 @@ class DreamRunAuditStore:
         raw = row["request_json"]
         if not raw:
             raise ValueError("dream run does not contain a request snapshot")
-        value = json.loads(str(raw))
+        try:
+            value = json.loads(str(raw))
+        except (json.JSONDecodeError, TypeError, ValueError) as exc:
+            raise ValueError("corrupt request snapshot JSON in dream run") from exc
         if not isinstance(value, dict):
             raise ValueError("dream request snapshot must be an object")
         return value
@@ -320,7 +320,13 @@ class DreamRunAuditStore:
             ).fetchall()
         return [dict(row) for row in rows]
 
-    def pending_reviews(self, *, limit: int = 100, after: tuple | None = None) -> list[dict]:
+    def pending_reviews(
+        self,
+        *,
+        limit: int = 100,
+        after: tuple | None = None,
+        project: str | None = None,
+    ) -> list[dict]:
         if not 1 <= limit <= 500:
             raise ValueError("limit must be between 1 and 500")
         clause = ""
@@ -328,6 +334,14 @@ class DreamRunAuditStore:
         if after is not None:
             clause = " AND (d.created_at, d.dream_run_id, d.candidate_index) > (?, ?, ?)"
             parameters.extend(after)
+        if project is not None:
+            clause += (
+                " AND coalesce("
+                "json_extract(d.candidate_json, '$.context.project'), "
+                "json_extract(d.candidate_json, '$.project')"
+                ") = ?"
+            )
+            parameters.append(project)
         scope_clause, scope_params = snapshot_sql_filter("a.authority_json")
         clause += scope_clause
         parameters.extend(scope_params)
@@ -342,7 +356,9 @@ class DreamRunAuditStore:
                   ON r.dream_run_id=d.dream_run_id
                  AND r.candidate_index=d.candidate_index
                 WHERE d.decision='review' AND r.dream_run_id IS NULL
-                """ + clause + """
+                """
+                + clause
+                + """
                 ORDER BY d.created_at ASC, d.dream_run_id ASC, d.candidate_index ASC
                 LIMIT ?
                 """,
@@ -422,12 +438,16 @@ class DreamRunAuditStore:
 
     @staticmethod
     def _row_to_run(row: sqlite3.Row) -> DreamRun:
+        try:
+            input_evidence_ids = list(json.loads(row["input_evidence_ids_json"]))
+        except (json.JSONDecodeError, TypeError, ValueError):
+            input_evidence_ids = []
         return DreamRun(
             id=str(row["id"]),
             session_id=str(row["session_id"]),
             request_id=str(row["request_id"]),
             status=str(row["status"]),
-            input_evidence_ids=list(json.loads(row["input_evidence_ids_json"])),
+            input_evidence_ids=input_evidence_ids,
             candidate_count=int(row["candidate_count"]),
             created_at=str(row["created_at"]),
             completed_at=row["completed_at"],

@@ -68,3 +68,10 @@ class CyberBrainClient(Protocol):
         limit: int = 5,
         **filters: Any,
     ) -> list[dict[str, Any]]: ...
+
+    async def prediction_pending_envelope(
+        self,
+        *,
+        limit: int = 5,
+        **filters: Any,
+    ) -> dict[str, Any]: ...

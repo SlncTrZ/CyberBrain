@@ -163,7 +163,7 @@ def test_pending_reviews_filters_by_project(tmp_path) -> None:
                 0.5,
                 0.6,
                 "[]",
-                "[\"test\"]",
+                '["test"]',
                 now.isoformat(),
             ),
         )
@@ -184,7 +184,7 @@ def test_pending_reviews_filters_by_project(tmp_path) -> None:
                 0.5,
                 0.6,
                 "[]",
-                "[\"test\"]",
+                '["test"]',
                 now.isoformat(),
             ),
         )

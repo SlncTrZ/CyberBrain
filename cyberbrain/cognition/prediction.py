@@ -160,10 +160,23 @@ class PredictionLearningService:
             correlation_id=correlation_id,
         )
         if data.correlation_id:
-            pending_list = self.pending(session_id=session_id, agent=agent, limit=100)
-            for item in pending_list.items:
-                if item.correlation_id == data.correlation_id:
-                    return self._load_prediction(item.prediction_id)
+            filters = {
+                key: value
+                for key, value in {
+                    "session_id": session_id,
+                    "agent": agent,
+                    "project": project,
+                }.items()
+                if value is not None
+            }
+            existing = self._scroll_cognition(
+                source="cognitive_prediction",
+                limit=1000,
+                filters=filters,
+            )
+            for record, cognition in existing:
+                if str(cognition.get("correlation_id") or "") == data.correlation_id:
+                    return record
 
         prediction_id = uuid4()
         cognition: dict[str, Any] = {
@@ -542,12 +555,14 @@ class PredictionLearningService:
         authority = current_authority()
         if authority is None:
             point = self._repository.retrieve(
-                self._episodic_collection, point_id=prediction_id,
+                self._episodic_collection,
+                point_id=prediction_id,
             )
         else:
             plan = enforce_operation(TenancyOperation.MEMORY_GET)
             point = self._repository.retrieve(
-                self._episodic_collection, point_id=prediction_id,
+                self._episodic_collection,
+                point_id=prediction_id,
                 qdrant_filter={"must": scope_conditions(plan)},
             )
         if point is None:

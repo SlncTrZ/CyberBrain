@@ -292,9 +292,7 @@ class MultipassDreamReasoner(DreamReasoner):
     @staticmethod
     def _matching(items: Iterable[EvidenceItem], markers: tuple[str, ...]) -> list[EvidenceItem]:
         return [
-            item
-            for item in items
-            if any(marker in item.content.casefold() for marker in markers)
+            item for item in items if any(marker in item.content.casefold() for marker in markers)
         ]
 
     @staticmethod

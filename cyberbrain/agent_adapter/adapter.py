@@ -257,13 +257,29 @@ class UniversalAgentAdapter:
             )
             return OutcomeMatch(observation.prediction_id, "direct_prediction_id"), record
 
-        pending = await self.client.prediction_pending(
+        pending_result = await self.client.prediction_pending(
             session_id=scope.session_id,
             agent=scope.agent,
             project=scope.project,
             limit=20,
         )
-        match = self.outcome_match_policy.match(pending, observation)
+        may_be_incomplete = False
+        if isinstance(pending_result, dict):
+            pending_items = list(pending_result.get("items") or [])
+            may_be_incomplete = bool(pending_result.get("may_be_incomplete"))
+        else:
+            pending_items = list(pending_result)
+
+        if observation.correlation_id and may_be_incomplete:
+            return (
+                OutcomeMatch(
+                    None,
+                    "incomplete_scan_cannot_verify_correlation_uniqueness",
+                ),
+                None,
+            )
+
+        match = self.outcome_match_policy.match(pending_items, observation)
         if match.prediction_id is None:
             return match, None
 

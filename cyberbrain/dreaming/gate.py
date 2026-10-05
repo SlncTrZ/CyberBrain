@@ -62,16 +62,45 @@ class DreamEvidenceGate:
             raise ValueError("Dream result request_id does not match request")
 
         evidence_by_id = {
-            item.id: item
-            for items in request.evidence_by_topic.values()
-            for item in items
+            item.id: item for items in request.evidence_by_topic.values() for item in items
         }
         seen_fingerprints: dict[str, int] = {}
-        decisions = []
+        decisions: list[CandidateGateResult] = []
         for index, candidate in enumerate(result.candidates):
             fp = self._candidate_fingerprint(candidate)
             if fp in seen_fingerprints:
                 first_idx = seen_fingerprints[fp]
+                first_decision = decisions[first_idx]
+                merged_ids = list(
+                    dict.fromkeys(first_decision.evidence_ids + list(candidate.evidence_ids))
+                )
+                merged_ev = [evidence_by_id[eid] for eid in merged_ids if eid in evidence_by_id]
+                new_strength = self._evidence_strength(merged_ev)
+                new_promo_conf = self._promotion_confidence(
+                    first_decision.reasoner_confidence,
+                    new_strength,
+                )
+                new_decision = first_decision.decision
+                reasons = list(first_decision.reasons)
+                if (
+                    first_decision.decision == PromotionDecision.REVIEW
+                    and new_promo_conf >= self._policy.promote_threshold
+                ):
+                    new_decision = PromotionDecision.PROMOTE
+                    reasons = [r for r in reasons if r != "promotion_confidence_requires_review"]
+                    reasons.append("promotion_threshold_met_after_evidence_merge")
+                if "evidence_merged_from_duplicate" not in reasons:
+                    reasons.append("evidence_merged_from_duplicate")
+
+                decisions[first_idx] = CandidateGateResult(
+                    candidate_index=first_decision.candidate_index,
+                    decision=new_decision,
+                    reasoner_confidence=first_decision.reasoner_confidence,
+                    evidence_strength=new_strength,
+                    promotion_confidence=new_promo_conf,
+                    evidence_ids=merged_ids,
+                    reasons=reasons,
+                )
                 decisions.append(
                     self._result(
                         index,
@@ -79,20 +108,31 @@ class DreamEvidenceGate:
                         PromotionDecision.REJECT,
                         0.0,
                         0.0,
-                        ["duplicate_candidate_in_run", f"duplicate_of_index_{first_idx}"],
+                        ["duplicate_candidate_in_run", f"merged_into_index_{first_idx}"],
                     )
                 )
             else:
                 seen_fingerprints[fp] = index
-                decisions.append(
-                    self._evaluate_candidate(index, candidate, evidence_by_id)
-                )
+                decisions.append(self._evaluate_candidate(index, candidate, evidence_by_id))
         return DreamGateResult(request_id=request.request_id, candidates=decisions)
 
     @staticmethod
     def _candidate_fingerprint(candidate: DreamCandidate) -> str:
-        text = candidate.summary or candidate.content
-        return re.sub(r"\s+", " ", text.casefold().strip())
+        content_norm = re.sub(
+            r"\s+", " ", (candidate.content or candidate.summary or "").casefold().strip()
+        )
+        entity_type = (candidate.entity_type or "").casefold().strip()
+        classification = (candidate.classification or "").casefold().strip()
+        topic = (
+            str(
+                (candidate.context or {}).get("topic")
+                if isinstance(candidate.context, dict)
+                else ""
+            )
+            .casefold()
+            .strip()
+        )
+        return f"{content_norm}::{entity_type}::{classification}::{topic}"
 
     def _evaluate_candidate(
         self,

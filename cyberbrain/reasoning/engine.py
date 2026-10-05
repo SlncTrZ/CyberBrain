@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+from uuid import UUID
+
 from cyberbrain.reasoning.models import (
     ConflictType,
     ContradictionConflict,
@@ -22,8 +24,17 @@ class BoundedReasoningEngine:
     """Bounded, deterministic inference and contradiction detection over typed relations.
 
     Core Invariant: Derived assertions are NOT canonical truth. They carry explicit
-    premise provenance and require human/admin review before promotion.
+    premise provenance, inherit intersection of validity intervals, and require review.
     """
+
+    def __init__(
+        self,
+        *,
+        max_inferences: int = 100,
+        max_comparisons: int = 10_000,
+    ) -> None:
+        self._max_inferences = max_inferences
+        self._max_comparisons = max_comparisons
 
     def detect_contradictions(
         self,
@@ -31,11 +42,15 @@ class BoundedReasoningEngine:
         existing_edges: list[RelationEdge],
     ) -> list[ContradictionConflict]:
         conflicts: list[ContradictionConflict] = []
+        comparisons = 0
 
         for cand in candidate_edges:
             cand_pair = self._endpoint_key(cand.source, cand.target)
 
             for exist in existing_edges:
+                comparisons += 1
+                if comparisons > self._max_comparisons:
+                    break
                 if cand.relation_id and cand.relation_id == exist.relation_id:
                     continue
                 exist_pair = self._endpoint_key(exist.source, exist.target)
@@ -65,8 +80,7 @@ class BoundedReasoningEngine:
                 if (cand_pair == exist_pair or cand_pair == exist_rev) and (
                     (cand.kind == RelationKind.PART_OF and exist.kind == RelationKind.CONTRADICTS)
                     or (
-                        cand.kind == RelationKind.CONTRADICTS
-                        and exist.kind == RelationKind.PART_OF
+                        cand.kind == RelationKind.CONTRADICTS and exist.kind == RelationKind.PART_OF
                     )
                 ):
                     conflicts.append(
@@ -103,14 +117,35 @@ class BoundedReasoningEngine:
         edges: list[RelationEdge],
         *,
         max_depth: int = 2,
+        source_record_ids: dict[str, UUID] | None = None,
     ) -> list[DerivedAssertion]:
+        if not 0 <= max_depth <= 5:
+            raise ValueError("max_depth must be between 0 and 5")
+        if max_depth == 0:
+            return []
+
+        # Reject any premise that is explicitly rejected (F04)
+        eligible = [e for e in edges if e.status != RelationStatus.REJECTED]
         derived: list[DerivedAssertion] = []
         seen_derived_keys: set[str] = set()
 
-        # Rule 1: Symmetric contradiction
+        # Map known target entity keys to their verified record IDs
+        known_record_ids: dict[str, UUID] = dict(source_record_ids or {})
+        for e in eligible:
+            known_record_ids[e.target.key] = e.target_record_id
+
+        # Rule 1: Symmetric contradiction (depth >= 1)
         # contradicts(A, B) => contradicts(B, A)
-        for edge in edges:
+        for edge in eligible:
+            if len(derived) >= self._max_inferences:
+                break
             if edge.kind == RelationKind.CONTRADICTS:
+                # F08: Target of reversed edge is edge.source.
+                # Must have verified target_record_id anchor for edge.source!
+                target_anchor = known_record_ids.get(edge.source.key)
+                if target_anchor is None:
+                    continue
+
                 rev_key = f"contradicts:{self._endpoint_key(edge.target, edge.source)}"
                 if rev_key not in seen_derived_keys:
                     seen_derived_keys.add(rev_key)
@@ -118,10 +153,11 @@ class BoundedReasoningEngine:
                         kind=RelationKind.CONTRADICTS,
                         source=edge.target,
                         target=edge.source,
-                        target_record_id=edge.target_record_id,
+                        target_record_id=target_anchor,
                         evidence=tuple(edge.evidence),
                         status=RelationStatus.PROPOSED,
                         valid_from=edge.valid_from,
+                        valid_until=edge.valid_until,
                         review_note=(
                             "Derived symmetric contradiction from premise edge "
                             f"{edge.relation_id or 'hypothetical'}"
@@ -136,52 +172,76 @@ class BoundedReasoningEngine:
                         )
                     )
 
-        # Rule 2: Transitive dependency (depth-bounded)
+        # Rule 2: Transitive dependency (requires depth >= 2)
         # depends_on(A, B) & depends_on(B, C) => depends_on(A, C)
-        depends_edges = [e for e in edges if e.kind == RelationKind.DEPENDS_ON]
-        by_source: dict[str, list[RelationEdge]] = {}
-        for e in depends_edges:
-            src_key = self._entity_key(e.source)
-            by_source.setdefault(src_key, []).append(e)
+        if max_depth >= 2:
+            depends_edges = [e for e in eligible if e.kind == RelationKind.DEPENDS_ON]
+            by_source: dict[str, list[RelationEdge]] = {}
+            for e in depends_edges:
+                src_key = self._entity_key(e.source)
+                by_source.setdefault(src_key, []).append(e)
 
-        for edge_ab in depends_edges:
-            b_key = self._entity_key(edge_ab.target)
-            next_edges = by_source.get(b_key, [])
-            for edge_bc in next_edges:
-                c_key = self._entity_key(edge_bc.target)
-                a_key = self._entity_key(edge_ab.source)
-                if a_key == c_key:
-                    continue  # skip trivial cycle
-                trans_key = f"depends_on:{a_key}->{c_key}"
-                if trans_key not in seen_derived_keys:
-                    seen_derived_keys.add(trans_key)
-                    all_ev_map = {ev.id: ev for ev in (edge_ab.evidence + edge_bc.evidence)}
-                    all_ev: tuple[EvidenceRef, ...] = tuple(all_ev_map.values())
-                    derived_edge = RelationEdge(
-                        kind=RelationKind.DEPENDS_ON,
-                        source=edge_ab.source,
-                        target=edge_bc.target,
-                        target_record_id=edge_bc.target_record_id,
-                        evidence=all_ev,
-                        status=RelationStatus.PROPOSED,
-                        valid_from=edge_ab.valid_from,
-                        review_note=(
-                            f"Derived transitive dependency via '{edge_ab.target.entity_name}' "
-                            f"from premises ({edge_ab.relation_id or 'e1'}, "
-                            f"{edge_bc.relation_id or 'e2'})"
-                        ),
-                    )
-                    derived.append(
-                        DerivedAssertion(
-                            edge=derived_edge,
-                            rule="transitive_dependency",
-                            premises=(
-                                edge_ab.relation_id or "premise_ab",
-                                edge_bc.relation_id or "premise_bc",
+            for edge_ab in depends_edges:
+                if len(derived) >= self._max_inferences:
+                    break
+                b_key = self._entity_key(edge_ab.target)
+                next_edges = by_source.get(b_key, [])
+                for edge_bc in next_edges:
+                    if len(derived) >= self._max_inferences:
+                        break
+                    c_key = self._entity_key(edge_bc.target)
+                    a_key = self._entity_key(edge_ab.source)
+                    if a_key == c_key:
+                        continue  # skip trivial self-cycle
+
+                    # Check temporal interval intersection (F04)
+                    valid_from = max(edge_ab.valid_from, edge_bc.valid_from)
+                    valid_until = None
+                    if edge_ab.valid_until is not None and edge_bc.valid_until is not None:
+                        valid_until = min(edge_ab.valid_until, edge_bc.valid_until)
+                    elif edge_ab.valid_until is not None:
+                        valid_until = edge_ab.valid_until
+                    elif edge_bc.valid_until is not None:
+                        valid_until = edge_bc.valid_until
+
+                    if valid_until is not None and valid_until <= valid_from:
+                        # Disjoint validity intervals; cannot infer dependency
+                        continue
+
+                    trans_key = f"depends_on:{a_key}->{c_key}"
+                    if trans_key not in seen_derived_keys:
+                        seen_derived_keys.add(trans_key)
+                        all_ev_map = {
+                            (ev.record_type, ev.id): ev
+                            for ev in (edge_ab.evidence + edge_bc.evidence)
+                        }
+                        all_ev: tuple[EvidenceRef, ...] = tuple(all_ev_map.values())[:32]
+                        derived_edge = RelationEdge(
+                            kind=RelationKind.DEPENDS_ON,
+                            source=edge_ab.source,
+                            target=edge_bc.target,
+                            target_record_id=edge_bc.target_record_id,
+                            evidence=all_ev,
+                            status=RelationStatus.PROPOSED,
+                            valid_from=valid_from,
+                            valid_until=valid_until,
+                            review_note=(
+                                f"Derived transitive dependency via '{edge_ab.target.entity_name}' "
+                                f"from premises ({edge_ab.relation_id or 'e1'}, "
+                                f"{edge_bc.relation_id or 'e2'})"
                             ),
-                            confidence=0.75,
                         )
-                    )
+                        derived.append(
+                            DerivedAssertion(
+                                edge=derived_edge,
+                                rule="transitive_dependency",
+                                premises=(
+                                    edge_ab.relation_id or "premise_ab",
+                                    edge_bc.relation_id or "premise_bc",
+                                ),
+                                confidence=0.75,
+                            )
+                        )
 
         return derived
 
@@ -196,6 +256,22 @@ class BoundedReasoningEngine:
             candidate_edges=hypothetical_edges,
             existing_edges=base_edges,
         )
+
+        # Internal conflict detection within hypothetical_edges (F03)
+        internal_conflicts = self.detect_contradictions(
+            candidate_edges=hypothetical_edges,
+            existing_edges=hypothetical_edges,
+        )
+        seen_conflict_keys = {
+            (c.conflict_type, c.source_edge.relation_id, c.conflicting_edge.relation_id)
+            for c in contradictions
+        }
+        for c in internal_conflicts:
+            k1 = (c.conflict_type, c.source_edge.relation_id, c.conflicting_edge.relation_id)
+            k2 = (c.conflict_type, c.conflicting_edge.relation_id, c.source_edge.relation_id)
+            if k1 not in seen_conflict_keys and k2 not in seen_conflict_keys:
+                seen_conflict_keys.add(k1)
+                contradictions.append(c)
 
         all_edges = base_edges + hypothetical_edges
         inferences = self.derive_inferences(all_edges)
@@ -228,11 +304,10 @@ class BoundedReasoningEngine:
 
     @staticmethod
     def _endpoint_key(src: EntityRef, tgt: EntityRef) -> str:
-        return (
-            f"{src.domain}:{src.topic}:{src.entity_name}->"
-            f"{tgt.domain}:{tgt.topic}:{tgt.entity_name}"
-        )
+        # Canonical entity identity including scope/context (F05)
+        return f"{src.key}->{tgt.key}"
 
     @staticmethod
     def _entity_key(entity: EntityRef) -> str:
-        return f"{entity.domain}:{entity.topic}:{entity.entity_name}"
+        # Canonical entity identity including scope/context (F05)
+        return entity.key

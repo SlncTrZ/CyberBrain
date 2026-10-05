@@ -92,9 +92,11 @@ def test_derive_inferences_symmetric_contradiction() -> None:
     engine = BoundedReasoningEngine()
     ent_a = _entity("claim_a")
     ent_b = _entity("claim_b")
+    uuid_a = uuid4()
 
     edge = _edge(RelationKind.CONTRADICTS, ent_a, ent_b)
-    derived = engine.derive_inferences([edge])
+    # Target anchor for ent_a supplied via source_record_ids (F08)
+    derived = engine.derive_inferences([edge], source_record_ids={ent_a.key: uuid_a})
 
     assert len(derived) == 1
     inf = derived[0]
@@ -103,6 +105,7 @@ def test_derive_inferences_symmetric_contradiction() -> None:
     assert inf.edge.kind == RelationKind.CONTRADICTS
     assert inf.edge.source.entity_name == "claim_b"
     assert inf.edge.target.entity_name == "claim_a"
+    assert inf.edge.target_record_id == uuid_a
     # Invariant: derived assertions are proposed, never auto-accepted
     assert inf.edge.status == RelationStatus.PROPOSED
 
