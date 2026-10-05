@@ -6,6 +6,7 @@ import hashlib
 import json
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 from uuid import UUID
 
 import mcp.types as types
@@ -100,8 +101,11 @@ def _help_payload() -> str:
     content = f"{guide.rstrip()}\n\n{reference}"
     contract_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
     updated_at = next(
-        (line.removeprefix("> Contract guide updated: ").strip()
-         for line in guide.splitlines() if line.startswith("> Contract guide updated: ")),
+        (
+            line.removeprefix("> Contract guide updated: ").strip()
+            for line in guide.splitlines()
+            if line.startswith("> Contract guide updated: ")
+        ),
         "not declared",
     )
     return (
@@ -139,7 +143,8 @@ def _project_recall_rows(rows: list[dict], *, view: str) -> list[dict]:
         extensions = projected.get("extensions")
         if isinstance(extensions, dict):
             projected["extensions"] = {
-                key: value for key, value in extensions.items()
+                key: value
+                for key, value in extensions.items()
                 if key not in {INDEX_KEY, RELATIONS_KEY}
             }
             if RELATIONS_KEY in extensions:
@@ -233,7 +238,7 @@ def _tool_catalog() -> list[types.Tool]:
         types.Tool(
             name="knowledge_relation_review",
             description="Accept/reject one explicit assertion with reviewed evidence and a note; "
-                        "requires admin_review, read/write and active source version.",
+            "requires admin_review, read/write and active source version.",
             inputSchema=RelationReviewRequest.model_json_schema(),
         ),
         types.Tool(
@@ -662,6 +667,7 @@ def _tool_catalog() -> list[types.Tool]:
                     "resolution": {"type": "string", "enum": ["approved", "rejected"]},
                     "reviewer": {"type": "string"},
                     "reason": {"type": "string"},
+                    "domain": {"type": "string"},
                 },
                 "required": ["dream_run_id", "candidate_index", "resolution", "reviewer"],
                 "additionalProperties": False,
@@ -694,14 +700,24 @@ def _reserve_tool_quota(name: str, args: dict) -> None:
         return
     charges = {QuotaResource.REQUESTS: 1}
     if name in {
-        "knowledge_store", "memory_store", "tech_store", "conversation_save",
-        "prediction_record", "prediction_resolve", "dream_review_resolve",
-        "knowledge_relation_propose", "knowledge_relation_review",
+        "knowledge_store",
+        "memory_store",
+        "tech_store",
+        "conversation_save",
+        "prediction_record",
+        "prediction_resolve",
+        "dream_review_resolve",
+        "knowledge_relation_propose",
+        "knowledge_relation_review",
     }:
         charges[QuotaResource.WRITES] = 1
     if name in {
-        "knowledge_search", "memory_search", "tech_find", "ai_memory_read",
-        "conversation_recall", "knowledge_timeline",
+        "knowledge_search",
+        "memory_search",
+        "tech_find",
+        "ai_memory_read",
+        "conversation_recall",
+        "knowledge_timeline",
     }:
         default_limit = 100 if name == "knowledge_timeline" else 5
         limit = args.get("limit", default_limit)
@@ -732,22 +748,42 @@ def _reject_identity_trust_override(args: dict) -> None:
 def _authorize_tool(name: str) -> None:
     reads = {
         "knowledge_relations",
-        "knowledge_search", "memory_search", "knowledge_get", "memory_get",
-        "knowledge_timeline", "tech_find", "ai_memory_read", "conversation_recall",
-        "prediction_observe", "prediction_pending", "calibration_observe", "dream_status",
+        "knowledge_search",
+        "memory_search",
+        "knowledge_get",
+        "memory_get",
+        "knowledge_timeline",
+        "tech_find",
+        "ai_memory_read",
+        "conversation_recall",
+        "prediction_observe",
+        "prediction_pending",
+        "calibration_observe",
+        "dream_status",
     }
     writes = {
         "knowledge_relation_propose",
-        "knowledge_store", "memory_store", "tech_store", "conversation_save",
-        "prediction_record", "prediction_resolve", "dream_enqueue", "dream_reason_submit",
+        "knowledge_store",
+        "memory_store",
+        "tech_store",
+        "conversation_save",
+        "prediction_record",
+        "prediction_resolve",
+        "dream_enqueue",
+        "dream_reason_submit",
     }
     reviews = {"dream_reviews", "dream_review_resolve", "knowledge_relation_review"}
     background = {"dream_reason_claim"}
     operation = (
-        OperationClass.READ if name in reads else
-        OperationClass.WRITE if name in writes else
-        OperationClass.ADMIN_REVIEW if name in reviews else
-        OperationClass.BACKGROUND_REASONING if name in background else None
+        OperationClass.READ
+        if name in reads
+        else OperationClass.WRITE
+        if name in writes
+        else OperationClass.ADMIN_REVIEW
+        if name in reviews
+        else OperationClass.BACKGROUND_REASONING
+        if name in background
+        else None
     )
     if operation is None:
         return
@@ -755,7 +791,9 @@ def _authorize_tool(name: str) -> None:
     if authority is None:
         raise ConfigurationError("caller authority is not bound")
     decision = ScopeAuthorizationPolicy.decide(
-        authority.grant, requested_scope=IdentityScope(), operation=operation,
+        authority.grant,
+        requested_scope=IdentityScope(),
+        operation=operation,
     )
     if not decision.allow:
         raise ConfigurationError("caller authority does not allow this operation")
@@ -836,11 +874,16 @@ def _dispatch_tool(name: str, args: dict) -> list[types.TextContent]:
             result = service.propose(request.source_id, request.bundle)
         else:
             request = RelationReviewRequest.model_validate(args)
-            result = service.review(request.source_id, request.relation_id,
-                                    RelationStatus(request.status), request.note)
-        return _json_text({"outcome": result.outcome.value,
-                           "record": result.record.model_dump(mode="json"),
-                           "previous_id": result.previous_id})
+            result = service.review(
+                request.source_id, request.relation_id, RelationStatus(request.status), request.note
+            )
+        return _json_text(
+            {
+                "outcome": result.outcome.value,
+                "record": result.record.model_dump(mode="json"),
+                "previous_id": result.previous_id,
+            }
+        )
 
     if name == "knowledge_search":
         limit = int(args.pop("limit", 5))
@@ -1222,7 +1265,7 @@ def _dispatch_tool(name: str, args: dict) -> list[types.TextContent]:
 
     if name == "dream_reviews":
         operations = _require_dream_operations()
-        review_args = {"limit": int(args.pop("limit", 100))}
+        review_args: dict[str, Any] = {"limit": int(args.pop("limit", 100))}
         if "cursor" in args:
             review_args["cursor"] = args.pop("cursor")
         return _json_text(operations.pending_reviews(**review_args))
@@ -1236,6 +1279,7 @@ def _dispatch_tool(name: str, args: dict) -> list[types.TextContent]:
                 resolution=str(args.pop("resolution")),
                 reviewer=str(args.pop("reviewer")),
                 reason=args.pop("reason", None),
+                domain=args.pop("domain", None),
             )
         )
 

@@ -56,6 +56,15 @@ class FakeRepository:
     ) -> None:
         self.points[point_id]["payload"].update(payload)
 
+    def retrieve(
+        self,
+        collection: str,
+        point_id: UUID,
+        *,
+        qdrant_filter: dict[str, Any] | None = None,
+    ) -> dict[str, Any] | None:
+        return self.points.get(point_id)
+
     def search(
         self,
         collection: str,
@@ -182,6 +191,7 @@ def test_promoted_dream_writes_provenance_through_evolution() -> None:
     )
 
     assert writes[0].status == DreamWriteStatus.WRITTEN
+    assert writes[0].evolution is not None
     record = writes[0].evolution.record
     assert record.origin.value == "dream"
     assert record.dream_run_id == "dream-run-write"
@@ -210,6 +220,104 @@ def test_promoted_dream_blocks_missing_domain_instead_of_guessing() -> None:
     assert not repo.points
 
 
+def test_promoted_dream_uses_default_domain_when_configured() -> None:
+    repo = FakeRepository()
+    request = _request(include_domain=False)
+    writer = DreamKnowledgeWriter(_service(repo), default_domain="engineering")
+
+    writes = writer.write_promoted(
+        request=request,
+        result=_result(request),
+        gate=_gate(request),
+        dream_run_id="dream-run-write",
+    )
+
+    assert writes[0].status == DreamWriteStatus.WRITTEN
+    assert writes[0].evolution is not None
+    assert writes[0].evolution.record.domain == "engineering"
+    assert len(repo.points) == 1
+
+
+def test_promoted_dream_uses_legacy_context_domain() -> None:
+    repo = FakeRepository()
+    request = _request(include_domain=False)
+    for item in request.evidence_by_topic["cyberbrain"]:
+        item.metadata["context"] = {"legacy_domain": "ops"}
+    writer = DreamKnowledgeWriter(_service(repo))
+
+    writes = writer.write_promoted(
+        request=request,
+        result=_result(request),
+        gate=_gate(request),
+        dream_run_id="dream-run-write",
+    )
+
+    assert writes[0].status == DreamWriteStatus.WRITTEN
+    assert writes[0].evolution is not None
+    assert writes[0].evolution.record.domain == "ops"
+    assert len(repo.points) == 1
+
+
+def test_promoted_dream_blocks_conflicting_evidence_domains_without_override() -> None:
+    repo = FakeRepository()
+    request = _request(include_domain=False)
+    items = request.evidence_by_topic["cyberbrain"]
+    items[0].metadata["domain"] = "code"
+    items[1].metadata["domain"] = "research"
+    writer = DreamKnowledgeWriter(_service(repo), default_domain="engineering")
+
+    writes = writer.write_promoted(
+        request=request,
+        result=_result(request),
+        gate=_gate(request),
+        dream_run_id="dream-run-write",
+    )
+
+    assert writes[0].status == DreamWriteStatus.BLOCKED_METADATA
+    assert writes[0].reason == "missing_or_ambiguous_domain"
+    assert not repo.points
+
+
+def test_manual_approval_uses_domain_override(tmp_path) -> None:
+    repo = FakeRepository()
+    request = _request(include_domain=False)
+    result = _result(request)
+    evidence_ids = [item.id for item in request.evidence_by_topic["cyberbrain"]]
+    gate = DreamGateResult(
+        request_id=request.request_id,
+        candidates=[
+            CandidateGateResult(
+                candidate_index=0,
+                decision=PromotionDecision.REVIEW,
+                reasoner_confidence=0.91,
+                evidence_strength=0.72,
+                promotion_confidence=0.78,
+                evidence_ids=evidence_ids,
+                reasons=["promotion_confidence_requires_review"],
+            )
+        ],
+    )
+    audit = DreamRunAuditStore(tmp_path / "audit_override.sqlite")
+    audit.start(dream_run_id="dream-run-override", request=request)
+    audit.complete(dream_run_id="dream-run-override", result=result, gate=gate)
+    operations = DreamOperations(
+        queue=DreamQueue(tmp_path / "queue_override.sqlite"),
+        audit=audit,
+        writer=DreamKnowledgeWriter(_service(repo)),
+    )
+
+    res = operations.review(
+        dream_run_id="dream-run-override",
+        candidate_index=0,
+        resolution="approved",
+        reviewer="human:test",
+        domain="ops",
+    )
+    assert res["write"]["write_status"] == "written"
+    assert len(repo.points) == 1
+    assert next(iter(repo.points.values()))["payload"]["domain"] == "ops"
+
+
 def test_writeback_coordinator_records_write_audit(tmp_path) -> None:
     repo = FakeRepository()
     request = _request()
@@ -229,6 +337,7 @@ def test_writeback_coordinator_records_write_audit(tmp_path) -> None:
 
     rows = audit.writes("dream-run-write")
     assert writes[0].status == DreamWriteStatus.WRITTEN
+    assert writes[0].evolution is not None
     assert rows[0]["write_status"] == "written"
     assert rows[0]["evolution_outcome"] == "insert_new"
     assert rows[0]["knowledge_id"] == str(writes[0].evolution.record.id)

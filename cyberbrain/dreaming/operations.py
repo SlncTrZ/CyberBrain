@@ -46,9 +46,13 @@ class DreamOperations:
                     raise ValueError("cursor length")
                 value = json.loads(base64.b64decode(cursor, altchars=b"-_", validate=True))
                 if (
-                    not isinstance(value, list) or len(value) != 3
-                    or not isinstance(value[0], str) or not isinstance(value[1], str)
-                    or not value[1] or type(value[2]) is not int or value[2] < 0
+                    not isinstance(value, list)
+                    or len(value) != 3
+                    or not isinstance(value[0], str)
+                    or not isinstance(value[1], str)
+                    or not value[1]
+                    or type(value[2]) is not int
+                    or value[2] < 0
                     or datetime.fromisoformat(value[0]).tzinfo is None
                 ):
                     raise ValueError("cursor shape")
@@ -59,9 +63,16 @@ class DreamOperations:
         result = []
         for row in rows:
             item = self._normalize_review_row(row)
-            item["review_cursor"] = base64.urlsafe_b64encode(json.dumps([
-                row["created_at"], row["dream_run_id"], row["candidate_index"],
-            ], separators=(",", ":")).encode()).decode()
+            item["review_cursor"] = base64.urlsafe_b64encode(
+                json.dumps(
+                    [
+                        row["created_at"],
+                        row["dream_run_id"],
+                        row["candidate_index"],
+                    ],
+                    separators=(",", ":"),
+                ).encode()
+            ).decode()
             result.append(item)
         return result
 
@@ -73,6 +84,7 @@ class DreamOperations:
         resolution: str,
         reviewer: str,
         reason: str | None = None,
+        domain: str | None = None,
     ) -> dict:
         existing = self._audit.review_resolution(dream_run_id, candidate_index)
         if existing is None:
@@ -106,7 +118,13 @@ class DreamOperations:
         decision_row = self._audit.decision(dream_run_id, candidate_index)
         if decision_row["decision"] != PromotionDecision.REVIEW.value:
             raise ValueError("manual approval requires an original review decision")
-        candidate = DreamCandidate(**json.loads(str(decision_row["candidate_json"])))
+        try:
+            candidate_payload = json.loads(str(decision_row["candidate_json"]))
+            evidence_ids = list(json.loads(str(decision_row["evidence_ids_json"])))
+            reasons = list(json.loads(str(decision_row["reasons_json"])))
+        except (json.JSONDecodeError, TypeError, ValueError) as exc:
+            raise ValueError("corrupt decision row JSON in audit store") from exc
+        candidate = DreamCandidate(**candidate_payload)
         request = self._request_from_snapshot(self._audit.request_snapshot(dream_run_id))
         decision = CandidateGateResult(
             candidate_index=candidate_index,
@@ -114,8 +132,8 @@ class DreamOperations:
             reasoner_confidence=float(decision_row["reasoner_confidence"]),
             evidence_strength=float(decision_row["evidence_strength"]),
             promotion_confidence=float(decision_row["promotion_confidence"]),
-            evidence_ids=list(json.loads(str(decision_row["evidence_ids_json"]))),
-            reasons=[*json.loads(str(decision_row["reasons_json"])), "manual_review_approved"],
+            evidence_ids=evidence_ids,
+            reasons=[*reasons, "manual_review_approved"],
         )
         write = self._writer.write_candidate(
             request=request,
@@ -123,6 +141,7 @@ class DreamOperations:
             decision=decision,
             dream_run_id=dream_run_id,
             candidate_index=candidate_index,
+            domain_override=domain,
         )
         evolution = write.evolution
         self._audit.record_write(
@@ -191,6 +210,9 @@ class DreamOperations:
         for key in ("candidate_json", "evidence_ids_json", "reasons_json"):
             value = result.get(key)
             if isinstance(value, str):
-                result[key.removesuffix("_json")] = json.loads(value)
+                try:
+                    result[key.removesuffix("_json")] = json.loads(value)
+                except (json.JSONDecodeError, TypeError, ValueError):
+                    result[key.removesuffix("_json")] = None
                 del result[key]
         return result

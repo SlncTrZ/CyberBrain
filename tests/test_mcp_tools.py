@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: MPL-2.0
+# pyright: reportGeneralTypeIssues=false, reportArgumentType=false, reportIndexIssue=false
 
 import asyncio
 import json
@@ -257,8 +258,7 @@ class FakeCalibration:
             filters={
                 key: str(value)
                 for key, value in kwargs.items()
-                if key not in {"limit", "minimum_samples", "bias_threshold"}
-                and value is not None
+                if key not in {"limit", "minimum_samples", "bias_threshold"} and value is not None
             },
         )
 
@@ -316,8 +316,7 @@ def test_help_describes_agent_memory_boundary_and_automatic_dream_lifecycle() ->
 
     assert "Normal external agents are memory consumers/producers" in text
     assert (
-        "server-side Dream scheduler later discovers eligible quiet sessions automatically"
-        in text
+        "server-side Dream scheduler later discovers eligible quiet sessions automatically" in text
     )
     assert "advanced override/control path" in text
     assert "Do not fabricate a Prediction retrospectively" in text
@@ -610,6 +609,23 @@ def test_dream_review_resolve_handler() -> None:
     )
     assert result["resolution"] == "approved"
     assert result["reviewer"] == "human:test"
+
+
+def test_dream_review_resolve_handler_with_domain() -> None:
+    result = _call(
+        "dream_review_resolve",
+        {
+            "dream_run_id": "run-1",
+            "candidate_index": 0,
+            "resolution": "approved",
+            "reviewer": "human:test",
+            "reason": "checked",
+            "domain": "code",
+        },
+    )
+    assert result["resolution"] == "approved"
+    assert result["reviewer"] == "human:test"
+    assert result["domain"] == "code"
 
 
 def test_unknown_tool_returns_stable_not_found_error() -> None:

@@ -78,8 +78,16 @@ class DreamWritebackCoordinator:
 class DreamKnowledgeWriter:
     """Writes only already-promoted Dream candidates through Knowledge Evolution."""
 
-    def __init__(self, evolution: KnowledgeEvolutionService) -> None:
+    def __init__(
+        self,
+        evolution: KnowledgeEvolutionService,
+        *,
+        default_domain: str | None = None,
+    ) -> None:
         self._evolution = evolution
+        self._default_domain = (
+            default_domain.strip() if default_domain and default_domain.strip() else None
+        )
 
     def write_promoted(
         self,
@@ -93,9 +101,7 @@ class DreamKnowledgeWriter:
             raise ValueError("request/result/gate request_id mismatch")
 
         evidence_by_id = {
-            item.id: item
-            for items in request.evidence_by_topic.values()
-            for item in items
+            item.id: item for items in request.evidence_by_topic.values() for item in items
         }
 
         writes: list[DreamWriteResult] = []
@@ -125,6 +131,7 @@ class DreamKnowledgeWriter:
         dream_run_id: str,
         candidate_index: int,
         evidence_by_id: dict[str, EvidenceItem] | None = None,
+        domain_override: str | None = None,
     ) -> DreamWriteResult:
         if decision.decision != PromotionDecision.PROMOTE:
             return DreamWriteResult(
@@ -134,9 +141,7 @@ class DreamKnowledgeWriter:
             )
 
         lookup = evidence_by_id or {
-            item.id: item
-            for items in request.evidence_by_topic.values()
-            for item in items
+            item.id: item for items in request.evidence_by_topic.values() for item in items
         }
         try:
             selected = [lookup[evidence_id] for evidence_id in candidate.evidence_ids]
@@ -155,7 +160,12 @@ class DreamKnowledgeWriter:
                 reason="canonical Knowledge evidence_ids must be UUID point IDs",
             )
 
-        domain = self._single_metadata_value(selected, "domain")
+        domain = self._domain_for(
+            candidate=candidate,
+            request=request,
+            evidence=selected,
+            domain_override=domain_override,
+        )
         if domain is None:
             return DreamWriteResult(
                 candidate_index=candidate_index,
@@ -211,6 +221,55 @@ class DreamKnowledgeWriter:
             evolution=evolution,
         )
 
+    def _domain_for(
+        self,
+        *,
+        candidate: DreamCandidate,
+        request: DreamReasoningRequest,
+        evidence: list[EvidenceItem],
+        domain_override: str | None = None,
+    ) -> str | None:
+        if domain_override is not None and domain_override.strip():
+            return domain_override.strip()
+
+        evidence_domains = {
+            str(item.metadata["domain"]).strip()
+            for item in evidence
+            if item.metadata.get("domain") is not None and str(item.metadata["domain"]).strip()
+        }
+        if len(evidence_domains) > 1:
+            return None
+        if len(evidence_domains) == 1:
+            return next(iter(evidence_domains))
+
+        context_domains = {
+            str(
+                item.metadata.get("context", {}).get("legacy_domain")
+                or item.metadata.get("context", {}).get("domain")
+                or ""
+            ).strip()
+            for item in evidence
+            if isinstance(item.metadata.get("context"), dict)
+            and str(
+                item.metadata.get("context", {}).get("legacy_domain")
+                or item.metadata.get("context", {}).get("domain")
+                or ""
+            ).strip()
+        }
+        if len(context_domains) > 1:
+            return None
+        if len(context_domains) == 1:
+            return next(iter(context_domains))
+
+        candidate_domain = str(candidate.context.get("domain") or "").strip()
+        if candidate_domain:
+            return candidate_domain
+
+        if self._default_domain:
+            return self._default_domain
+
+        return None
+
     @staticmethod
     def _single_metadata_value(
         evidence: list[EvidenceItem],
@@ -232,8 +291,7 @@ class DreamKnowledgeWriter:
     @staticmethod
     def _verification_for(evidence: list[EvidenceItem]) -> Verification:
         values = {
-            str(item.metadata.get("verification") or "").strip().casefold()
-            for item in evidence
+            str(item.metadata.get("verification") or "").strip().casefold() for item in evidence
         }
         if Verification.USER_CONFIRMED.value in values:
             return Verification.USER_CONFIRMED

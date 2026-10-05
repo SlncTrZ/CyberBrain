@@ -42,7 +42,10 @@ def build_dream_operations(
     _ensure_parent(settings.dream_queue_db)
     _ensure_parent(settings.dream_audit_db)
     writer = (
-        DreamKnowledgeWriter(services.knowledge_evolution)
+        DreamKnowledgeWriter(
+            services.knowledge_evolution,
+            default_domain=settings.dream_default_domain,
+        )
         if services is not None
         else None
     )
@@ -101,7 +104,8 @@ def build_dream_worker_runtime(settings: Settings) -> DreamWorkerRuntime:
         associative_expander=associative,
         relation_expander=(
             DreamRelationRecall(services.dream_relation_recall)
-            if services.dream_relation_recall is not None else None
+            if services.dream_relation_recall is not None
+            else None
         ),
         per_bucket_limit=settings.dream_per_bucket_limit,
     )
@@ -109,7 +113,10 @@ def build_dream_worker_runtime(settings: Settings) -> DreamWorkerRuntime:
         gate=DreamEvidenceGate(),
         audit_store=audit,
     )
-    writer = DreamKnowledgeWriter(services.knowledge_evolution)
+    writer = DreamKnowledgeWriter(
+        services.knowledge_evolution,
+        default_domain=settings.dream_default_domain,
+    )
     writeback = DreamWritebackCoordinator(
         writer=writer,
         audit_store=audit,

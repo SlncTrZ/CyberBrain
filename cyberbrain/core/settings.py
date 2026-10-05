@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: MPL-2.0
 
+from typing import cast
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -9,7 +11,9 @@ from cyberbrain.tenancy import DeploymentMode, IdentityScope
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_prefix="CYBERBRAIN_", extra="ignore", env_ignore_empty=True,
+        env_prefix="CYBERBRAIN_",
+        extra="ignore",
+        env_ignore_empty=True,
     )
 
     host: str = "0.0.0.0"
@@ -74,9 +78,11 @@ class Settings(BaseSettings):
     dream_association_total_limit: int = 12
     dream_per_bucket_limit: int = 5
     dream_retrieval_score_threshold: float | None = 0.55
+    dream_default_domain: str | None = None
 
     def quota_policy(self):
         from cyberbrain.tenancy.quota import QuotaLimit, QuotaPolicy, QuotaResource
+
         values = (
             (QuotaResource.REQUESTS, self.quota_requests_per_minute, 60),
             (QuotaResource.WRITES, self.quota_writes_per_minute, 60),
@@ -84,16 +90,18 @@ class Settings(BaseSettings):
             (QuotaResource.DREAM_ENQUEUE, self.quota_dream_enqueues_per_hour, 3600),
             (QuotaResource.BACKGROUND_REASONING, self.quota_background_runs_per_hour, 3600),
         )
-        return QuotaPolicy(tuple(
-            QuotaLimit(resource, amount, window) for resource, amount, window in values
-            if amount is not None
-        ))
+        return QuotaPolicy(
+            tuple(
+                QuotaLimit(resource, amount, window)
+                for resource, amount, window in values
+                if amount is not None
+            )
+        )
 
     def validate_runtime(self) -> None:
         if (
-            (self.relation_retrieval_enabled or self.dream_relation_enabled)
-            and not self.require_auth
-        ):
+            self.relation_retrieval_enabled or self.dream_relation_enabled
+        ) and not self.require_auth:
             raise ConfigurationError("typed relation recall requires authenticated transport")
         if not 1 <= self.mcp_max_sessions <= 10_000:
             raise ConfigurationError("mcp_max_sessions must be between 1 and 10000")
@@ -126,12 +134,14 @@ class Settings(BaseSettings):
                     "deployment mode remains disabled without an authenticated principal registry"
                 )
             from cyberbrain.tenancy.quota import QuotaResource
+
             if {limit.resource for limit in self.quota_policy().limits} != set(QuotaResource):
                 raise ConfigurationError(
                     "deployment mode remains disabled without all runtime quota limits"
                 )
         if self.principal_registry_file:
             from cyberbrain.tenancy.principals import PrincipalRegistry
+
             PrincipalRegistry.load(self.principal_registry_file, mode=self.deployment_mode)
         if self.embedding_dimension <= 0:
             raise ConfigurationError("embedding_dimension must be > 0")
@@ -141,10 +151,11 @@ class Settings(BaseSettings):
         ):
             if value is not None and not 0 <= value <= 1:
                 raise ConfigurationError(f"{name} must be between 0 and 1 or null")
-        from cyberbrain.retrieval.runtime import KnowledgeRetrievalPolicy
+        from cyberbrain.retrieval.runtime import KnowledgeRetrievalPolicy, RetrievalMode
+
         try:
             KnowledgeRetrievalPolicy(
-                mode=self.knowledge_retrieval_mode,
+                mode=cast(RetrievalMode, self.knowledge_retrieval_mode),
                 max_records=self.knowledge_retrieval_max_records,
                 candidate_multiplier=self.knowledge_retrieval_candidate_multiplier,
             )
