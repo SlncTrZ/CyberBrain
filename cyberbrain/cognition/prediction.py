@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import json
+from contextlib import nullcontext
 from datetime import datetime
 from enum import StrEnum
 from typing import Any
@@ -10,12 +12,13 @@ from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from cyberbrain.cognition.coordination import prediction_write_guard
 from cyberbrain.memory.service import MemoryService
 from cyberbrain.schemas.models import EpisodeRecord, IdentityTrust
 from cyberbrain.storage.base import PointRepository
 from cyberbrain.tenancy import current_authority, normalize_identifier
 from cyberbrain.tenancy.enforcement import TenancyOperation
-from cyberbrain.tenancy.runtime import enforce_operation, scope_conditions
+from cyberbrain.tenancy.runtime import enforce_operation, scope_conditions, scoped_values
 
 
 class PredictionAssessment(StrEnum):
@@ -127,10 +130,12 @@ class PredictionLearningService:
         memory: MemoryService,
         repository: PointRepository,
         episodic_collection: str,
+        process_lock_file: str | None = None,
     ) -> None:
         self._memory = memory
         self._repository = repository
         self._episodic_collection = episodic_collection
+        self._process_lock_file = process_lock_file
 
     def record_prediction(
         self,
@@ -159,55 +164,94 @@ class PredictionLearningService:
             strategy_tags=strategy_tags or [],
             correlation_id=correlation_id,
         )
+        attribution = scoped_values(
+            dict(tenant=None, user=None, agent=agent, project=project, session_id=session_id),
+            operation=TenancyOperation.MEMORY_WRITE,
+        )
+        attribution["session_id"] = EpisodeRecord.validate_session_id(attribution["session_id"])
+        EpisodeRecord.normalize_episode_time(event_time)
         if data.correlation_id:
-            scope_key = f"{session_id}:{agent or ''}:{project or ''}:{data.correlation_id}"
-            prediction_id = uuid5(NAMESPACE_URL, f"cyberbrain:prediction:{scope_key}")
-            try:
-                point = self._repository.retrieve(
-                    self._episodic_collection, point_id=prediction_id
-                )
-                if point is not None:
-                    payload = point.get("payload") or {}
-                    return EpisodeRecord.model_validate(payload)
-            except (KeyError, TypeError, ValueError):
-                point = None
+            scope_key = json.dumps(
+                [
+                    attribution[field]
+                    for field in ("tenant", "user", "agent", "project", "session_id")
+                ]
+                + [data.correlation_id],
+                ensure_ascii=False,
+                separators=(",", ":"),
+            )
+            prediction_id = uuid5(NAMESPACE_URL, f"cyberbrain:prediction:v2:{scope_key}")
         else:
             prediction_id = uuid4()
-        cognition: dict[str, Any] = {
-            "kind": "prediction",
-            "prediction_id": str(prediction_id),
-            "expected_outcome": data.expected_outcome,
-            "confidence": data.confidence,
-        }
-        if data.action is not None:
-            cognition["action"] = data.action
-        if data.rationale is not None:
-            cognition["rationale"] = data.rationale
-        if data.strategy_tags:
-            cognition["strategy_tags"] = list(data.strategy_tags)
-        if data.correlation_id is not None:
-            cognition["correlation_id"] = data.correlation_id
+        guard = (
+            prediction_write_guard(prediction_id, self._process_lock_file)
+            if data.correlation_id
+            else nullcontext()
+        )
+        with guard:
+            if data.correlation_id:
+                if current_authority() is None:
+                    point = self._repository.retrieve(
+                        self._episodic_collection,
+                        point_id=prediction_id,
+                    )
+                else:
+                    # This exact retry lookup is part of the already-authorized write,
+                    # including for write-only callers; it never exposes another scope.
+                    conditions = [
+                        {"key": field, "match": {"value": value}}
+                        for field, value in attribution.items()
+                        if value is not None
+                    ]
+                    point = self._repository.retrieve(
+                        self._episodic_collection,
+                        point_id=prediction_id,
+                        qdrant_filter={"must": conditions},
+                    )
+                if point is not None:
+                    record = EpisodeRecord.model_validate(point.get("payload") or {})
+                    cognition = self._prediction_cognition(record)
+                    if (
+                        any(getattr(record, field) != value for field, value in attribution.items())
+                        or cognition.get("correlation_id") != data.correlation_id
+                        or record.id != prediction_id
+                        or record.source != "cognitive_prediction"
+                    ):
+                        raise ValueError("prediction retry identity or provenance mismatch")
+                    return record
+            cognition: dict[str, Any] = {
+                "kind": "prediction",
+                "prediction_id": str(prediction_id),
+                "expected_outcome": data.expected_outcome,
+                "confidence": data.confidence,
+            }
+            if data.action is not None:
+                cognition["action"] = data.action
+            if data.rationale is not None:
+                cognition["rationale"] = data.rationale
+            if data.strategy_tags:
+                cognition["strategy_tags"] = list(data.strategy_tags)
+            if data.correlation_id is not None:
+                cognition["correlation_id"] = data.correlation_id
 
-        content = (
-            f"Prediction for {data.action}: {data.expected_outcome}"
-            if data.action
-            else f"Prediction: {data.expected_outcome}"
-        )
-        return self._memory.store(
-            content=content,
-            session_id=session_id,
-            event_time=event_time,
-            channel=channel,
-            agent=agent,
-            project=project,
-            topic=topic,
-            identity_trust=identity_trust,
-            keywords=keywords,
-            importance=importance,
-            source="cognitive_prediction",
-            context={"cognition": cognition},
-            point_id=prediction_id,
-        )
+            content = (
+                f"Prediction for {data.action}: {data.expected_outcome}"
+                if data.action
+                else f"Prediction: {data.expected_outcome}"
+            )
+            return self._memory.store(
+                content=content,
+                **attribution,
+                event_time=event_time,
+                channel=channel,
+                topic=topic,
+                identity_trust=identity_trust,
+                keywords=keywords,
+                importance=importance,
+                source="cognitive_prediction",
+                context={"cognition": cognition},
+                point_id=prediction_id,
+            )
 
     def record_outcome(
         self,
@@ -505,7 +549,11 @@ class PredictionLearningService:
         return PendingPredictionList(
             items=selected,
             returned=len(selected),
-            may_be_incomplete=(len(predictions) >= scan_limit or len(outcomes) >= scan_limit),
+            may_be_incomplete=(
+                len(pending_items) > limit
+                or len(predictions) >= scan_limit
+                or len(outcomes) >= scan_limit
+            ),
             scan_limit=scan_limit,
             filters=dict(filters),
         )

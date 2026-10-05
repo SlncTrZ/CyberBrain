@@ -188,7 +188,7 @@ class MCPAgentClient:
     ) -> dict[str, Any]:
         value = await self._call("prediction_pending", {"limit": limit, **filters})
         if isinstance(value, list):
-            return {"items": value, "returned": len(value), "may_be_incomplete": False}
+            return {"items": value, "returned": len(value), "may_be_incomplete": True}
         return self._dict_payload("prediction_pending", value)
 
     async def dream_enqueue(

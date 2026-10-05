@@ -46,7 +46,6 @@ class RuntimeServices:
     relation_review: RelationReviewService | None = None
     dream_relation_recall: RelationRecallService | None = None
 
-
     def close(self) -> None:
         close = getattr(self.repository, "close", None)
         if close is not None:
@@ -103,6 +102,7 @@ def build_runtime(settings: Settings) -> RuntimeServices:
         memory=memory,
         repository=repository,
         episodic_collection=settings.episodic_collection,
+        process_lock_file=f"{settings.dream_queue_db}.prediction",
     )
     literal_shadow = (
         KnowledgeLiteralShadowObserver(
@@ -137,7 +137,9 @@ def build_runtime(settings: Settings) -> RuntimeServices:
         concept_evidence_limit=settings.cognition_concept_evidence_limit,
     )
     relation_index = RelationIndex(
-        repository, settings.knowledge_collection, settings.episodic_collection,
+        repository,
+        settings.knowledge_collection,
+        settings.episodic_collection,
     )
     relation_recall = None
     if settings.relation_retrieval_enabled:
@@ -145,8 +147,9 @@ def build_runtime(settings: Settings) -> RuntimeServices:
         relation_recall = RelationRecallService(RelationTraversal(relation_index))
     dream_relation_recall = None
     if settings.dream_relation_enabled:
-        background_index = RelationIndex(repository, settings.knowledge_collection,
-                                         settings.episodic_collection, background=True)
+        background_index = RelationIndex(
+            repository, settings.knowledge_collection, settings.episodic_collection, background=True
+        )
         background_index.verify_indexes()
         dream_relation_recall = RelationRecallService(RelationTraversal(background_index))
     policy = settings.quota_policy()

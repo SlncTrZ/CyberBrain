@@ -88,7 +88,11 @@ def _require_reason_task_inbox() -> DreamReasonTaskInbox:
 
 
 def _guide_path() -> Path:
-    return Path(__file__).resolve().parents[2] / "TOOL_GUIDE.md"
+    package_root = Path(__file__).resolve().parents[1]
+    packaged_guide = package_root / "TOOL_GUIDE.md"
+    if packaged_guide.is_file():
+        return packaged_guide
+    return package_root.parent / "TOOL_GUIDE.md"
 
 
 def _legacy_domain(value: str) -> str:

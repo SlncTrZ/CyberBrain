@@ -36,6 +36,9 @@ exclude = ["/_private", "/_private/**"]
 [tool.hatch.build.targets.wheel]
 packages = ["cyberbrain"]
 
+[tool.hatch.build.targets.wheel.force-include]
+"TOOL_GUIDE.md" = "cyberbrain/TOOL_GUIDE.md"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]

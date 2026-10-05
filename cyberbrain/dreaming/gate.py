@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass, field
 from enum import StrEnum
@@ -67,7 +68,7 @@ class DreamEvidenceGate:
         seen_fingerprints: dict[str, int] = {}
         decisions: list[CandidateGateResult] = []
         for index, candidate in enumerate(result.candidates):
-            fp = self._candidate_fingerprint(candidate)
+            fp = self._candidate_fingerprint(candidate, evidence_by_id)
             if fp in seen_fingerprints:
                 first_idx = seen_fingerprints[fp]
                 first_candidate = result.candidates[first_idx]
@@ -87,9 +88,7 @@ class DreamEvidenceGate:
                 )
                 result.candidates[first_idx] = merged_candidate
 
-                reevaluated = self._evaluate_candidate(
-                    first_idx, merged_candidate, evidence_by_id
-                )
+                reevaluated = self._evaluate_candidate(first_idx, merged_candidate, evidence_by_id)
                 reasons = list(reevaluated.reasons)
                 if "evidence_merged_from_duplicate" not in reasons:
                     reasons.append("evidence_merged_from_duplicate")
@@ -119,22 +118,52 @@ class DreamEvidenceGate:
         return DreamGateResult(request_id=request.request_id, candidates=decisions)
 
     @staticmethod
-    def _candidate_fingerprint(candidate: DreamCandidate) -> str:
+    def _candidate_fingerprint(
+        candidate: DreamCandidate,
+        evidence_by_id: dict[str, EvidenceItem],
+    ) -> str:
         content_norm = re.sub(
             r"\s+", " ", (candidate.content or candidate.summary or "").casefold().strip()
         )
-        entity_type = (candidate.entity_type or "").casefold().strip()
-        classification = (candidate.classification or "").casefold().strip()
-        topic = (
-            str(
-                (candidate.context or {}).get("topic")
-                if isinstance(candidate.context, dict)
-                else ""
+        # Execution labels differ across passes; semantic context and polarity must agree.
+        context = {
+            key: value
+            for key, value in candidate.context.items()
+            if key not in {"task_id", "reasoning_section"}
+        }
+        partitions = set()
+        unknown = []
+        for evidence_id in candidate.evidence_ids:
+            item = evidence_by_id.get(evidence_id)
+            if item is None:
+                unknown.append(evidence_id)
+                continue
+            metadata = item.metadata
+            evidence_context = metadata.get("context") or {}
+            domain = metadata.get("domain")
+            if domain is None and isinstance(evidence_context, dict):
+                domain = evidence_context.get("legacy_domain") or evidence_context.get("domain")
+            partitions.add(
+                json.dumps(
+                    [metadata.get(key) for key in ("tenant", "user", "agent", "project")]
+                    + [domain],
+                    sort_keys=True,
+                    ensure_ascii=False,
+                )
             )
-            .casefold()
-            .strip()
+        return json.dumps(
+            [
+                content_norm,
+                candidate.entity_type.casefold().strip(),
+                candidate.classification.casefold().strip(),
+                candidate.negative_knowledge,
+                context,
+                sorted(partitions),
+                sorted(set(unknown)),
+            ],
+            sort_keys=True,
+            ensure_ascii=False,
         )
-        return f"{content_norm}::{entity_type}::{classification}::{topic}"
 
     def _evaluate_candidate(
         self,

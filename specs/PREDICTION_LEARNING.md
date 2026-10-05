@@ -56,6 +56,7 @@ Optional input:
     strategy_tags
     keywords
     importance
+    correlation_id
 
 The stored Episode uses:
 
@@ -69,6 +70,26 @@ and contains:
     context.cognition.confidence = <0..1>
 
 Optional action/rationale values remain inside the same cognition context. Optional `strategy_tags[]` are stored prospectively inside `context.cognition`; they are explicit workflow/strategy labels available to later M6 correlational analysis and must not be reconstructed after the outcome. When one trusted agent identity is bound by the authenticated runtime, stored `agent` attribution is taken from that trusted boundary, the Episode is marked `identity_trust=authenticated`, and a conflicting payload value is rejected rather than used.
+
+### Correlation retry contract
+
+With `correlation_id`, authorize and resolve concrete write attribution before deriving the ID.
+The fingerprint uses an unambiguous JSON encoding of tenant, user, agent, project, session and
+correlation. A retry returns the first valid scoped Prediction, including its original expectation,
+confidence and event time; changed retry inputs cannot overwrite prospective evidence. Invalid
+stored identity or cognition provenance fails closed. Write-only grants can create and retry their
+own Prediction; this exact retry lookup is part of the authorized write operation.
+
+Runtime instances serialize correlated read/create pairs with 64 bounded lock stripes. Linux
+process locks derive from the shared `dream_queue_db` path; all workers targeting the same canonical
+store must share that state volume and path. Lock acquisition is bounded to 30 seconds and failure
+has no storage side effect. This is single-host coordination, not distributed consensus. Direct
+internal service construction without a process-lock path coordinates threads/service instances
+only. Qdrant remains the canonical record; no extra canonical collection or Prediction ledger is
+introduced. A retry after an ambiguous successful write reads the original stored record.
+
+Existing Prediction IDs remain valid for resolve. The scoped fingerprint supersedes the earlier
+release-candidate fingerprint; integrations must retain returned IDs rather than derive them.
 
 ## Outcome record
 
@@ -197,11 +218,14 @@ Optional filters:
 
 The result contains unresolved Predictions in deterministic event-time order and includes the prediction ID, expected outcome, prior confidence, action, and inherited identity context needed to resolve the event later.
 
-The implementation scans bounded Prediction and Outcome samples. If either scan reaches scan_limit, it returns:
+The implementation scans bounded Prediction and Outcome samples. If either scan reaches scan_limit,
+or the pending population exceeds the returned limit, it returns:
 
     may_be_incomplete = true
 
 Callers must then treat the list as a partial view rather than the complete unresolved population.
+Correlation matching requires an explicitly complete envelope; a legacy list, missing flag or
+non-boolean flag cannot establish uniqueness. A direct Prediction ID remains the explicit resolve path.
 
 This tool does not create reminders, change prediction state, or infer an Outcome. Under trusted agent binding, the unresolved worklist is forcibly narrowed to the trusted agent.
 

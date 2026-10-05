@@ -265,7 +265,7 @@ class UniversalAgentAdapter:
                 limit=20,
             )
             pending_items = list(envelope.get("items") or [])
-            may_be_incomplete = bool(envelope.get("may_be_incomplete"))
+            may_be_incomplete = envelope.get("may_be_incomplete") is not False
         else:
             pending_result = await self.client.prediction_pending(
                 session_id=scope.session_id,
@@ -275,10 +275,10 @@ class UniversalAgentAdapter:
             )
             if isinstance(pending_result, dict):
                 pending_items = list(pending_result.get("items") or [])
-                may_be_incomplete = bool(pending_result.get("may_be_incomplete"))
+                may_be_incomplete = pending_result.get("may_be_incomplete") is not False
             else:
                 pending_items = list(pending_result)
-                may_be_incomplete = False
+                may_be_incomplete = True
 
         if observation.correlation_id and may_be_incomplete:
             return (

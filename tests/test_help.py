@@ -94,3 +94,15 @@ def test_guide_call_examples_validate_against_advertised_schemas() -> None:
         "knowledge_search", "knowledge_get", "knowledge_store", "memory_store",
         "knowledge_relations", "knowledge_relation_review",
     }
+
+
+def test_help_reads_packaged_guide_without_repository_files(tmp_path, monkeypatch):
+    package = tmp_path / "cyberbrain"
+    module = package / "mcp" / "server.py"
+    module.parent.mkdir(parents=True)
+    module.write_text("")
+    guide = package / "TOOL_GUIDE.md"
+    guide.write_text("Packaged contract guide.", encoding="utf-8")
+    monkeypatch.setattr(provider, "__file__", str(module))
+    assert provider._guide_path() == guide
+    assert "Packaged contract guide." in provider._help_payload()

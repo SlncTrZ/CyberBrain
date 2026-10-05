@@ -13,7 +13,6 @@ from cyberbrain.reasoning.models import (
 )
 from cyberbrain.relations.models import (
     EntityRef,
-    EvidenceRef,
     RelationEdge,
     RelationKind,
     RelationStatus,
@@ -54,6 +53,8 @@ class BoundedReasoningEngine:
         budget_exceeded = False
 
         for cand in candidate_edges:
+            if cand.status == RelationStatus.REJECTED:
+                continue
             cand_pair = self._endpoint_key(cand.source, cand.target)
 
             for exist in existing_edges:
@@ -61,6 +62,12 @@ class BoundedReasoningEngine:
                 if comparisons > self._max_comparisons:
                     budget_exceeded = True
                     break
+                if exist.status == RelationStatus.REJECTED:
+                    continue
+                valid_from = max(cand.valid_from, exist.valid_from)
+                ends = [t for t in (cand.valid_until, exist.valid_until) if t is not None]
+                if ends and min(ends) <= valid_from:
+                    continue
                 if cand.relation_id and cand.relation_id == exist.relation_id:
                     continue
                 exist_pair = self._endpoint_key(exist.source, exist.target)
@@ -90,8 +97,7 @@ class BoundedReasoningEngine:
                 if (cand_pair == exist_pair or cand_pair == exist_rev) and (
                     (cand.kind == RelationKind.PART_OF and exist.kind == RelationKind.CONTRADICTS)
                     or (
-                        cand.kind == RelationKind.CONTRADICTS
-                        and exist.kind == RelationKind.PART_OF
+                        cand.kind == RelationKind.CONTRADICTS and exist.kind == RelationKind.PART_OF
                     )
                 ):
                     conflicts.append(
@@ -202,83 +208,83 @@ class BoundedReasoningEngine:
                         )
                     )
 
-        # Rule 2: Transitive dependency (requires depth >= 2)
-        # depends_on(A, B) & depends_on(B, C) => depends_on(A, C)
+        # Rule 2: Bounded dependency paths. Depth is the number of original edges,
+        # and proofs always refer to original premises rather than derived placeholders.
         if max_depth >= 2 and not budget_exceeded:
             depends_edges = [e for e in eligible if e.kind == RelationKind.DEPENDS_ON]
             by_source: dict[str, list[RelationEdge]] = {}
-            for e in depends_edges:
-                src_key = self._entity_key(e.source)
-                by_source.setdefault(src_key, []).append(e)
-
-            for edge_ab in depends_edges:
-                if len(derived) >= self._max_inferences or comparisons > self._max_comparisons:
-                    budget_exceeded = True
-                    break
-                b_key = self._entity_key(edge_ab.target)
-                next_edges = by_source.get(b_key, [])
-                for edge_bc in next_edges:
-                    comparisons += 1
-                    if len(derived) >= self._max_inferences or comparisons > self._max_comparisons:
-                        budget_exceeded = True
-                        break
-                    c_key = self._entity_key(edge_bc.target)
-                    a_key = self._entity_key(edge_ab.source)
-                    if a_key == c_key:
-                        continue  # skip trivial self-cycle
-
-                    # Check temporal interval intersection (F04)
-                    valid_from = max(edge_ab.valid_from, edge_bc.valid_from)
-                    valid_until = None
-                    if edge_ab.valid_until is not None and edge_bc.valid_until is not None:
-                        valid_until = min(edge_ab.valid_until, edge_bc.valid_until)
-                    elif edge_ab.valid_until is not None:
-                        valid_until = edge_ab.valid_until
-                    elif edge_bc.valid_until is not None:
-                        valid_until = edge_bc.valid_until
-
-                    if valid_until is not None and valid_until <= valid_from:
-                        # Disjoint validity intervals; cannot infer dependency
-                        continue
-
-                    trans_key = f"depends_on:{a_key}->{c_key}"
-                    if trans_key not in seen_derived_keys:
-                        seen_derived_keys.add(trans_key)
+            for edge in depends_edges:
+                by_source.setdefault(self._entity_key(edge.source), []).append(edge)
+            frontier = [(edge,) for edge in depends_edges]
+            for depth in range(2, max_depth + 1):
+                next_frontier: list[tuple[RelationEdge, ...]] = []
+                for path in frontier:
+                    for next_edge in by_source.get(self._entity_key(path[-1].target), []):
+                        comparisons += 1
+                        if (
+                            len(derived) >= self._max_inferences
+                            or comparisons > self._max_comparisons
+                        ):
+                            budget_exceeded = True
+                            break
+                        visited = {self._entity_key(path[0].source)}
+                        visited.update(self._entity_key(edge.target) for edge in path)
+                        if self._entity_key(next_edge.target) in visited:
+                            continue
+                        premises = path + (next_edge,)
+                        valid_from = max(edge.valid_from for edge in premises)
+                        ends = [
+                            edge.valid_until for edge in premises if edge.valid_until is not None
+                        ]
+                        valid_until = min(ends) if ends else None
+                        if valid_until is not None and valid_until <= valid_from:
+                            continue
                         all_ev_map = {
-                            (ev.record_type, ev.id): ev
-                            for ev in (edge_ab.evidence + edge_bc.evidence)
+                            (ev.record_type, ev.id): ev for edge in premises for ev in edge.evidence
                         }
                         if len(all_ev_map) > 32:
-                            # F09: Capacity exceeded: refuse to derive assertion; do NOT cut proofs
+                            # Never truncate a proof to fit the relation schema.
                             budget_exceeded = True
+                            break
+                        first, last = premises[0], premises[-1]
+                        trans_key = (
+                            f"depends_on:{self._endpoint_key(first.source, last.target)}:"
+                            f"{valid_from.isoformat()}:{valid_until}:"
+                            f"{sorted((kind, str(eid)) for kind, eid in all_ev_map)}"
+                        )
+                        next_frontier.append(premises)
+                        if trans_key in seen_derived_keys:
                             continue
-                        all_ev: tuple[EvidenceRef, ...] = tuple(all_ev_map.values())
+                        seen_derived_keys.add(trans_key)
+                        premise_ids = tuple(
+                            edge.relation_id or f"premise_{index}"
+                            for index, edge in enumerate(premises)
+                        )
                         derived_edge = RelationEdge(
                             kind=RelationKind.DEPENDS_ON,
-                            source=edge_ab.source,
-                            target=edge_bc.target,
-                            target_record_id=edge_bc.target_record_id,
-                            evidence=all_ev,
+                            source=first.source,
+                            target=last.target,
+                            target_record_id=last.target_record_id,
+                            evidence=tuple(all_ev_map.values()),
                             status=RelationStatus.PROPOSED,
                             valid_from=valid_from,
                             valid_until=valid_until,
-                            review_note=(
-                                f"Derived transitive dependency via '{edge_ab.target.entity_name}' "
-                                f"from premises ({edge_ab.relation_id or 'e1'}, "
-                                f"{edge_bc.relation_id or 'e2'})"
-                            ),
+                            review_note=f"Derived dependency from original premises {premise_ids}",
                         )
                         derived.append(
                             DerivedAssertion(
                                 edge=derived_edge,
                                 rule="transitive_dependency",
-                                premises=(
-                                    edge_ab.relation_id or "premise_ab",
-                                    edge_bc.relation_id or "premise_bc",
-                                ),
+                                premises=premise_ids,
                                 confidence=0.75,
+                                metadata={"depth": depth},
                             )
                         )
+                    if budget_exceeded:
+                        break
+                if budget_exceeded or not next_frontier:
+                    break
+                frontier = next_frontier
 
         return derived, budget_exceeded
 

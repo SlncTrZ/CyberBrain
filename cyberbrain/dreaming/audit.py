@@ -335,12 +335,26 @@ class DreamRunAuditStore:
             clause = " AND (d.created_at, d.dream_run_id, d.candidate_index) > (?, ?, ?)"
             parameters.extend(after)
         if project is not None:
-            clause += (
-                " AND coalesce("
-                "json_extract(d.candidate_json, '$.context.project'), "
-                "json_extract(d.candidate_json, '$.project')"
-                ") = ?"
-            )
+            # Infer project from the same selected evidence used by canonical writeback.
+            # Keep the context fallback only for historical rows without evidence IDs.
+            clause += """
+                AND CASE WHEN json_array_length(d.evidence_ids_json) > 0 THEN (
+                    SELECT CASE
+                        WHEN count(*) > 0
+                         AND count(json_extract(e.value, '$.metadata.project')) = count(*)
+                         AND count(DISTINCT json_extract(e.value, '$.metadata.project')) = 1
+                        THEN min(json_extract(e.value, '$.metadata.project'))
+                        ELSE NULL END
+                    FROM json_each(a.request_json, '$.evidence_by_topic') AS topic,
+                         json_each(topic.value) AS e
+                    WHERE json_extract(e.value, '$.id') IN (
+                        SELECT value FROM json_each(d.evidence_ids_json)
+                    )
+                ) ELSE coalesce(
+                    json_extract(d.candidate_json, '$.context.project'),
+                    json_extract(d.candidate_json, '$.project')
+                ) END = ?
+            """
             parameters.append(project)
         scope_clause, scope_params = snapshot_sql_filter("a.authority_json")
         clause += scope_clause

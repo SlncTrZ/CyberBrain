@@ -25,8 +25,10 @@ from cyberbrain.tenancy import (
 from tests.tenancy.test_runtime_enforcement import CountingEmbedding
 
 
-@pytest.mark.skipif(not os.environ.get("CYBERBRAIN_QA_QDRANT_URL"),
-                    reason="isolated empty Qdrant QA endpoint required")
+@pytest.mark.skipif(
+    not os.environ.get("CYBERBRAIN_QA_QDRANT_URL"),
+    reason="isolated empty Qdrant QA endpoint required",
+)
 def test_real_qdrant_isolates_versions_exact_reads_and_session_updates(tmp_path):
     url = os.environ["CYBERBRAIN_QA_QDRANT_URL"]
     parsed = urlsplit(url)
@@ -41,17 +43,26 @@ def test_real_qdrant_isolates_versions_exact_reads_and_session_updates(tmp_path)
     for name in ("cyberbrain_knowledge", "cyberbrain_episodic"):
         repo.ensure_collection(name, vector_size=embedding.dimension)
     memory = MemoryService(
-        repository=repo, embedding=embedding, collection="cyberbrain_episodic",
+        repository=repo,
+        embedding=embedding,
+        collection="cyberbrain_episodic",
         score_threshold=None,
     )
     evolution = KnowledgeEvolutionService(
-        repository=repo, embedding=embedding, collection="cyberbrain_knowledge",
+        repository=repo,
+        embedding=embedding,
+        collection="cyberbrain_knowledge",
     )
-    authorities = {name: authority_for_authenticated_scope(
-        DeploymentMode.MULTI_USER,
-        scope=IdentityScope.from_values(tenant=name, user="same", agent="shared", project="same"),
-        operations=frozenset(OperationClass),
-    ) for name in ("one", "two")}
+    authorities = {
+        name: authority_for_authenticated_scope(
+            DeploymentMode.MULTI_USER,
+            scope=IdentityScope.from_values(
+                tenant=name, user="same", agent="shared", project="same"
+            ),
+            operations=frozenset(OperationClass),
+        )
+        for name in ("one", "two")
+    }
     memories = {}
     knowledge = {}
     common = dict(domain="qa", topic="isolation", entity_type="policy", entity_name="same")
@@ -59,7 +70,8 @@ def test_real_qdrant_isolates_versions_exact_reads_and_session_updates(tmp_path)
         with bind_authority(caller):
             memories[name] = memory.store(
                 content="experience " + name,
-                session_id="same-session", event_time=datetime.now(UTC),
+                session_id="same-session",
+                event_time=datetime.now(UTC),
             )
             knowledge[name] = evolution.store(content="policy " + name, **common)
     assert knowledge["one"].record.version == knowledge["two"].record.version == 1
@@ -80,28 +92,43 @@ def test_real_qdrant_isolates_versions_exact_reads_and_session_updates(tmp_path)
 
     # Exercise BM25 recovery and has_id revalidation against real Qdrant.
     from uuid import UUID
+
     fingerprint_id = UUID(int=1000)
     repo.upsert(
-        "cyberbrain_knowledge", point_id=fingerprint_id,
+        "cyberbrain_knowledge",
+        point_id=fingerprint_id,
         vector=[-value for value in embedding.embed("opposite")],
         payload={
-            "content": "commit abc1234", "status": "active", "record_class": "knowledge",
-            "ordinary_recall": True, "tenant": "one", "user": "same",
-            "agent": "shared", "project": "same",
+            "content": "commit abc1234",
+            "status": "active",
+            "record_class": "knowledge",
+            "ordinary_recall": True,
+            "tenant": "one",
+            "user": "same",
+            "agent": "shared",
+            "project": "same",
         },
     )
     repo.upsert(
-        "cyberbrain_knowledge", point_id=UUID(int=1001),
+        "cyberbrain_knowledge",
+        point_id=UUID(int=1001),
         vector=[-value for value in embedding.embed("opposite")],
         payload={
-            "content": "commit abc1234 " * 30, "status": "active",
-            "tenant": "two", "user": "same", "agent": "shared", "project": "same",
+            "content": "commit abc1234 " * 30,
+            "status": "active",
+            "tenant": "two",
+            "user": "same",
+            "agent": "shared",
+            "project": "same",
         },
     )
     for mode in ("hybrid", "literal"):
         search = KnowledgeSearchService(
-            repository=repo, embedding=embedding, collection="cyberbrain_knowledge",
-            score_threshold=0.55, retrieval_policy=KnowledgeRetrievalPolicy(mode=mode),
+            repository=repo,
+            embedding=embedding,
+            collection="cyberbrain_knowledge",
+            score_threshold=0.55,
+            retrieval_policy=KnowledgeRetrievalPolicy(mode=mode),
         )
         with bind_authority(authorities["one"]):
             rows = search.search(query="commit abc1234", limit=10)
@@ -178,7 +205,8 @@ def test_real_qdrant_isolates_versions_exact_reads_and_session_updates(tmp_path)
 
     graph_scope = dict(tenant="graph", user="same", agent="shared", project="same")
     graph_caller = authority_for_authenticated_scope(
-        DeploymentMode.MULTI_USER, scope=IdentityScope.from_values(**graph_scope),
+        DeploymentMode.MULTI_USER,
+        scope=IdentityScope.from_values(**graph_scope),
         operations=frozenset(OperationClass),
     )
     fixtures = graph(repo, "cyberbrain_knowledge", graph_scope)
@@ -188,8 +216,9 @@ def test_real_qdrant_isolates_versions_exact_reads_and_session_updates(tmp_path)
         index.verify_indexes()
         engine = RelationTraversal(index)
         check_diamond(engine, fixtures)
-        historical = engine.traverse([fixtures["a"].id],
-            TraversalPolicy(as_of=datetime(2021, 1, 1, tzinfo=UTC)))
+        historical = engine.traverse(
+            [fixtures["a"].id], TraversalPolicy(as_of=datetime(2021, 1, 1, tzinfo=UTC))
+        )
         assert len(historical["paths"]) == 4
         assert historical["storage_calls"] == 6
         with pytest.raises(ConfigurationError, match="seed unavailable"):
@@ -288,3 +317,56 @@ def test_real_qdrant_isolates_versions_exact_reads_and_session_updates(tmp_path)
             len(httpx.get(url + "/collections", headers=headers).json()["result"]["collections"])
             == 2
         )
+
+    # Release regression: real-storage retries preserve scoped prospective evidence.
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+
+    from cyberbrain.cognition.prediction import PredictionLearningService
+
+    learning = PredictionLearningService(
+        memory=memory,
+        repository=repo,
+        episodic_collection="cyberbrain_episodic",
+        process_lock_file=str(tmp_path / "prediction.lock"),
+    )
+    recorded = {}
+    for name, caller in authorities.items():
+        with bind_authority(caller):
+            recorded[name] = learning.record_prediction(
+                expected_outcome=f"prospective result {name}",
+                confidence=0.8,
+                session_id="prediction-session",
+                event_time=datetime.now(UTC),
+                correlation_id="same-correlation",
+            )
+    assert recorded["one"].id != recorded["two"].id
+    assert recorded["two"].tenant == "two"
+    with bind_authority(authorities["one"]):
+        retry = learning.record_prediction(
+            expected_outcome="changed retry",
+            confidence=0.1,
+            session_id="prediction-session",
+            event_time=datetime.now(UTC),
+            correlation_id="same-correlation",
+        )
+    assert retry == recorded["one"]
+
+    barrier = Barrier(2)
+
+    def concurrent_prediction(index):
+        with bind_authority(authorities["one"]):
+            barrier.wait(timeout=10)
+            return learning.record_prediction(
+                expected_outcome=f"race expectation {index}",
+                confidence=0.8,
+                session_id="race-session",
+                event_time=datetime.now(UTC),
+                correlation_id="concurrent-correlation",
+            )
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        left, right = list(pool.map(concurrent_prediction, range(2)))
+    assert left == right
+    point = repo.retrieve("cyberbrain_episodic", left.id)
+    assert point["payload"] == left.model_dump(mode="json")

@@ -42,6 +42,23 @@ Current software and production storage have satisfied the Level-8.0/schema-V2 g
 
 Vector remains the default retrieval backend. Canonical Knowledge search also supports opt-in foreground literal routing and semantic/BM25 RRF fusion; see the foreground mode contract in `specs/RETRIEVAL_POLICY.md`. A reviewed 28-case real-current-baseline benchmark rejected always-on global hybrid fusion because the Recall@5 gain came with a small MRR loss and rank regressions. Source includes disabled-by-default shadow instrumentation for the better-performing deterministic literal/fingerprint route. When enabled in `single_owner` mode, literal-heavy Knowledge queries submit a non-blocking BM25 observation over a bounded TTL cache of active Knowledge, with the same explicit equality filters reapplied before lexical scoring. The reusable pre-tokenized BM25 corpus avoids rebuilding document statistics on every shadow query; live observation has cleared the earlier recurring scoring-cost blocker. The shadow observer still leaves caller results unchanged. Foreground modes are separately selected by configuration; production default promotion remains gated on larger relevance/reliability evidence. The Agent Adapter remains optional foreground convenience for compact context use rather than an owner of background cognition; foreground and durable background paths enforce scope. Persisted registry configuration, quota state and tenant/user telemetry complete the source identity/resource boundary; see `TENANCY_OPERATIONS.md`. Release and deployment state remain separate from this source-level contract.
 
+## Additional cognitive primitives
+
+The optional Agent Adapter can capture an explicit prospective Prediction intent and resolve an
+observed outcome. Correlation retries preserve one scoped immutable Prediction under single-host
+coordination; truncated or unknown pending-list completeness cannot authorize correlation matching.
+See `specs/PREDICTION_LEARNING.md` for scope, recovery and shared-volume requirements.
+
+`CognitiveHeartbeat` is a read-only inspection primitive invoked by an integration. It is not
+automatically scheduled by the provider. `BoundedReasoningEngine` is a deterministic library for
+typed contradictions, dependency inference and isolated counterfactual evaluation; it does not
+automatically run on ordinary recall or promote derived assertions. See
+`specs/BOUNDED_REASONING.md` for depth, validity and proof budgets.
+
+Dream candidate deduplication preserves evidence identity partitions, domain, semantic context and
+negative-knowledge polarity. Project-filtered review pagination derives project from the selected
+evidence snapshot, including existing Multipass candidates without a project in their context.
+
 ## Canonical data
 
 CyberBrain uses exactly two durable Qdrant collections:
