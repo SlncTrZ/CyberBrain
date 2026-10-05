@@ -12,12 +12,21 @@ from cyberbrain.agent_adapter.models import (
     AgentScope,
     ContextLedger,
     ContextPack,
+    Observation,
+    OutcomeMatch,
+    PredictionDecision,
+    PredictionIntent,
     RecallCandidate,
     RecallKind,
     SessionCloseout,
     TurnRecallIntent,
 )
-from cyberbrain.agent_adapter.policies import CloseoutPolicy, LifecyclePolicy
+from cyberbrain.agent_adapter.policies import (
+    CloseoutPolicy,
+    LifecyclePolicy,
+    OutcomeMatchPolicy,
+    PredictionPolicy,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,6 +52,8 @@ class UniversalAgentAdapter:
         self.governor = TokenGovernor(budget_policy)
         self.lifecycle_policy = LifecyclePolicy()
         self.closeout_policy = CloseoutPolicy(max_chars=closeout_max_chars)
+        self.prediction_policy = PredictionPolicy()
+        self.outcome_match_policy = OutcomeMatchPolicy()
 
     async def bootstrap(
         self,
@@ -201,3 +212,65 @@ class UniversalAgentAdapter:
             topic=scope.topic,
             source="agent_adapter_closeout",
         )
+
+    async def record_prediction(
+        self,
+        *,
+        intent: PredictionIntent,
+        scope: AgentScope,
+        strategy_tags: list[str] | None = None,
+    ) -> tuple[PredictionDecision, dict[str, Any] | None]:
+        decision = self.prediction_policy.decide(intent)
+        if not decision.create:
+            return decision, None
+
+        payload: dict[str, Any] = {
+            "expected_outcome": intent.expected_outcome,
+            "confidence": intent.confidence,
+            "session_id": scope.session_id,
+            "event_time": intent.event_time,
+            "action": intent.action,
+            "agent": scope.agent,
+            "project": scope.project,
+            "topic": scope.topic,
+        }
+        if intent.correlation_id:
+            payload["correlation_id"] = intent.correlation_id
+        if strategy_tags:
+            payload["strategy_tags"] = strategy_tags
+
+        record = await self.client.prediction_record(**payload)
+        return decision, record
+
+    async def resolve_prediction(
+        self,
+        *,
+        observation: Observation,
+        scope: AgentScope,
+    ) -> tuple[OutcomeMatch, dict[str, Any] | None]:
+        if observation.prediction_id:
+            record = await self.client.prediction_resolve(
+                prediction_id=observation.prediction_id,
+                observed_outcome=observation.observed_outcome,
+                assessment=observation.assessment,
+                event_time=observation.event_time,
+            )
+            return OutcomeMatch(observation.prediction_id, "direct_prediction_id"), record
+
+        pending = await self.client.prediction_pending(
+            session_id=scope.session_id,
+            agent=scope.agent,
+            project=scope.project,
+            limit=20,
+        )
+        match = self.outcome_match_policy.match(pending, observation)
+        if match.prediction_id is None:
+            return match, None
+
+        record = await self.client.prediction_resolve(
+            prediction_id=match.prediction_id,
+            observed_outcome=observation.observed_outcome,
+            assessment=observation.assessment,
+            event_time=observation.event_time,
+        )
+        return match, record

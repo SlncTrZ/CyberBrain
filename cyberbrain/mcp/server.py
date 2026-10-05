@@ -387,6 +387,7 @@ def _tool_catalog() -> list[types.Tool]:
                     },
                     "keywords": {"type": "array", "items": {"type": "string"}},
                     "importance": {"type": "string"},
+                    "correlation_id": {"type": "string"},
                 },
                 "required": [
                     "expected_outcome",

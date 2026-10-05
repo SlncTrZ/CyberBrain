@@ -40,8 +40,9 @@ class PredictionInput(BaseModel):
     action: str | None = Field(default=None, max_length=1000)
     rationale: str | None = Field(default=None, max_length=2000)
     strategy_tags: list[str] = Field(default_factory=list, max_length=16)
+    correlation_id: str | None = Field(default=None, max_length=256)
 
-    @field_validator("expected_outcome", "action", "rationale")
+    @field_validator("expected_outcome", "action", "rationale", "correlation_id")
     @classmethod
     def _strip_text(cls, value: str | None) -> str | None:
         if value is None:
@@ -104,6 +105,7 @@ class PendingPrediction(BaseModel):
     project: str | None
     topic: str | None
     strategy_tags: list[str] = Field(default_factory=list)
+    correlation_id: str | None = None
 
 
 class PendingPredictionList(BaseModel):
@@ -147,6 +149,7 @@ class PredictionLearningService:
         strategy_tags: list[str] | None = None,
         keywords: list[str] | None = None,
         importance: str | None = None,
+        correlation_id: str | None = None,
     ) -> EpisodeRecord:
         data = PredictionInput(
             expected_outcome=expected_outcome,
@@ -154,7 +157,14 @@ class PredictionLearningService:
             action=action,
             rationale=rationale,
             strategy_tags=strategy_tags or [],
+            correlation_id=correlation_id,
         )
+        if data.correlation_id:
+            pending_list = self.pending(session_id=session_id, agent=agent, limit=100)
+            for item in pending_list.items:
+                if item.correlation_id == data.correlation_id:
+                    return self._load_prediction(item.prediction_id)
+
         prediction_id = uuid4()
         cognition: dict[str, Any] = {
             "kind": "prediction",
@@ -168,6 +178,8 @@ class PredictionLearningService:
             cognition["rationale"] = data.rationale
         if data.strategy_tags:
             cognition["strategy_tags"] = list(data.strategy_tags)
+        if data.correlation_id is not None:
+            cognition["correlation_id"] = data.correlation_id
 
         content = (
             f"Prediction for {data.action}: {data.expected_outcome}"
@@ -201,7 +213,7 @@ class PredictionLearningService:
     ) -> EpisodeRecord:
         data = OutcomeInput(
             observed_outcome=observed_outcome,
-            assessment=assessment,
+            assessment=PredictionAssessment(assessment),
         )
         prediction = self._load_prediction(prediction_id)
         prediction_cognition = self._prediction_cognition(prediction)
@@ -471,6 +483,11 @@ class PredictionLearningService:
                     project=record.project,
                     topic=record.topic,
                     strategy_tags=list(cognition.get("strategy_tags") or []),
+                    correlation_id=(
+                        str(cognition["correlation_id"])
+                        if cognition.get("correlation_id") is not None
+                        else None
+                    ),
                 )
             )
 
