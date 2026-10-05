@@ -56,6 +56,17 @@ authenticated caller
 
 The scope/auth, exact-fetch, real Agent Adapter client bridge, real retrieval benchmark, shadow literal-routing instrumentation, reusable BM25 shadow corpus, server-owned post-storage cognition contract/tests, M3 Salience, M4 Concept Formation, M5 Working Memory, P3.1 trusted-agent binding, E2 prospective-outcome census, complete source-level M6 Self-Model, complete source-level M7 Memory Lifecycle, schema-V2 metadata contracts, hardened V2 migration/validation tooling, and the current V2 migration runbook are implemented. The complete corpus has been staged, independently validated, canary-tested, and cut over to schema V2. The benchmark decision remains **do not promote global hybrid retrieval**. The literal shadow path remains observational. Caller-visible Knowledge retrieval defaults to vector and can select foreground literal/hybrid modes explicitly; Memory and Dream retrieval retain their existing contracts. The immediate program frontier is now evidence accumulation and tuning of the active integration: M6 remains fail-closed until prospective trusted evidence matures, while M7 is active only on touched/prefetched events rather than as a full-corpus sweep. P3 source isolation and resource controls are implemented; broader deployment activation remains an explicit configuration and rollout decision.
 
+## Completion program — 2026-10-04 09:21 ICT
+
+The remaining engineering program is intentionally narrower than the implemented feature set. Source already contains the major Level-8 mechanisms; the current goal is to close the evidence and operational loops rather than add speculative storage layers.
+
+1. **Cognitive event loop:** reuse Prediction Learning and existing scheduler/idempotency primitives to capture genuine prospective action/outcome evidence where integrations expose truthful event boundaries. A heartbeat is bounded eligible-work scheduling, not periodic free-form LLM thought.
+2. **Review scalability:** measure and reduce Dream review backlog using deterministic evidence/provenance/duplicate checks before any critic recommendation; ambiguous/high-impact claims remain explicit-review gated.
+3. **Retrieval closure:** rerun the current corpus/runtime benchmark and either promote one bounded deterministic policy or retain vector default + explicit opt-ins and retire unnecessary shadow work.
+4. **Integrated M3→M7 acceptance:** preserve existing M6 evidence floors and validate M7 on real access evidence; controlled fixtures do not substitute for live continual-learning evidence.
+5. **Bounded reasoning:** only after the prior gates, add contradiction detection and explicit derived-inference provenance; derived assertions are not automatically canonical truth. Global Workspace/blackboard architecture remains optional and requires measured need.
+6. **Product/operations closure:** converge provider/gateway catalog, backup/restore/restart invariants, observability, packaging and release readiness. Deployment/configuration changes remain separately owner-authorized.
+
 ## Current architectural invariants
 
 1. Canonical durable data uses exactly two Qdrant collections:
