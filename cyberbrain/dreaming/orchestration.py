@@ -274,8 +274,14 @@ class MultipassDreamReasoner(DreamReasoner):
 
     @staticmethod
     def _entity_name(topic: str, kind: ReasoningTaskKind, index: int) -> str:
-        normalized = re.sub(r"[^a-z0-9]+", "_", topic.casefold()).strip("_") or "topic"
-        return f"{normalized}_{kind.value}_{index + 1}"
+        from cyberbrain.dreaming.planner import _DEFAULT_STOPWORDS
+
+        normalized = re.sub(r"[^a-z0-9]+", "_", topic.casefold()).strip("_")
+        parts = [p for p in normalized.split("_") if p and p not in _DEFAULT_STOPWORDS]
+        base = "_".join(parts) if parts else (normalized or "topic")
+        if base in _DEFAULT_STOPWORDS or len(base) < 2:
+            base = "topic"
+        return f"{base}_{kind.value}_{index + 1}"
 
     @staticmethod
     def _evidence_sort_key(item: EvidenceItem) -> tuple[int, str]:

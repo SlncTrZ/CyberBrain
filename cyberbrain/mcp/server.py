@@ -653,6 +653,7 @@ def _tool_catalog() -> list[types.Tool]:
                 "properties": {
                     "limit": {"type": "integer", "minimum": 1, "maximum": 500},
                     "cursor": {"type": "string", "maxLength": 1024},
+                    "project": {"type": "string"},
                 },
                 "additionalProperties": False,
             },
@@ -1269,6 +1270,8 @@ def _dispatch_tool(name: str, args: dict) -> list[types.TextContent]:
         review_args: dict[str, Any] = {"limit": int(args.pop("limit", 100))}
         if "cursor" in args:
             review_args["cursor"] = args.pop("cursor")
+        if "project" in args:
+            review_args["project"] = args.pop("project")
         return _json_text(operations.pending_reviews(**review_args))
 
     if name == "dream_review_resolve":

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from enum import StrEnum
 
@@ -65,11 +66,33 @@ class DreamEvidenceGate:
             for items in request.evidence_by_topic.values()
             for item in items
         }
-        decisions = [
-            self._evaluate_candidate(index, candidate, evidence_by_id)
-            for index, candidate in enumerate(result.candidates)
-        ]
+        seen_fingerprints: dict[str, int] = {}
+        decisions = []
+        for index, candidate in enumerate(result.candidates):
+            fp = self._candidate_fingerprint(candidate)
+            if fp in seen_fingerprints:
+                first_idx = seen_fingerprints[fp]
+                decisions.append(
+                    self._result(
+                        index,
+                        candidate,
+                        PromotionDecision.REJECT,
+                        0.0,
+                        0.0,
+                        ["duplicate_candidate_in_run", f"duplicate_of_index_{first_idx}"],
+                    )
+                )
+            else:
+                seen_fingerprints[fp] = index
+                decisions.append(
+                    self._evaluate_candidate(index, candidate, evidence_by_id)
+                )
         return DreamGateResult(request_id=request.request_id, candidates=decisions)
+
+    @staticmethod
+    def _candidate_fingerprint(candidate: DreamCandidate) -> str:
+        text = candidate.summary or candidate.content
+        return re.sub(r"\s+", " ", text.casefold().strip())
 
     def _evaluate_candidate(
         self,

@@ -36,7 +36,13 @@ class DreamOperations:
     def status(self, *, session_id: str) -> dict:
         return asdict(self._queue.get_by_session(session_id.strip()))
 
-    def pending_reviews(self, *, limit: int = 100, cursor: str | None = None) -> list[dict]:
+    def pending_reviews(
+        self,
+        *,
+        limit: int = 100,
+        cursor: str | None = None,
+        project: str | None = None,
+    ) -> list[dict]:
         if limit < 1 or limit > 500:
             raise ValueError("limit must be between 1 and 500")
         after = None
@@ -59,10 +65,21 @@ class DreamOperations:
                 after = tuple(value)
             except (ValueError, TypeError):
                 raise ValueError("invalid review cursor") from None
-        rows = self._audit.pending_reviews(limit=limit, after=after)
+        fetch_limit = min(500, limit * 3) if project else limit
+        rows = self._audit.pending_reviews(limit=fetch_limit, after=after)
         result = []
         for row in rows:
             item = self._normalize_review_row(row)
+            if project is not None:
+                candidate = item.get("candidate")
+                if isinstance(candidate, dict):
+                    cand_project = (
+                        candidate.get("context", {}).get("project")
+                        if isinstance(candidate.get("context"), dict)
+                        else None
+                    ) or candidate.get("project")
+                    if cand_project != project:
+                        continue
             item["review_cursor"] = base64.urlsafe_b64encode(
                 json.dumps(
                     [
@@ -74,6 +91,8 @@ class DreamOperations:
                 ).encode()
             ).decode()
             result.append(item)
+            if len(result) >= limit:
+                break
         return result
 
     def review(
