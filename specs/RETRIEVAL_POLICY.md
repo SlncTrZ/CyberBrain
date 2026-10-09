@@ -93,7 +93,7 @@ Observed benchmark decision:
 - always-on hybrid RRF: Recall@5 1.000000, MRR@5 0.892857, with two rank regressions;
 - deterministic literal/fingerprint router (lexical only for strong commit/version/model/port-style lexical signals, vector otherwise): Recall@5 1.000000, MRR@5 0.934524, no observed rank regressions in the reviewed set, and lower mean returned-token estimate than vector.
 
-Therefore always-on hybrid fusion is **not promoted**. The literal/fingerprint route remains **SHADOW ONLY**: live observation has cleared the recurring shadow-scoring performance blocker, but caller-visible promotion still requires a larger reviewed relevance/reliability sample with zero scope leakage and no material reliability regression. The default Knowledge/Memory search backend remains vector retrieval. Source now supports explicit foreground Knowledge modes for controlled evaluation; this does not promote always-on fusion as the production default.
+Therefore always-on hybrid fusion is **not promoted**. The C3 source decision is closed with vector retrieval as the deliberate default. Foreground `literal` and `hybrid` Knowledge modes are supported only when explicitly selected by deployment configuration; no automatic literal/fingerprint router is promoted as the default. Optional shadow observation may continue for diagnostics, but it is not a prerequisite for caller-visible opt-in modes and is not an open completion gate.
 
 ### Foreground Knowledge modes
 
@@ -110,11 +110,11 @@ Both channels use the identical storage-side status, ordinary-recall, record-cla
 
 `score` remains the semantic similarity score when present and is null for lexical-only rows. `_retrieval.method`, `_retrieval.ranking_score` and `_retrieval.lexical_score` expose the configured route, RRF score (hybrid only), and BM25 score respectively. BM25/RRF scores are not confidence, truth, or cosine similarity. Embedding/search/scan failures surface explicitly. Compact projection preserves these fields.
 
-Source correctness can be verified in controlled tests immediately. Selecting a new production default still requires a larger reviewed relevance/reliability benchmark; longitudinal learning evidence remains a separate evaluation.
+Source correctness is covered by controlled tests and the C3 policy decision above. Changing the established vector default in the future requires a new separately reviewed evidence package; ordinary longitudinal monitoring does not keep C3 permanently open.
 
-### Literal/fingerprint shadow contract
+### Optional literal/fingerprint shadow diagnostics
 
-Source `main` includes disabled-by-default shadow instrumentation for Knowledge search. Deployments may enable it for observation, but it remains caller-invisible:
+Source retains disabled-by-default shadow instrumentation for Knowledge search as optional diagnostics. Deployments may enable it without changing the established retrieval policy; it remains caller-invisible:
 
 ```text
 literal-heavy query detected

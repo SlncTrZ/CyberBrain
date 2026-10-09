@@ -8,7 +8,7 @@ Record deployment identity and the observation start first. Review after approxi
 | --- | --- | --- |
 | M6 / Calibration | Trusted prospective resolved pairs, sessions/topics, completeness, confidence versus empirical outcomes | Existing M6 floor remains 20 trusted resolved outcomes across 3 sessions and 3 topics with a complete scan; claims remain revisable |
 | M7 | Authorized accesses, suppression/reactivation, false suppression, usefulness and reversibility | Event-driven metadata only; no historical sweep or deletion |
-| R2 retrieval | Organic representative queries, owner-reviewed relevance, scope, latency, cost and reliability | Keep vector caller-visible unless a separate reviewed promotion decision is justified |
+| Retrieval policy | Organic representative queries, owner-reviewed relevance, scope, latency, cost and reliability | Vector is the established default; revisit it only through a new separately reviewed policy decision, while explicit opt-in modes remain available |
 | Dreaming | Backlog census, evidence strength, repeated content versus new evidence, review/write yield, false promotion | Diagnostics do not approve candidates or lower promotion thresholds |
 | Reliability | Provider availability, session failures, readiness, job progress, scheduler heartbeats, restart/restore events | Correlate timestamped incidents; a single provider error or successful retry is not a root-cause finding |
 | Resource safety | Per-principal quota denials, latency, task deferrals, resource growth and recovery | Tune from measured workload without broadening authority |

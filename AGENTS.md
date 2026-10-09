@@ -38,3 +38,7 @@ New CyberBrain source files should carry an SPDX identifier appropriate to their
 ```text
 SPDX-License-Identifier: MPL-2.0
 ```
+
+## Tiêu chuẩn audit
+
+Chỉ báo lỗi khi có đường tái hiện cụ thể dẫn tới crash, deadlock/hang, data loss, corruption, feature không hoạt động, hoặc behavior sai contract chức năng.

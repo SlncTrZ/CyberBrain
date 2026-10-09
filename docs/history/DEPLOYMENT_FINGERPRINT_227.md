@@ -3,6 +3,51 @@
 > Historical operational record: measured deployment snapshot, not source guidance.
 > Earlier measurements are retained below; re-measure before relying on this record.
 
+## Measured 2026-10-05 20:23 ICT — v0.3.0 F0 convergence audit
+
+| Field | Measured value |
+| --- | --- |
+| Host | `TCDserver` / `192.168.1.227` |
+| Deployed source commit | `e3a7a7c45b33f82b6518c0602abbbc95f34f750e` |
+| Application image | `cyberbrain:git-e3a7a7c45b33` (also locally tagged `cyberbrain:0.3.0`) |
+| Image ID | `sha256:e2f23dea1df3b70a26a4e00847115f0ef6dc9d946e06296363063f00cf3bf983` |
+| Deployment Compose SHA256 | `d61533d1568bb7d27f61ea1cfc27cca927b0d2c2ca0fc7f1523e439f24ec1bb2` |
+| Source equality | 145/145 Python files match the release commit in each of five application containers |
+| API / worker / scheduler / router / reasoner | All healthy; restart count 0 |
+| Health / readiness / unauthenticated MCP | HTTP 200 / 200 / 401 |
+| Provider contract | version 0.3.0, schema 2, 22 canonical + 5 aliases |
+| Provider contract hash | `cae1abe4e5554f3dc6e46494ce08bbb60dd8d8ec743a66d03aa3a5d180ca3107` |
+| Gateway extension state | 4 configured / 4 ready; global catalog fingerprint `e3aef4ad249b4bb7` |
+| Runtime policy | single-owner, auth required, trusted `coding-agents`, vector default, caller relations enabled, Dream relations disabled |
+| Canonical collections | exactly `cyberbrain_knowledge_v2_stage` and `cyberbrain_episodic_v2_stage` |
+| Knowledge / Episodic points | 5436 / 1633; both green, optimizer ok |
+| Current-release Qdrant snapshots | both collections retained immediately before app startup |
+| Live operational SQLite | queue/audit/reason-task DBs all `quick_check=ok`; quotas DB absent because no limits configured |
+| Previous binary rollback image | `cyberbrain:git-9313893582e2`, retained and source-verified |
+| Recovery convergence | **PARTIAL** — no matching 2026-10-05 operational SQLite backup bundle/manifest found |
+
+The running image is source-identical to the release commit. `/ready` exercises both canonical
+collections plus the embedding runtime, so the readiness 200 establishes dependency availability
+rather than liveness only. Qdrant API-key enforcement remains fail-closed; no credential values were
+read or recorded.
+
+Two Qdrant snapshots were created seconds before the current application start, but a targeted host
+search found no same-rollout copies of the three operational SQLite files and no corresponding
+CyberBrain backup manifest. The last complete coherent bundle found is the verified 2026-09-30
+predeployment bundle; all five manifest files still match checksums and all three SQLite copies pass
+`PRAGMA quick_check`. That older bundle is a disaster-recovery point, not a current-release state
+rollback point.
+
+The previous production image `cyberbrain:git-9313893582e2` remains available and its 140 Python-file
+manifest exactly matches commit `9313893582e25347d2b30d52fc7cfd2d4d500256`. Operational SQLite DDL
+is unchanged between that commit and the current release, supporting binary rollback compatibility,
+but this does not replace a coherent current-state backup. Closing F0 requires an explicitly
+authorized, quiesced current backup bundle containing both Qdrant snapshots plus every existing
+operational SQLite database and checksum manifest. No backup creation or restore was executed during
+this read-only audit.
+
+---
+
 ## Measured 2026-10-02 — runtime-derived help reference
 
 | Field | Measured value |
