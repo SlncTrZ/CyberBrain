@@ -66,3 +66,9 @@ migration_artifacts/
 
 # Local CLI state
 .local/
+
+# Agent-local config (machine-specific, never tracked)
+AGENTS.md
+CLAUDE.md
+.agents/
+.claude/
