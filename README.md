@@ -13,11 +13,9 @@ Current software/package version is defined only in `cyberbrain/_version.py`. Gi
 
 For the latest published release, use the repository's GitHub Releases page rather than a duplicated version literal in this README.
 
-Current source has satisfied the Level-8.0 source-engineering gate and contains source-complete M6 Agent Self-Model, M7 Memory Lifecycle, canonical schema V2, and deterministic migration/validation tooling alongside the server-owned post-storage cognition and single-version-authority foundations. The current production storage configuration has completed a validated schema-V2 cutover. The production cognitive path now actively wires M3–M7 over authorized recall/store events. This is still not a final Level-8.5+ evidence-quality claim: M6 remains fail-closed until trusted outcomes satisfy its gate, while M7 operates event-by-event rather than by a destructive bulk historical sweep.
-
 The repository is in use-and-observe mode: changes should be driven by reproducible defects,
 operational evidence, security/privacy needs, or portability gaps rather than speculative feature
-growth.
+growth. See [Project Status](docs/PROJECT_STATUS.md) for the dated source/release/runtime snapshot.
 
 GitHub CI validates lint, the full automated test suite, package build, Compose configuration, and
 container build on supported changes.
@@ -41,72 +39,22 @@ CyberBrain intentionally keeps exactly two canonical durable Qdrant collections:
 Dreaming is a process, not a third collection. Queue, audit, and reason-task coordination state are
 operational state stored separately from canonical Knowledge and Episodic Memory.
 
-## Current Level 8+ integration
+## Normal agent loop
 
-The current source integrates the completed Wave 1 foundations and the shared Wave 2 wiring:
+Normal external agents are memory consumers/producers. Their ordinary workflow is intentionally small:
 
-- `cyberbrain/agent_adapter/` includes a real MCP Streamable HTTP client bridge for optional foreground convenience such as token budgeting, duplicate-context suppression, compact recall, and bounded exact fetch. It is not the owner of Dreaming, Knowledge Evolution, Calibration, or other background cognition;
-- `cyberbrain/retrieval/` includes a reproducible real-snapshot benchmark harness. The reviewed 28-case current-vector comparison rejects always-on global hybrid fusion; the deterministic literal/fingerprint lexical route remains SHADOW ONLY pending larger reviewed relevance/reliability evidence;
-- `cyberbrain/tenancy/` implements trusted identity, scoped foreground/background enforcement, persisted principal configuration, and atomic runtime quotas; broader modes require authenticated registry configuration plus complete resource limits;
-- `cyberbrain/salience/` provides M3 deterministic scoring and reviewed same-scope priority; the active runtime coordinator now applies it after authorized vector prefetch and before bounded M5 selection, without broadening authorization;
-- `cyberbrain/concepts/` provides M4 deterministic concept-candidate discovery and in-memory stability observation; normal recall/store events now feed a bounded same-scope evidence window, while durable promotion remains a separate evidence/promotion contract;
-- `cyberbrain/working_memory/` provides active M5 exact scope/session/task transient context with task relevance, M3 ordering, dedupe, token/item limits, TTL/closeout, and bounded M4/M6 advisory slots. It remains process-memory only and is not a public durable scratchpad.
+```text
+need context → search → optionally exact get
+worth persisting → knowledge_store or memory_store
+```
 
-Current source exposes scope-safe `knowledge_get` and `memory_get` and supports the preferred compact-search → selected-ID → exact-full-fetch flow. Normal external agents are memory consumers/producers: they recall/get/store while CyberBrain owns normalization, Knowledge Evolution, the Episodic pending lifecycle, automatic Dream scheduling/processing, promotion/review, and Knowledge writeback. The canonical retrieval backend remains vector search: the real benchmark did **not** justify replacing it with always-on hybrid fusion. Source also includes disabled-by-default literal/fingerprint shadow instrumentation with a reusable pre-tokenized BM25 corpus so repeated shadow queries do not rebuild lexical document statistics. Live observation has cleared the earlier recurring shadow-scoring performance blocker, but caller-visible lexical routing remains unpromoted pending larger relevance/reliability evidence. Bound MCP requests enforce operation grants, storage-side scope filters for search/get/timeline, concrete write attribution, and identity-partitioned Knowledge Evolution. Source also implements a server-owned principal registry, durable Dream queue/audit/inbox scope, scoped Prediction/Calibration/Self-Model evidence, atomic persisted quotas, bounded MCP sessions/request bodies, and scoped numeric telemetry. `agent_ready`/`multi_user` are opt-in: authenticated principal configuration and every runtime quota limit are required; missing or incompatible configuration fails closed. Source acceptance, deployment acceptance, and longitudinal live evaluation are separate. See `docs/SOURCE_ACCEPTANCE.md`, `docs/TENANCY_OPERATIONS.md`, and `docs/LIVE_EVALUATION.md`. Public release packaging remains a separate explicit decision.
-
-## Learning primitives
-
-Main now includes the first bounded cognitive-learning mechanism: Prediction Learning (Prediction / Outcome / Prediction Error).
-
-Prediction Learning can record an explicit expected outcome and prior confidence before an action, then resolve that prediction with an observed outcome and finite assessment. CyberBrain stores both as canonical Episodic evidence and derives a transparent prediction-error signal. This is an explicit causal-learning surface, not a required ordinary-agent read/write loop; predictions must not be fabricated retrospectively after the outcome is known.
-
-See specs/PREDICTION_LEARNING.md. Main also contains an initial read-only Calibration analysis over resolved Prediction Learning evidence. It does not persist self-beliefs or change agent strategy. Initial end-to-end MCP gateway validation has passed; both mechanisms remain in observation. See specs/METACOGNITION_CALIBRATION.md.
-
-Salience / Priority M3 is active in the normal authenticated recall path. Canonical vector search still establishes retrieval eligibility; the server then applies deterministic same-scope M3 scoring to the bounded authorized prefetch before M5 selection/return ordering. Salience cannot broaden visibility. See specs/SALIENCE.md and specs/COGNITIVE_RUNTIME_PATH.md.
-
-Concept Formation / Abstraction M4 is active as bounded runtime discovery/stability observation. A read-only E1 census separates clean shadow evidence from review-only or excluded historical evidence before concept discovery. The accepted high-precision policy requires broad recurrence for Knowledge-only clusters, retains evidence IDs and counterexamples, rejects same-entity repetition as insufficient abstraction, and records candidate stability without durable persistence. Reviewed historical candidates currently fail durable promotion because they lack strong verification, so no automatic concept Knowledge write exists. See specs/CONCEPT_FORMATION.md.
-
-Working Memory / Active Context M5 is active in normal authenticated recall. `WorkingMemoryService` keeps exact scope/session/task transient state only; candidate selection is explicit task relevance → Salience → duplicate suppression → token budget, with hard limits, TTL, closeout, and unchanged-context emission suppression. A controlled 4-task/16-step benchmark improves required-context coverage from 67.35% to 100% while lowering context tokens from 1045 to 458, recall calls from 16 to 4, and exact fetches from 12 to 4, with zero stale contamination or cross-task leakage in the fixture. The controlled benchmark remains a source proxy rather than an LLM-quality claim. See specs/WORKING_MEMORY.md and specs/COGNITIVE_RUNTIME_PATH.md.
-
-Agent Self-Model M6 is active as an outcome-triggered bounded evidence/review pipeline. Trusted prospective Prediction/Outcome evidence passes a fail-closed readiness gate before deterministic capability/limitation/workflow hypotheses can be generated. Hypotheses start `pending`; the current owner-authorized runtime policy automatically applies the accepted review transition only after the trusted readiness gate passes, and accepted hypotheses may persist through Knowledge Evolution as `record_class=self_model_hypothesis`, with `ordinary_recall=false`, and only accepted hypotheses may be projected into M5 as bounded advisory context. M6 still has no authority to mutate prompts, tools, permissions, routing, model weights, or identity truth. Current historical evidence still fails the trusted readiness gate; new trusted prospective outcomes will be evaluated automatically without lowering thresholds. See specs/AGENT_SELF_MODEL.md.
-
-Memory Lifecycle M7 is active event-by-event on normal recall/exact-fetch candidates. It records access, protects/re-activates explicitly relevant touched records, and may reversibly suppress non-selected prefetched records through `lifecycle_state=suppressed` + `ordinary_recall=false`. It does not hard-delete canonical memory as its normal forgetting path and does not change Knowledge truth/evolution status. There is deliberately no automatic full-corpus suppression sweep; operators can tune or disable actuation while usage evidence accumulates. See specs/MEMORY_LIFECYCLE.md and specs/COGNITIVE_RUNTIME_PATH.md.
-
-Canonical Knowledge and Episodic payloads now use schema V2. V2 adds explicit identity provenance (`identity_trust`), lifecycle metadata, Knowledge `record_class`, and Episode `updated_at`. Migration tooling stages a union of canonical V1 stage data plus raw legacy deltas, preserves point IDs/content/vectors, and quarantines records that cannot be normalized safely instead of fabricating required metadata. Source schema/tooling completeness is not a claim that the production Qdrant collections have already been migrated or cut over.
+CyberBrain owns what happens after storage: normalization, validation, embedding, Knowledge Evolution, the Episodic pending lifecycle, automatic Dream scheduling/processing, promotion/review, and Knowledge writeback. Prediction Learning preserves pre-outcome causal order and must not be reconstructed retrospectively.
 
 ## Dreaming
 
-Dreaming is evidence-grounded consolidation. Dreaming V1 historical replay acceptance is complete and the mechanism is in use-and-observe mode.
+Dreaming is evidence-grounded consolidation. A reasoning result cannot write Knowledge directly. It must pass contract validation, evidence-ID validation, promotion policy, and review/writeback rules before canonical Knowledge changes.
 
-A reasoning result cannot write Knowledge directly. It must pass contract validation, evidence-ID
-validation, promotion policy, and review/writeback rules before canonical Knowledge changes.
-
-Dream reasoning is deployment-configurable and provider-neutral:
-
-    MCP reasoner session
-           ↓ unfinished tasks only
-    LLM provider 1: model 1A → model 1B → ...
-           ↓
-    LLM provider 2: model 2A → model 2B → ...
-           ↓
-    ...
-
-CyberBrain does not hard-code a provider, model catalog, commercial routing policy, or external
-routing product.
-
-For fallback LLM routing, copy:
-
-    config/dream-routes.example.json
-
-to:
-
-    config/dream-routes.json
-
-Then define providers and models in the exact order they should be attempted. Credentials are
-referenced by environment-variable name through auth_env; secret values do not belong in the route
-file or Git.
-
-See docs/DREAMING_ROUTING.md.
+Dream reasoning is deployment-configurable and provider-neutral: external MCP consumers get the first claim/submit window on unfinished tasks; only unfinished tasks continue to ordered fallback LLM routes configured by the deployer. CyberBrain hard-codes no provider, model catalog, or routing product. See [Dreaming Routing](docs/DREAMING_ROUTING.md).
 
 ## Run with Docker Compose
 
@@ -126,39 +74,28 @@ Dreaming stack:
 The default Compose stack includes CyberBrain, Qdrant, and the embedding runtime. The dreaming
 profile additionally starts the Dream worker, configured LLM route reasoner, and server-side pending-session scheduler (nightly by default). Ordinary pending Episodes are discovered automatically; `dream_enqueue` remains an explicit/manual control path.
 
-See docs/CURRENT_RUNTIME.md for the source-level runtime contract.
+See [Current Runtime](docs/CURRENT_RUNTIME.md) for the source-level runtime contract.
 
 ## MCP
 
-CyberBrain exposes authenticated MCP Streamable HTTP at /mcp and provider-local MCP tool names.
+CyberBrain exposes authenticated MCP Streamable HTTP at /mcp with provider-local tool names.
 
-MCP_PROVIDER_STANDARD.md is the repository's reference integration standard for gateway-compatible
-provider behavior. CyberBrain's domain model does not depend on one specific gateway deployment.
+[MCP_PROVIDER_STANDARD.md](MCP_PROVIDER_STANDARD.md) is the repository's reference integration standard for gateway-compatible provider behavior. Current tool behavior is documented in [TOOL_GUIDE.md](TOOL_GUIDE.md) and [specs/TOOL_CONTRACT.md](specs/TOOL_CONTRACT.md).
 
-Current tool behavior is documented in TOOL_GUIDE.md and specs/TOOL_CONTRACT.md.
-
-Canonical `knowledge_search` and `memory_search` are compact-first at the MCP response boundary: existing summaries are returned when available, otherwise recall falls back to a bounded 1,200-character excerpt. Current source also exposes scope-safe `knowledge_get` and `memory_get` so a client can fetch one selected full record without repeating semantic search. Broad-search `view=full` remains available when explicitly required. None of these response paths alter stored content, embeddings, ranking, provenance, or Dreaming evidence.
+Canonical `knowledge_search` and `memory_search` are compact-first: broad recall returns a bounded excerpt or existing summary, and one selected full record is fetched via `knowledge_get` / `memory_get`. Response projection never alters stored content, embeddings, ranking, provenance, or Dreaming evidence.
 
 ## Documentation
 
-Current guidance:
-
-- PLAN.md — current project operating mode and architectural invariants.
-- TOOL_GUIDE.md — current MCP tool behavior.
-- specs/VERSIONING.md — single software/package version authority and independent contract/schema versioning.
-- docs/CURRENT_RUNTIME.md — deployment-neutral runtime contract.
-- docs/DREAMING_ROUTING.md — provider-neutral Dream fallback routing.
-- docs/V2_MIGRATION_RUNBOOK.md — current stage-before-cutover schema-V2 migration, independent validation, canary, rollback, and stop-condition procedure.
-- specs/MEMORY_LIFECYCLE.md — canonical M7 lifecycle contract.
-- specs/COGNITIVE_RUNTIME_PATH.md — canonical active M3→M7 request/event wiring contract.
-- specs/ — canonical data, retrieval, evolution, Dreaming, security, Reasoner, M3–M7 cognition, migration/schema, and tool contracts.
-
-Historical evidence:
-
-- docs/history/ — V1 development plan, migration audits, staged migration reports, freeze/release
-  snapshots, and earlier runtime evidence.
-
-Historical documents are preserved for provenance and are not current operating instructions.
+| Need | Start here |
+| --- | --- |
+| Browse all documentation | [Documentation index](docs/README.md) |
+| Check source/release/runtime evidence | [Project Status](docs/PROJECT_STATUS.md), [Source Acceptance](docs/SOURCE_ACCEPTANCE.md) |
+| Use the MCP tools | [Tool Guide](TOOL_GUIDE.md) |
+| Run or configure the service | [Current Runtime](docs/CURRENT_RUNTIME.md), [Tenancy](docs/TENANCY_OPERATIONS.md) |
+| Configure Dream fallback routes | [Dreaming Routing](docs/DREAMING_ROUTING.md) |
+| Migrate schema or enable relations | [V2 Migration Runbook](docs/V2_MIGRATION_RUNBOOK.md), [Relation Rollout](docs/RELATION_ROLLOUT.md) |
+| Review priorities | [Plan](PLAN.md) |
+| Understand a cognitive mechanism | [specs/](specs/) via the [Plan roadmap](PLAN.md#cognitive-roadmap) |
 
 ## Development rule
 

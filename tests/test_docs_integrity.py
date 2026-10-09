@@ -12,6 +12,7 @@ HISTORY = DOCS / "history"
 CURRENT_DOC_FILES = {
     "README.md",
     "CURRENT_RUNTIME.md",
+    "PROJECT_STATUS.md",
     "SOURCE_ACCEPTANCE.md",
     "LIVE_EVALUATION.md",
     "TENANCY_OPERATIONS.md",
