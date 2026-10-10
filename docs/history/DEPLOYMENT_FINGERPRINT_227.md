@@ -3,6 +3,33 @@
 > Historical operational record: measured deployment snapshot, not source guidance.
 > Earlier measurements are retained below; re-measure before relying on this record.
 
+## Measured 2026-10-10 10:35 ICT — F0 backup closure + relation verification
+
+| Field | Measured value |
+| --- | --- |
+| Host | `TCDserver` / `192.168.1.227` |
+| Deployed source commit | `e3a7a7c45b33f82b6518c0602abbbc95f34f750e` (unchanged; HEAD adds docs-only commits, zero `.py` drift) |
+| Application image | `cyberbrain:git-e3a7a7c45b33`, healthy, restarts 0 before window |
+| Maintenance window | Writers quiesced (`cyberbrain`, `dream-worker`, `dream-scheduler` stopped); router/reasoner left running |
+| Relation census (live, pre-checkpoint) | 5576 records / 5576 eligible / 0 missing / 0 assertions; source hash `e6ceb57a3b14bd76cfdc50efbb4b4ed991c336f6927ad67d38fa3b6515bcc2e8` |
+| Relation canary (seed `cc93da61`) | 0 paths, 4 storage calls, 83 estimated tokens, no truncation — availability proven, graph empty |
+| Caller relation flag / worker Dream relation flag | Enabled / enabled (runtime env verified inside both containers) |
+| Checkpoint bundle | `~/docker-all/cyberbrain-rollouts/20261010-033000-UTC` via operator `checkpoint --writers-quiesced` |
+| Bundle contents | 2 Qdrant snapshots + 3 operational SQLite + `manifest.json` + `relation-census.json` + `SHA256SUMS.txt` |
+| Bundle verification | 7/7 SHA256 match; `quick_check=ok` on all three SQLite copies |
+| Post-window restart | All 5 CyberBrain containers healthy; `/ready` 200; fresh scheduler heartbeat |
+| Window side effects | One Pi `memory_store` `transport_failure` during restart (expected); opencode client bridge dropped cyberbrain tool mapping client-side (gateway healthy, other providers unaffected) |
+| Ops fixes | Removed stale root-owned empty bundle dir; `backups/` + scheduler heartbeat now `dinhtc`-readable; `/tmp` operator secrets removed |
+| Review backlog at window | 3412 pending (`review` decisions w/o resolution), oldest 2026-09-12; 602 triaged (235 approved / 367 rejected) |
+| Queue at window | 674 processed / 25 failed (14 `as_of` future, 7 relation-seed, rest singular); reason tasks 5277 completed / 120 pending |
+| Prediction evidence | 1 resolved prediction total; M6 floor still far (F1 open) |
+| Rollback | Prior image `cyberbrain:git-9313893582e2` retained; no snapshot restore drilled (would erase post-window work) |
+
+No source, image, flag, or contract change in this window. No assertions proposed or accepted.
+Day-30/day-60 usefulness remains outside source acceptance.
+
+---
+
 ## Measured 2026-10-05 20:23 ICT — v0.3.0 F0 convergence audit
 
 | Field | Measured value |
