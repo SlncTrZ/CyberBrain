@@ -3,6 +3,23 @@
 > Historical operational record: measured deployment snapshot, not source guidance.
 > Earlier measurements are retained below; re-measure before relying on this record.
 
+## Measured 2026-10-10 11:00 ICT — v0.3.1 rollout
+
+| Field | Measured value |
+| --- | --- |
+| Release commit / tag | `84c3308` / annotated `v0.3.1` (both verified on origin) |
+| Application image | `cyberbrain:git-84c3308` (pristine `git archive 84c3308`; wheel `cyberbrain-0.3.1`) |
+| Image refs | All 5 CyberBrain services pinned to the new tag; `cyberbrain:git-1648855` retained |
+| Deployment Compose SHA256 | `94da45eca81091535678a4965245ebce70a4b381491c926d74da994c41402e3d` |
+| Pre-rollout verification | Local 873 passed + Ruff; live matrix (search/get/timeline/pending/status/reviews) green; queue 675 processed / 25 failed (no new failures); no server-side defect found |
+| Rollout | Writers quiesced, services recreated, all 5 healthy; provider reports 0.3.1, contract hash unchanged |
+| Post-rollout census | 5577 records / 5577 eligible / 0 missing / 0 assertions |
+| Rollback | Prior image + `/tmp/docker-compose.bak-0.3.0` retained on the host |
+
+No contract, schema, or collection change. Version-only release carrying the gate control from the previous window.
+
+---
+
 ## Measured 2026-10-10 10:50 ICT — gate rollout (min evidence 2 + paraphrase merge)
 
 | Field | Measured value |
