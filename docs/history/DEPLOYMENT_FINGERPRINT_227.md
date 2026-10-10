@@ -3,6 +3,27 @@
 > Historical operational record: measured deployment snapshot, not source guidance.
 > Earlier measurements are retained below; re-measure before relying on this record.
 
+## Measured 2026-10-10 10:50 ICT — gate rollout (min evidence 2 + paraphrase merge)
+
+| Field | Measured value |
+| --- | --- |
+| Deployed source commit | `1648855` (`fix(dreaming): require 2 evidences and merge paraphrase near-duplicates`) |
+| Application image | `cyberbrain:git-1648855` (built from pristine `git archive 1648855`; wheel `cyberbrain-0.3.0`) |
+| Image refs | All 5 CyberBrain services pinned to the new tag; previous image `cyberbrain:git-e3a7a7c45b33` retained |
+| Deployment Compose SHA256 | `57df285c609bbca674c62045ab4a64715610d3aa217dcd152fcba23887184431` |
+| Build incident | First build used the stale `cyberbrain-build` snapshot (`_version.py` 0.2.1); image deleted before rollout, rebuilt from commit export, gate policy verified inside the new image |
+| Rollout | Writers quiesced, services recreated, all 5 healthy; `/ready` 200; contract unchanged (0.3.0, same hash) |
+| Post-rollout census | 5576 records / 5576 eligible / 0 missing / 0 assertions (hash differs from pre-window only by recall-access metadata) |
+| Post-rollout smoke | Authenticated `help` + `knowledge_search` PASS with active M3–M7 |
+| Rollback | Prior image + `/tmp/docker-compose.bak-20261010` retained on the host |
+
+Gate behavior change (no contract change): single-evidence candidates now REJECT with
+`insufficient_evidence_count`; paraphrase near-duplicates (Jaccard ≥ 0.72, same
+type/class/context/partitions) merge like exact duplicates. Full source suite green
+before rollout. No snapshot restore drilled.
+
+---
+
 ## Measured 2026-10-10 10:35 ICT — F0 backup closure + relation verification
 
 | Field | Measured value |
