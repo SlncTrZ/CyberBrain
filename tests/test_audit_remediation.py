@@ -206,7 +206,10 @@ def test_f02_duplicate_fingerprint_does_not_reject_distinct_content() -> None:
                 entity_type="fact",
                 summary="Deployment procedure completed.",
                 content="Step 1: Check environment and verify network.",
-                evidence_ids=["11111111-1111-4111-8111-111111111111"],
+                evidence_ids=[
+                    "11111111-1111-4111-8111-111111111111",
+                    "22222222-2222-4222-8222-222222222222",
+                ],
                 confidence=0.9,
                 classification="new_knowledge",
                 context={"topic": "deploy"},
@@ -216,7 +219,10 @@ def test_f02_duplicate_fingerprint_does_not_reject_distinct_content() -> None:
                 entity_type="fact",
                 summary="Deployment procedure completed.",
                 content="Step 2: Start services and verify healthcheck endpoint.",
-                evidence_ids=["22222222-2222-4222-8222-222222222222"],
+                evidence_ids=[
+                    "11111111-1111-4111-8111-111111111111",
+                    "22222222-2222-4222-8222-222222222222",
+                ],
                 confidence=0.9,
                 classification="new_knowledge",
                 context={"topic": "deploy"},

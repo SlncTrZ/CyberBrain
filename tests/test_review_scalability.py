@@ -59,7 +59,15 @@ def test_gate_rejects_duplicate_candidates_in_same_run() -> None:
             metadata={"domain": "ops", "topic": "deploy", "verification": "tested"},
             score=0.9,
             event_time=now,
-        )
+        ),
+        EvidenceItem(
+            id="22222222-2222-4222-8222-222222222222",
+            record_type="knowledge",
+            content="Evidence 2",
+            metadata={"domain": "ops", "topic": "deploy", "verification": "tested"},
+            score=0.9,
+            event_time=now,
+        ),
     ]
     request = DreamReasoningRequest(
         request_id="req-dup",
@@ -77,7 +85,10 @@ def test_gate_rejects_duplicate_candidates_in_same_run() -> None:
                 entity_type="fact",
                 summary="Deployment procedure completed successfully.",
                 content="Deployment procedure completed successfully.",
-                evidence_ids=["11111111-1111-4111-8111-111111111111"],
+                evidence_ids=[
+                    "11111111-1111-4111-8111-111111111111",
+                    "22222222-2222-4222-8222-222222222222",
+                ],
                 confidence=0.9,
                 classification="new_knowledge",
                 context={"topic": "deploy"},
@@ -88,7 +99,10 @@ def test_gate_rejects_duplicate_candidates_in_same_run() -> None:
                 entity_type="fact",
                 summary="  deployment procedure completed successfully.  ",
                 content="Deployment procedure completed successfully.",
-                evidence_ids=["11111111-1111-4111-8111-111111111111"],
+                evidence_ids=[
+                    "11111111-1111-4111-8111-111111111111",
+                    "22222222-2222-4222-8222-222222222222",
+                ],
                 confidence=0.9,
                 classification="new_knowledge",
                 context={"topic": "deploy"},

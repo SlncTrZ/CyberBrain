@@ -397,17 +397,18 @@ def test_dedupe_preserves_partition_polarity_and_semantic_context(difference):
 
 def test_multipass_review_project_filter_uses_selected_evidence_and_keeps_cursor(tmp_path):
     a, b = _evidence(index=1), _evidence(project="Other", index=2)
-    task = ReasoningTask("t", "r", "code", ReasoningTaskKind.CAVEAT, "", [a, b])
+    a2, b2 = _evidence(index=3), _evidence(project="Other", index=4)
+    task = ReasoningTask("t", "r", "code", ReasoningTaskKind.CAVEAT, "", [a, b, a2, b2])
     candidates = [
         MultipassDreamReasoner._candidate_from_claim(
             task,
-            ReasoningClaim("context-bound caveat", [item.id], 0.8),
+            ReasoningClaim("context-bound caveat", evidence, 0.8),
             i,
         )
-        for i, item in enumerate([b, a, a])
+        for i, evidence in enumerate([[b.id, b2.id], [a.id, a2.id], [a.id, a2.id]])
     ]
     result = DreamReasoningResult("r", candidates)
-    request = _request([a, b])
+    request = _request([a, b, a2, b2])
     # Distinct context avoids collapsing the two legitimate review items for project A.
     candidates[2].context["branch"] = "second"
     gate = DreamEvidenceGate().evaluate(request, result)

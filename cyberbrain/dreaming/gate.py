@@ -25,7 +25,9 @@ class PromotionDecision(StrEnum):
 class PromotionPolicy:
     promote_threshold: float = 0.78
     review_threshold: float = 0.45
-    minimum_evidence_count: int = 1
+    minimum_evidence_count: int = 2
+    near_duplicate_jaccard: float = 0.72
+    near_duplicate_min_tokens: int = 5
     strong_verifications: tuple[str, ...] = (
         "user_confirmed",
         "tested",
@@ -66,6 +68,8 @@ class DreamEvidenceGate:
             item.id: item for items in request.evidence_by_topic.values() for item in items
         }
         seen_fingerprints: dict[str, int] = {}
+        kept_signatures: dict[int, tuple[str, str, str, bool, str, str]] = {}
+        kept_tokens: dict[int, frozenset[str]] = {}
         decisions: list[CandidateGateResult] = []
         for index, candidate in enumerate(result.candidates):
             fp = self._candidate_fingerprint(candidate, evidence_by_id)
@@ -112,9 +116,61 @@ class DreamEvidenceGate:
                         ["duplicate_candidate_in_run", f"merged_into_index_{first_idx}"],
                     )
                 )
-            else:
-                seen_fingerprints[fp] = index
-                decisions.append(self._evaluate_candidate(index, candidate, evidence_by_id))
+                continue
+            near_idx = self._near_duplicate_index(
+                candidate,
+                evidence_by_id,
+                kept_signatures,
+                kept_tokens,
+            )
+            if near_idx is not None:
+                first_candidate = result.candidates[near_idx]
+                merged_ids = list(
+                    dict.fromkeys(first_candidate.evidence_ids + list(candidate.evidence_ids))
+                )
+                merged_candidate = DreamCandidate(
+                    entity_name=first_candidate.entity_name,
+                    entity_type=first_candidate.entity_type,
+                    summary=first_candidate.summary,
+                    content=first_candidate.content,
+                    evidence_ids=merged_ids,
+                    confidence=max(first_candidate.confidence, candidate.confidence),
+                    classification=first_candidate.classification,
+                    negative_knowledge=first_candidate.negative_knowledge,
+                    context=dict(first_candidate.context),
+                )
+                result.candidates[near_idx] = merged_candidate
+
+                reevaluated = self._evaluate_candidate(near_idx, merged_candidate, evidence_by_id)
+                reasons = list(reevaluated.reasons)
+                if "evidence_merged_from_near_duplicate" not in reasons:
+                    reasons.append("evidence_merged_from_near_duplicate")
+
+                decisions[near_idx] = CandidateGateResult(
+                    candidate_index=near_idx,
+                    decision=reevaluated.decision,
+                    reasoner_confidence=reevaluated.reasoner_confidence,
+                    evidence_strength=reevaluated.evidence_strength,
+                    promotion_confidence=reevaluated.promotion_confidence,
+                    evidence_ids=merged_ids,
+                    reasons=reasons,
+                )
+                decisions.append(
+                    self._result(
+                        index,
+                        candidate,
+                        PromotionDecision.REJECT,
+                        0.0,
+                        0.0,
+                        ["duplicate_candidate_in_run", f"merged_into_index_{near_idx}"],
+                    )
+                )
+                continue
+            seen_fingerprints[fp] = index
+            kept_signatures[index], kept_tokens[index] = self._near_duplicate_signature(
+                candidate, evidence_by_id
+            )
+            decisions.append(self._evaluate_candidate(index, candidate, evidence_by_id))
         return DreamGateResult(request_id=request.request_id, candidates=decisions)
 
     @staticmethod
@@ -164,6 +220,72 @@ class DreamEvidenceGate:
             sort_keys=True,
             ensure_ascii=False,
         )
+
+    def _near_duplicate_signature(
+        self,
+        candidate: DreamCandidate,
+        evidence_by_id: dict[str, EvidenceItem],
+    ) -> tuple[tuple[str, str, str, bool, str, str], frozenset[str]]:
+        text = (candidate.content or candidate.summary or "").casefold().strip()
+        tokens = frozenset(re.findall(r"[a-z0-9]+", text))
+        context = {
+            key: value
+            for key, value in candidate.context.items()
+            if key not in {"task_id", "reasoning_section"}
+        }
+        partitions: list[str] = []
+        unknown: list[str] = []
+        for evidence_id in candidate.evidence_ids:
+            item = evidence_by_id.get(evidence_id)
+            if item is None:
+                unknown.append(evidence_id)
+                continue
+            metadata = item.metadata
+            evidence_context = metadata.get("context") or {}
+            domain = metadata.get("domain")
+            if domain is None and isinstance(evidence_context, dict):
+                domain = evidence_context.get("legacy_domain") or evidence_context.get("domain")
+            partitions.append(
+                json.dumps(
+                    [metadata.get(key) for key in ("tenant", "user", "agent", "project")]
+                    + [domain],
+                    sort_keys=True,
+                    ensure_ascii=False,
+                )
+            )
+        signature = (
+            candidate.entity_type.casefold().strip(),
+            candidate.classification.casefold().strip(),
+            json.dumps(context, sort_keys=True, ensure_ascii=False),
+            bool(candidate.negative_knowledge),
+            json.dumps(sorted(partitions), ensure_ascii=False),
+            json.dumps(sorted(set(unknown)), ensure_ascii=False),
+        )
+        return signature, tokens
+
+    def _near_duplicate_index(
+        self,
+        candidate: DreamCandidate,
+        evidence_by_id: dict[str, EvidenceItem],
+        kept_signatures: dict[int, tuple[str, str, str, bool, str, str]],
+        kept_tokens: dict[int, frozenset[str]],
+    ) -> int | None:
+        signature, tokens = self._near_duplicate_signature(candidate, evidence_by_id)
+        if len(tokens) < self._policy.near_duplicate_min_tokens:
+            return None
+        for index, kept_signature in kept_signatures.items():
+            if kept_signature != signature:
+                continue
+            kept = kept_tokens[index]
+            if len(kept) < self._policy.near_duplicate_min_tokens:
+                continue
+            union = tokens | kept
+            if not union:
+                continue
+            jaccard = len(tokens & kept) / len(union)
+            if jaccard >= self._policy.near_duplicate_jaccard:
+                return index
+        return None
 
     def _evaluate_candidate(
         self,

@@ -86,11 +86,84 @@ def test_gate_promotes_strong_grounded_candidate() -> None:
 def test_gate_sends_weak_candidate_to_review() -> None:
     result = DreamReasoningResult(
         request_id="req-gate",
-        candidates=[_candidate(evidence_ids=["weak"])],
+        candidates=[_candidate(evidence_ids=["weak", "e2"])],
     )
     gate = DreamEvidenceGate().evaluate(_request(), result)
 
     assert gate.candidates[0].decision == PromotionDecision.REVIEW
+
+
+def test_gate_rejects_single_evidence_candidate() -> None:
+    result = DreamReasoningResult(
+        request_id="req-gate",
+        candidates=[_candidate(evidence_ids=["e1"])],
+    )
+    gate = DreamEvidenceGate().evaluate(_request(), result)
+
+    assert gate.candidates[0].decision == PromotionDecision.REJECT
+    assert "insufficient_evidence_count" in gate.candidates[0].reasons
+
+
+def _paraphrase_candidate(*, content: str, evidence_ids: list[str]) -> DreamCandidate:
+    return DreamCandidate(
+        entity_name="candidate",
+        entity_type="lesson",
+        summary="summary",
+        content=content,
+        evidence_ids=evidence_ids,
+        confidence=0.9,
+        classification="new_knowledge",
+    )
+
+
+def test_gate_merges_paraphrase_duplicates() -> None:
+    first = _paraphrase_candidate(
+        content=(
+            "Final integration verdict is LIMITED_PASS "
+            "with executable native acceptance outstanding"
+        ),
+        evidence_ids=["e1", "e2"],
+    )
+    second = _paraphrase_candidate(
+        content=(
+            "Final integration verdict LIMITED_PASS; "
+            "executable native acceptance remains outstanding"
+        ),
+        evidence_ids=["e2", "e3"],
+    )
+    result = DreamReasoningResult(request_id="req-gate", candidates=[first, second])
+    gate = DreamEvidenceGate().evaluate(_request(), result)
+
+    assert "evidence_merged_from_near_duplicate" in gate.candidates[0].reasons
+    assert set(gate.candidates[0].evidence_ids) == {"e1", "e2", "e3"}
+    assert gate.candidates[1].decision == PromotionDecision.REJECT
+    assert "duplicate_candidate_in_run" in gate.candidates[1].reasons
+
+
+def test_gate_keeps_distinct_claims_separate() -> None:
+    first = _paraphrase_candidate(
+        content="Git fsck discovered many corrupt loose objects during post-push integrity check",
+        evidence_ids=["e1", "e2"],
+    )
+    second = _paraphrase_candidate(
+        content="Pandoc self-contained flag deprecated in favor of embed-resources standalone",
+        evidence_ids=["e2", "e3"],
+    )
+    result = DreamReasoningResult(request_id="req-gate", candidates=[first, second])
+    gate = DreamEvidenceGate().evaluate(_request(), result)
+
+    assert "duplicate_candidate_in_run" not in gate.candidates[0].reasons
+    assert "duplicate_candidate_in_run" not in gate.candidates[1].reasons
+
+
+def test_gate_ignores_tiny_strings_for_near_duplicates() -> None:
+    first = _paraphrase_candidate(content="all done", evidence_ids=["e1", "e2"])
+    second = _paraphrase_candidate(content="all done now", evidence_ids=["e2", "e3"])
+    result = DreamReasoningResult(request_id="req-gate", candidates=[first, second])
+    gate = DreamEvidenceGate().evaluate(_request(), result)
+
+    assert "duplicate_candidate_in_run" not in gate.candidates[0].reasons
+    assert "duplicate_candidate_in_run" not in gate.candidates[1].reasons
 
 
 def test_gate_rejects_unknown_evidence() -> None:

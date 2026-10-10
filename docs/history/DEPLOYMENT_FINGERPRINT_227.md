@@ -15,7 +15,7 @@
 | Relation canary (seed `cc93da61`) | 0 paths, 4 storage calls, 83 estimated tokens, no truncation — availability proven, graph empty |
 | Caller relation flag / worker Dream relation flag | Enabled / enabled (runtime env verified inside both containers) |
 | Checkpoint bundle | `~/docker-all/cyberbrain-rollouts/20261010-033000-UTC` via operator `checkpoint --writers-quiesced` |
-| Bundle contents | 2 Qdrant snapshots + 3 operational SQLite + `manifest.json` + `relation-census.json` + `SHA256SUMS.txt` |
+| Bundle contents | 2 Qdrant snapshots + 3 operational SQLite + snapshot manifest + relation census + checksum file |
 | Bundle verification | 7/7 SHA256 match; `quick_check=ok` on all three SQLite copies |
 | Post-window restart | All 5 CyberBrain containers healthy; `/ready` 200; fresh scheduler heartbeat |
 | Window side effects | One Pi `memory_store` `transport_failure` during restart (expected); opencode client bridge dropped cyberbrain tool mapping client-side (gateway healthy, other providers unaffected) |
