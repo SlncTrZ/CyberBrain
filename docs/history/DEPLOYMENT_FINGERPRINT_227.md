@@ -3,6 +3,22 @@
 > Historical operational record: measured deployment snapshot, not source guidance.
 > Earlier measurements are retained below; re-measure before relying on this record.
 
+## Measured 2026-10-24 23:35 ICT — v0.4.0 rollout (Living Cognition & Runtime Activation)
+
+| Field | Measured value |
+| --- | --- |
+| Release commit / tag | `1f4c0e2` / annotated `v0.4.0` |
+| Application image | `cyberbrain:git-1f4c0e2` (tagged as `cyberbrain:0.4.0`) |
+| Image refs | All 5 CyberBrain services pinned to `cyberbrain:git-1f4c0e2`; previous `cyberbrain:git-84c3308` retained |
+| Deployment Compose SHA256 | `f0130670087e4a9fea79481b5c270cb79b5faa5565fccf6d6cd8afed58e03472` |
+| Pre-rollout verification | Local 885 passed + Ruff clean; Zero-compromise audit passed |
+| Rollout | Writers quiesced, services recreated, all 5 healthy; provider reports 0.4.0, contract hash active |
+| Recovery bundle (F0) | `/home/dinhtc/docker-all/cyberbrain-rollouts/20261024-162954` (5 files, SHA-256 verified, SQLite ok) |
+| Post-rollout achievements | 110 blocked candidates rescued (241 written total); 17 dead-letter jobs requeued; 22 prospective prediction/outcome samples verified (Calibration: active); Knowledge Graph relation edges populated |
+| Rollback | Prior image `cyberbrain:git-84c3308` + `/home/dinhtc/docker-all/docker-compose.yml.bak-v0.3.1` retained |
+
+---
+
 ## Measured 2026-10-10 11:00 ICT — v0.3.1 rollout
 
 | Field | Measured value |
