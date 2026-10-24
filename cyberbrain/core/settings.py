@@ -78,7 +78,7 @@ class Settings(BaseSettings):
     dream_association_total_limit: int = 12
     dream_per_bucket_limit: int = 5
     dream_retrieval_score_threshold: float | None = 0.55
-    dream_default_domain: str | None = None
+    dream_default_domain: str | None = "engineering"
 
     def quota_policy(self):
         from cyberbrain.tenancy.quota import QuotaLimit, QuotaPolicy, QuotaResource

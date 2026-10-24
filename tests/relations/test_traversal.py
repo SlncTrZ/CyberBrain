@@ -447,3 +447,19 @@ def test_three_hop_chain_reaches_third_target_within_eight_reads():
     assert result["storage_calls"] == 8
     assert len(result["paths"][-1]["steps"]) == 3
     assert result["paths"][-1]["record_ids"][-1] == str(records["d"].id)
+
+
+def test_traversal_clock_skew_tolerance():
+    from datetime import timedelta
+    repo, records, _, engine = ready()
+    with bind_authority(owner()):
+        # 5 minutes in future (clock skew) is tolerated and clamped to now
+        slight_future = datetime.now(UTC) + timedelta(minutes=5)
+        result = engine.traverse([records["a"].id], TraversalPolicy(as_of=slight_future))
+        assert "paths" in result
+
+        # Far future (>1 hour) is rejected
+        far_future = datetime.now(UTC) + timedelta(hours=2)
+        with pytest.raises(ValueError, match="as_of cannot be in the future"):
+            engine.traverse([records["a"].id], TraversalPolicy(as_of=far_future))
+

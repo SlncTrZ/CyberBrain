@@ -93,3 +93,25 @@ def test_gate_rejects_low_confidence_even_if_other_counts_are_present() -> None:
 
     assert evaluation.decision is ConceptPromotionDecision.REJECT
     assert "insufficient_formation_confidence" in evaluation.reasons
+
+
+def test_concept_promotion_service_stores_knowledge() -> None:
+    from unittest.mock import MagicMock
+
+    from cyberbrain.concepts import ConceptPromotionService
+    from cyberbrain.knowledge.evolution import EvolutionOutcome
+
+    evolution = MagicMock()
+    evolution.store.return_value = MagicMock(outcome=EvolutionOutcome.INSERT_NEW)
+    service = ConceptPromotionService(evolution=evolution)
+
+    candidate = _candidate()
+    result = service.promote(candidate)
+    assert result.outcome == EvolutionOutcome.INSERT_NEW
+    assert evolution.store.called
+    kwargs = evolution.store.call_args[1]
+    assert kwargs["entity_type"] == "concept"
+    assert kwargs["domain"] == candidate.domain
+    assert kwargs["topic"] == candidate.topic
+    assert kwargs["provenance_type"] == "concept_formation"
+

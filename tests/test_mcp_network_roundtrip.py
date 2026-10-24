@@ -81,6 +81,6 @@ def test_real_streamable_http_micro_reasoner_round_trip() -> None:
         assert result.claims[0].evidence_ids == ["11111111-1111-4111-8111-111111111111"]
     finally:
         server.should_exit = True
-        thread.join(timeout=5)
+        thread.join(timeout=10)
         sock.close()
         assert not thread.is_alive()

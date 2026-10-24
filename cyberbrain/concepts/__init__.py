@@ -14,6 +14,7 @@ from .promotion import (
     ConceptPromotionEvaluation,
     ConceptPromotionGate,
     ConceptPromotionPolicy,
+    ConceptPromotionService,
 )
 from .registry import ConceptRegistryReport, ConceptShadowRegistry
 
@@ -28,6 +29,7 @@ __all__ = [
     "ConceptPromotionEvaluation",
     "ConceptPromotionGate",
     "ConceptPromotionPolicy",
+    "ConceptPromotionService",
     "ConceptReasonCode",
     "ConceptRegistryReport",
     "ConceptShadowRegistry",

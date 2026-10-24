@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from enum import StrEnum
 from uuid import UUID
 
+from cyberbrain.core.errors import ConfigurationError
 from cyberbrain.dreaming.audit import DreamRunAuditStore
 from cyberbrain.dreaming.gate import CandidateGateResult, DreamGateResult, PromotionDecision
 from cyberbrain.dreaming.reasoner import (
@@ -15,7 +17,17 @@ from cyberbrain.dreaming.reasoner import (
     EvidenceItem,
 )
 from cyberbrain.knowledge.evolution import EvolutionResult, KnowledgeEvolutionService
+from cyberbrain.relations.admission import _partition_conditions
+from cyberbrain.relations.models import (
+    EntityRef,
+    EvidenceRef,
+    RelationBundle,
+    RelationEdge,
+    RelationKind,
+    RelationStatus,
+)
 from cyberbrain.schemas.models import Origin, Verification
+from cyberbrain.tenancy import OperationClass, current_authority
 
 
 class DreamWriteStatus(StrEnum):
@@ -83,11 +95,13 @@ class DreamKnowledgeWriter:
         evolution: KnowledgeEvolutionService,
         *,
         default_domain: str | None = None,
+        enable_relation_linking: bool = True,
     ) -> None:
         self._evolution = evolution
         self._default_domain = (
             default_domain.strip() if default_domain and default_domain.strip() else None
         )
+        self._enable_relation_linking = enable_relation_linking
 
     def write_promoted(
         self,
@@ -176,51 +190,170 @@ class DreamKnowledgeWriter:
 
         attribution = {}
         for key in ("tenant", "user", "agent", "project"):
-            values = {item.metadata.get(key) for item in selected}
-            if len(values) > 1:
+            concrete_values = {
+                str(item.metadata[key]).strip()
+                for item in selected
+                if item.metadata.get(key) is not None and str(item.metadata[key]).strip()
+            }
+            if len(concrete_values) > 1:
                 return DreamWriteResult(
                     candidate_index=candidate_index,
                     status=DreamWriteStatus.BLOCKED_METADATA,
                     reason=f"mixed_identity_{key}",
                 )
-            attribution[key] = next(iter(values), None)
+            attribution[key] = next(iter(concrete_values), None)
         verification = self._verification_for(selected)
         topic = self._topic_for(candidate, request, selected)
         context = dict(candidate.context)
         context.pop("reasoning_section", None)
         context.pop("task_id", None)
 
-        evolution = self._evolution.store(
-            content=candidate.content,
-            summary=candidate.summary,
-            domain=domain,
-            topic=topic,
-            entity_type=candidate.entity_type,
-            entity_name=candidate.entity_name,
-            **attribution,
-            change_reason="promoted from Dreaming evidence gate",
-            verification=verification,
-            confidence=decision.promotion_confidence,
-            provenance_type="dream",
-            source=f"dream_run:{dream_run_id}",
-            evidence_ids=evidence_ids,
-            origin=Origin.DREAM,
-            dream_run_id=dream_run_id,
-            negative_knowledge=candidate.negative_knowledge,
-            context=context,
-            extensions={
-                "reasoner_confidence": decision.reasoner_confidence,
-                "evidence_strength": decision.evidence_strength,
-                "promotion_confidence": decision.promotion_confidence,
-                "dream_classification": candidate.classification,
-            },
-        )
+        extensions_dict = {
+            "reasoner_confidence": decision.reasoner_confidence,
+            "evidence_strength": decision.evidence_strength,
+            "promotion_confidence": decision.promotion_confidence,
+            "dream_classification": candidate.classification,
+        }
+        if self._enable_relation_linking:
+            try:
+                source_ref = EntityRef.from_payload({
+                    "domain": domain,
+                    "topic": topic,
+                    "entity_type": candidate.entity_type,
+                    "entity_name": candidate.entity_name,
+                    **attribution,
+                })
+                bundle = self._build_candidate_relations(
+                    source_ref=source_ref,
+                    candidate=candidate,
+                    topic=topic,
+                    evidence_ids=evidence_ids,
+                )
+                if bundle is not None and bundle.edges:
+                    extensions_dict["relations"] = bundle.model_dump(mode="json")
+            except Exception:
+                pass
+
+        try:
+            evolution = self._evolution.store(
+                content=candidate.content,
+                summary=candidate.summary,
+                domain=domain,
+                topic=topic,
+                entity_type=candidate.entity_type,
+                entity_name=candidate.entity_name,
+                **attribution,
+                change_reason="promoted from Dreaming evidence gate",
+                verification=verification,
+                confidence=decision.promotion_confidence,
+                provenance_type="dream",
+                source=f"dream_run:{dream_run_id}",
+                evidence_ids=evidence_ids,
+                origin=Origin.DREAM,
+                dream_run_id=dream_run_id,
+                negative_knowledge=candidate.negative_knowledge,
+                context=context,
+                extensions=extensions_dict,
+            )
+        except ConfigurationError:
+            # Fall back to clean store without relations if admission failed
+            extensions_dict.pop("relations", None)
+            evolution = self._evolution.store(
+                content=candidate.content,
+                summary=candidate.summary,
+                domain=domain,
+                topic=topic,
+                entity_type=candidate.entity_type,
+                entity_name=candidate.entity_name,
+                **attribution,
+                change_reason="promoted from Dreaming evidence gate",
+                verification=verification,
+                confidence=decision.promotion_confidence,
+                provenance_type="dream",
+                source=f"dream_run:{dream_run_id}",
+                evidence_ids=evidence_ids,
+                origin=Origin.DREAM,
+                dream_run_id=dream_run_id,
+                negative_knowledge=candidate.negative_knowledge,
+                context=context,
+                extensions=extensions_dict,
+            )
+
         return DreamWriteResult(
             candidate_index=candidate_index,
             status=DreamWriteStatus.WRITTEN,
             reason=evolution.outcome.value,
             evolution=evolution,
         )
+
+    def _build_candidate_relations(
+        self,
+        *,
+        source_ref: EntityRef,
+        candidate: DreamCandidate,
+        topic: str,
+        evidence_ids: list[UUID],
+    ) -> RelationBundle | None:
+        try:
+            lookup_text = f"{topic} {candidate.entity_name} {candidate.summary[:100]}".strip()
+            vector = self._evolution._embedding.embed(lookup_text)
+            partition_conds = _partition_conditions(source_ref.scope, include_session=True)
+            search_filter = {
+                "must": [
+                    *partition_conds,
+                    {"key": "status", "match": {"value": "active"}},
+                    {"key": "record_type", "match": {"value": "knowledge"}},
+                    {"key": "record_class", "match": {"value": "knowledge"}},
+                ]
+            }
+            matches = self._evolution._repository.search(
+                self._evolution._collection,
+                vector=vector,
+                limit=3,
+                score_threshold=0.75,
+                qdrant_filter=search_filter,
+            )
+            authority = current_authority()
+            has_admin_review = (
+                authority is not None
+                and OperationClass.ADMIN_REVIEW in authority.grant.operations
+            )
+            status = RelationStatus.ACCEPTED if has_admin_review else RelationStatus.PROPOSED
+            now = datetime.now(UTC)
+            edges: list[RelationEdge] = []
+            for point in matches:
+                payload = point.get("payload") or {}
+                if payload.get("status") != "active" or payload.get("record_type") != "knowledge":
+                    continue
+                try:
+                    target_ref = EntityRef.from_payload(payload)
+                except Exception:
+                    continue
+                if target_ref.key == source_ref.key:
+                    continue
+                target_id = UUID(str(point["id"]))
+                evidence_ref = (
+                    (EvidenceRef(record_type="episode", id=evidence_ids[0]),)
+                    if evidence_ids
+                    else ()
+                )
+                edges.append(
+                    RelationEdge(
+                        kind=RelationKind.SUPPORTS,
+                        source=source_ref,
+                        target=target_ref,
+                        target_record_id=target_id,
+                        evidence=evidence_ref,
+                        status=status,
+                        review_note="Automated dream semantic relation link",
+                        valid_from=now,
+                    )
+                )
+            if edges:
+                return RelationBundle(schema_version=1, edges=tuple(edges))
+        except Exception:
+            return None
+        return None
 
     def _domain_for(
         self,
@@ -320,7 +453,10 @@ class DreamKnowledgeWriter:
         if task_topic:
             return task_topic
 
-        if len(request.focal_topics) == 1:
+        if request.focal_topics:
             return request.focal_topics[0]
+
+        if topics:
+            return sorted(topics)[0]
 
         raise ValueError("unable to resolve canonical topic for Dream candidate")

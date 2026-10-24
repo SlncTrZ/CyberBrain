@@ -58,7 +58,10 @@ class RelationTraversal:
         now = datetime.now(UTC)
         at = policy.as_of or now
         if at > now:
-            raise ValueError("as_of cannot be in the future")
+            if (at - now).total_seconds() <= 3600.0:
+                at = now
+            else:
+                raise ValueError("as_of cannot be in the future")
         budget = ReadBudget(policy.max_storage_calls)
         paths: list[dict] = []
         nodes: set[str] = set()

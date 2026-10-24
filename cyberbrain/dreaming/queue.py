@@ -232,6 +232,37 @@ class DreamQueue:
                 )
         return len(ids)
 
+    def requeue_all_failed(self, *, limit: int = 100) -> int:
+        """Reset failed dead-letter jobs back to pending with zeroed attempt count."""
+        scope_clause, parameters = snapshot_sql_filter("authority_json")
+        now = datetime.now(UTC).isoformat()
+        with self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT id FROM dream_jobs
+                WHERE status='failed'
+                """ + scope_clause + """
+                ORDER BY updated_at ASC
+                LIMIT ?
+                """,
+                (*parameters, limit),
+            ).fetchall()
+            ids = [int(row["id"]) for row in rows]
+            for job_id in ids:
+                connection.execute(
+                    """
+                    UPDATE dream_jobs
+                    SET status='pending',
+                        attempt_count=0,
+                        last_error=NULL,
+                        available_at=0,
+                        updated_at=?
+                    WHERE id=?
+                    """,
+                    (now, job_id),
+                )
+        return len(ids)
+
     def recover_processing(self, *, max_attempts: int) -> int:
         scope_clause, parameters = snapshot_sql_filter("authority_json")
         if max_attempts < 1:

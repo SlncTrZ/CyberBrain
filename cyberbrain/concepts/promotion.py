@@ -3,8 +3,12 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from enum import StrEnum
+
+from cyberbrain.knowledge.evolution import EvolutionResult, KnowledgeEvolutionService
+from cyberbrain.schemas.models import Verification
 
 from .models import ConceptCandidate
 
@@ -64,4 +68,56 @@ class ConceptPromotionGate:
             candidate_concept_id=candidate.candidate_concept_id,
             decision=ConceptPromotionDecision.REVIEW,
             reasons=("human_review_required_before_knowledge_evolution",),
+        )
+
+
+class ConceptPromotionService:
+    """Promotes reviewed and eligible ConceptCandidates into canonical Knowledge."""
+
+    def __init__(
+        self,
+        *,
+        evolution: KnowledgeEvolutionService,
+        gate: ConceptPromotionGate | None = None,
+    ) -> None:
+        self._evolution = evolution
+        self._gate = gate or ConceptPromotionGate()
+
+    def promote(
+        self,
+        candidate: ConceptCandidate,
+        *,
+        reviewer: str = "operator:concept_review",
+        reason: str = "Concept approved after passing promotion gate",
+    ) -> EvolutionResult:
+        evaluation = self._gate.evaluate(candidate)
+        if evaluation.decision != ConceptPromotionDecision.REVIEW:
+            raise ValueError(f"Concept candidate cannot be promoted: {evaluation.reasons}")
+
+        entity_name = re.sub(r"[^a-z0-9]+", "_", candidate.label.casefold()).strip("_") or "concept"
+        content = (
+            f"Concept: {candidate.label}\n\n"
+            f"Domain: {candidate.domain}\n"
+            f"Topic: {candidate.topic}\n\n"
+            f"Abstracted from {len(candidate.supporting_evidence_ids)} supporting evidence items "
+            f"with formation confidence {candidate.formation_confidence:.2f}."
+        )
+
+        return self._evolution.store(
+            content=content,
+            summary=f"Abstract concept for {candidate.topic} in {candidate.domain}",
+            domain=candidate.domain,
+            topic=candidate.topic,
+            entity_type="concept",
+            entity_name=entity_name,
+            project=candidate.project,
+            provenance_type="concept_formation",
+            verification=Verification.DERIVED,
+            confidence=candidate.formation_confidence,
+            change_reason=reason,
+            context={
+                "concept_id": candidate.candidate_concept_id,
+                "label": candidate.label,
+                "reviewer": reviewer,
+            },
         )

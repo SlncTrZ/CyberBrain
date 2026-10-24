@@ -657,7 +657,10 @@ class DreamReasonTaskInbox:
             raise ValueError("before must include a timezone")
         instant = self._now()
         if before > instant:
-            raise ValueError("before must not be in the future")
+            if (before - instant).total_seconds() <= 3600.0:
+                before = instant
+            else:
+                raise ValueError("before must not be in the future")
         ids = sorted(set(value.strip() for value in request_ids))
         if not ids or len(ids) > 100 or any(not value for value in ids):
             raise ValueError("provide between 1 and 100 finalized request IDs")

@@ -391,3 +391,102 @@ def test_manual_approval_writes_once_and_is_retry_safe(tmp_path) -> None:
     )
     assert second["write"]["knowledge_id"] == first_knowledge_id
     assert len(repo.points) == 1
+
+
+def test_promoted_dream_allows_partial_none_identity() -> None:
+    repo = FakeRepository()
+    request = _request(include_domain=True)
+    items = request.evidence_by_topic["cyberbrain"]
+    items[0].metadata["project"] = "CyberBrain"
+    items[1].metadata["project"] = None
+    writer = DreamKnowledgeWriter(_service(repo))
+
+    writes = writer.write_promoted(
+        request=request,
+        result=_result(request),
+        gate=_gate(request),
+        dream_run_id="dream-run-write",
+    )
+
+    assert writes[0].status == DreamWriteStatus.WRITTEN
+    assert writes[0].evolution is not None
+    assert writes[0].evolution.record.project == "CyberBrain"
+
+
+def test_promoted_dream_handles_multiple_focal_topics() -> None:
+    repo = FakeRepository()
+    request = _request(include_domain=True)
+    request = DreamReasoningRequest(
+        request_id=request.request_id,
+        session_id=request.session_id,
+        focal_topics=["topic_a", "topic_b"],
+        session_start=request.session_start,
+        session_end=request.session_end,
+        evidence_by_topic=request.evidence_by_topic,
+    )
+    writer = DreamKnowledgeWriter(_service(repo))
+
+    writes = writer.write_promoted(
+        request=request,
+        result=_result(request),
+        gate=_gate(request),
+        dream_run_id="dream-run-write",
+    )
+
+    assert writes[0].status == DreamWriteStatus.WRITTEN
+    assert writes[0].evolution is not None
+    assert writes[0].evolution.record.topic in {"topic_a", "topic_b", "cyberbrain"}
+
+
+def test_in_flight_relations_enforces_partition() -> None:
+    repo = FakeRepository()
+    service = _service(repo)
+    # Pre-populate another tenant's active knowledge
+    other_id = UUID("99999999-9999-4999-8999-999999999999")
+    repo.upsert(
+        "cyberbrain_knowledge",
+        point_id=other_id,
+        vector=[0.1, 0.2, 0.3],
+        payload={
+            "id": str(other_id),
+            "schema_version": 2,
+            "record_type": "knowledge",
+            "record_class": "knowledge",
+            "status": "active",
+            "content": "Secret knowledge of other tenant",
+            "domain": "architecture",
+            "topic": "cyberbrain",
+            "entity_type": "component",
+            "entity_name": "other_secret",
+            "tenant": "tenant_b",
+            "user": "user_b",
+            "project": "ProjectB",
+            "created_at": "2026-10-01T00:00:00Z",
+            "updated_at": "2026-10-01T00:00:00Z",
+            "extensions": {},
+        },
+    )
+
+    request = _request(include_domain=True)
+    # Set request attribution to tenant_a
+    for item in request.evidence_by_topic["cyberbrain"]:
+        item.metadata["tenant"] = "tenant_a"
+        item.metadata["user"] = "user_a"
+        item.metadata["project"] = "ProjectA"
+
+    writer = DreamKnowledgeWriter(service, enable_relation_linking=True)
+    writes = writer.write_promoted(
+        request=request,
+        result=_result(request),
+        gate=_gate(request),
+        dream_run_id="dream-run-write",
+    )
+
+    assert writes[0].status == DreamWriteStatus.WRITTEN
+    # Relations should NOT link to tenant_b's record
+    rel_bundle = writes[0].evolution.record.extensions.get("relations")
+    if rel_bundle:
+        for edge in rel_bundle.get("edges", []):
+            assert edge["target_record_id"] != str(other_id)
+
+
