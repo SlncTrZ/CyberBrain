@@ -6,6 +6,7 @@ WORKDIR /app
 
 COPY pyproject.toml README.md LICENSE TOOL_GUIDE.md ./
 COPY cyberbrain/ ./cyberbrain/
+COPY scripts/ ./scripts/
 
 RUN pip install --no-cache-dir .
 

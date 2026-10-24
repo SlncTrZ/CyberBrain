@@ -8,6 +8,8 @@
 !TOOL_GUIDE.md
 !cyberbrain/
 !cyberbrain/**
+!scripts/
+!scripts/**
 cyberbrain/**/__pycache__/
 cyberbrain/**/*.pyc
 cyberbrain/**/*.pyo
