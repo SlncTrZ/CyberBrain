@@ -251,11 +251,12 @@ class QdrantRepository:
         qdrant_filter: dict[str, Any] | None = None,
         limit: int = 256,
         offset: Any = None,
+        with_vector: bool = False,
     ) -> tuple[list[dict[str, Any]], Any]:
         """One physical request, with continuation exposed for bounded callers."""
         if not 1 <= limit <= 256:
             raise ValueError("scroll_page limit must be between 1 and 256")
-        body = {"limit": limit, "with_payload": True, "with_vector": False}
+        body = {"limit": limit, "with_payload": True, "with_vector": with_vector}
         if qdrant_filter:
             body["filter"] = qdrant_filter
         if offset is not None:

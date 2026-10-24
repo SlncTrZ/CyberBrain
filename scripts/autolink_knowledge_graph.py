@@ -9,6 +9,7 @@ Updated: 2026-10-24 14:00
 from __future__ import annotations
 
 import argparse
+import inspect
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -67,11 +68,17 @@ def autolink_knowledge_graph(
 
     while records_scanned < max_records:
         fetch_limit = min(100, max_records - records_scanned)
+        scroll_kwargs = (
+            {"with_vector": True}
+            if "with_vector" in inspect.signature(repository.scroll_page).parameters
+            else {}
+        )
         points, continuation = repository.scroll_page(
             collection,
             qdrant_filter=query,
             limit=fetch_limit,
             offset=offset,
+            **scroll_kwargs,
         )
         if not points:
             break
