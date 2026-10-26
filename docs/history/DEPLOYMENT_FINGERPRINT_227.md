@@ -3,6 +3,23 @@
 > Historical operational record: measured deployment snapshot, not source guidance.
 > Earlier measurements are retained below; re-measure before relying on this record.
 
+## Measured 2026-10-26 11:15 ICT — Canonical Collection Cutover & v0.4.0 rollout
+
+| Field | Measured value |
+| --- | --- |
+| Release commit / tag | `a26b765` / annotated `v0.4.0` |
+| Application image | `cyberbrain:git-bba490f` (tagged as `cyberbrain:0.4.0`) |
+| Canonical Collections | `cyberbrain_knowledge` (5,785 points), `cyberbrain_episodic` (7,277 points) — fully cut over from `_v2_stage` |
+| Image refs | All 5 CyberBrain services pinned to `cyberbrain:git-bba490f`; previous `cyberbrain:git-84c3308` retained |
+| Deployment Compose SHA256 | `8abc354aa7ccb7a42c1fce1699d1e7388623f75adea1102ee408265e78a1bb19` |
+| Pre-rollout verification | Local 886 passed + Ruff clean; Zero-compromise audit passed |
+| Rollout | Writers quiesced, canonical collections cut over, services recreated, all 5 healthy; provider reports 0.4.0, /ready 200 |
+| Recovery bundle (F0) | `/home/dinhtc/docker-all/cyberbrain-rollouts/20261026-040915` (5 files, SHA-256 verified, SQLite ok) |
+| Post-rollout achievements | 110 blocked candidates rescued; 17 dead-letter jobs requeued and actively churning; 34 prospective prediction/outcome samples verified (Calibration: active, 2 self-model hypotheses persisted); Canonical Qdrant collection cutover completed with 100% count match |
+| Rollback | Prior stage collections (`cyberbrain_knowledge_v2_stage`, `cyberbrain_episodic_v2_stage`) + `/home/dinhtc/docker-all/docker-compose.yml.bak-pre-canonical-cutover` retained |
+
+---
+
 ## Measured 2026-10-24 23:35 ICT — v0.4.0 rollout (Living Cognition & Runtime Activation)
 
 | Field | Measured value |
