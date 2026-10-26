@@ -7,6 +7,7 @@ import json
 from dataclasses import asdict
 from datetime import datetime
 
+from cyberbrain.core.errors import ConfigurationError
 from cyberbrain.core.token_budget import DeterministicTokenCounter
 from cyberbrain.dreaming.planner import TemporalBucket
 from cyberbrain.dreaming.reasoner import EvidenceItem
@@ -54,15 +55,21 @@ class DreamRelationRecall:
         for ids in groups.values():
             if calls_left < 1 or tokens_left < 512 or len(result) >= self.total_limit:
                 break
-            recalled = self.service.recall(
-                RelationRecallRequest(
-                    seed_ids=tuple(ids[:32]),
-                    policy=TraversalPolicy(
-                        as_of=bucket.end, max_nodes=32, max_paths=32, max_storage_calls=calls_left
-                    ),
-                    context_tokens=tokens_left,
+            try:
+                recalled = self.service.recall(
+                    RelationRecallRequest(
+                        seed_ids=tuple(ids[:32]),
+                        policy=TraversalPolicy(
+                            as_of=bucket.end,
+                            max_nodes=32,
+                            max_paths=32,
+                            max_storage_calls=calls_left,
+                        ),
+                        context_tokens=tokens_left,
+                    )
                 )
-            )
+            except ConfigurationError:
+                continue
             calls_left -= recalled["storage_calls"]
             tokens_left -= recalled["estimated_tokens"]
 

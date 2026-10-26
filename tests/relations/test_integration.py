@@ -3,6 +3,7 @@ import asyncio
 import json
 from datetime import UTC, datetime
 from types import SimpleNamespace
+from uuid import uuid4
 
 import pytest
 
@@ -199,6 +200,35 @@ def test_dream_uses_background_scope_and_preserves_historical_provenance():
     ):
         with pytest.raises(ConfigurationError):
             adapter.expand(seed=[seed], bucket=TemporalBucket("past", None, datetime.now(UTC)))
+
+
+def test_dream_relation_recall_tolerates_unavailable_seed():
+    from unittest.mock import MagicMock
+    mock_service = MagicMock()
+    mock_service.recall.side_effect = ConfigurationError("relation seed unavailable")
+    adapter = DreamRelationRecall(mock_service)
+    seed = EvidenceItem(
+        id=str(uuid4()),
+        record_type="knowledge",
+        content="API",
+        score=0.9,
+        event_time=datetime(2020, 1, 1, tzinfo=UTC),
+        metadata=dict(tenant="t", user="u", agent="a", project="p"),
+    )
+    background = authority(
+        tenant="t",
+        user="u",
+        agent="a",
+        project="p",
+        operations={OperationClass.BACKGROUND_REASONING},
+    )
+    with bind_authority(background):
+        # Should gracefully return empty list instead of crashing
+        expanded = adapter.expand(
+            seed=[seed], bucket=TemporalBucket("past", None, datetime(2021, 1, 1, tzinfo=UTC))
+        )
+    assert expanded == []
+
 
 
 def test_mcp_explicit_recall_catalog_dispatch_and_disable_gate():
