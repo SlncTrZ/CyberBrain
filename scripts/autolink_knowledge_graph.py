@@ -63,7 +63,8 @@ def autolink_knowledge_graph(
 
     print(
         f"Scanning up to {max_records} active records in '{collection}' "
-        f"(status={edge_status.value}, dry_run={dry_run})..."
+        f"(status={edge_status.value}, dry_run={dry_run})...",
+        flush=True,
     )
 
     while records_scanned < max_records:
@@ -216,7 +217,8 @@ def autolink_knowledge_graph(
 
         print(
             f"Progress: scanned {records_scanned}/{max_records} | "
-            f"updated {records_updated} records | edges created: {edges_created}"
+            f"updated {records_updated} records | edges created: {edges_created}",
+            flush=True,
         )
 
         if continuation is None:
