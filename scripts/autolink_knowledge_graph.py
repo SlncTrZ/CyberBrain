@@ -128,8 +128,23 @@ def autolink_knowledge_graph(
 
             existing_bundle = bundle_from_extensions(canonical.get("extensions") or {})
             existing_targets = {edge.target.key for edge in existing_bundle.edges}
-            new_edges = list(existing_bundle.edges)
-            added_this_record = 0
+            new_edges = []
+            upgraded_edges = 0
+            for edge in existing_bundle.edges:
+                is_upgradable = (
+                    edge_status == RelationStatus.ACCEPTED
+                    and edge.status == RelationStatus.PROPOSED
+                )
+                if is_upgradable:
+                    new_edges.append(
+                        edge.model_copy(
+                            update={"status": RelationStatus.ACCEPTED, "valid_from": now}
+                        )
+                    )
+                    upgraded_edges += 1
+                else:
+                    new_edges.append(edge)
+            added_this_record = upgraded_edges
 
             for match in matches:
                 if str(match["id"]) == str(point_id):
@@ -195,6 +210,11 @@ def autolink_knowledge_graph(
                         payload={"extensions": extensions},
                     )
                     records_updated += 1
+
+        print(
+            f"Progress: scanned {records_scanned}/{max_records} | "
+            f"updated {records_updated} records | edges created: {edges_created}"
+        )
 
         if continuation is None:
             break
