@@ -115,6 +115,7 @@ def autolink_knowledge_graph(
                     {"key": "record_type", "match": {"value": "knowledge"}},
                     {"key": "record_class", "match": {"value": "knowledge"}},
                     {"key": "status", "match": {"value": "active"}},
+                    {"key": "ordinary_recall", "match": {"value": True}},
                 ]
             }
 
@@ -177,21 +178,23 @@ def autolink_knowledge_graph(
                 if added_this_record >= limit_per_record:
                     break
 
-            if added_this_record > 0:
-                proposed_bundle = RelationBundle(schema_version=1, edges=tuple(new_edges))
+            admitted_edges = []
+            for edge in new_edges:
+                test_bundle = RelationBundle(schema_version=1, edges=(edge,))
                 try:
-                    # Validate bundle through official admission gate
-                    admitted_bundle = admit_relations(
-                        raw=proposed_bundle.model_dump(mode="json"),
+                    admit_relations(
+                        raw=test_bundle.model_dump(mode="json"),
                         source=source_ref,
                         repository=repository,
                         knowledge_collection=collection,
                         episodic_collection=None,
                     )
-                except Exception as exc:
-                    print(f"Skipping invalid relations on {source_ref.key}: {exc}")
+                    admitted_edges.append(edge)
+                except Exception:
                     continue
 
+            if admitted_edges:
+                admitted_bundle = RelationBundle(schema_version=1, edges=tuple(admitted_edges))
                 extensions = dict(canonical.get("extensions") or {})
                 extensions["relations"] = admitted_bundle.model_dump(mode="json")
                 canonical["extensions"] = extensions
@@ -201,7 +204,7 @@ def autolink_knowledge_graph(
                 if dry_run:
                     print(
                         f"[DRY-RUN] Would link: {source_ref.key} -> "
-                        f"{added_this_record} new targets ({len(new_edges)} total)"
+                        f"{len(admitted_edges)} valid targets"
                     )
                 else:
                     repository.set_payload(
