@@ -7,7 +7,7 @@
 
 | Field | Measured value |
 | --- | --- |
-| Release commit / tag | HEAD / annotated `v0.4.0` |
+| Release commit / tag | `d79dbe0` / annotated `v0.4.0` |
 | Application image | `cyberbrain:0.4.0` (SemVer release tag) |
 | Canonical Collections | `cyberbrain_knowledge` (5,787 points), `cyberbrain_episodic` (7,277 points) — fully cut over from `_v2_stage` |
 | Image refs | All 5 CyberBrain services pinned to `cyberbrain:0.4.0`; prior `cyberbrain:git-84c3308` retained |
