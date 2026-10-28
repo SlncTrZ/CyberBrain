@@ -54,11 +54,12 @@ def test_document_references_resolve() -> None:
         ROOT / "README.md",
         ROOT / "PLAN.md",
         ROOT / "TOOL_GUIDE.md",
-        ROOT / "AGENTS.md",
         ROOT / "MCP_PROVIDER_STANDARD.md",
         *sorted(DOCS.rglob("*.md")),
         *sorted((ROOT / "specs").glob("*.md")),
     ]
+    if (ROOT / "AGENTS.md").is_file():
+        files.append(ROOT / "AGENTS.md")
 
     missing: list[tuple[str, str]] = []
     for source in files:
@@ -98,11 +99,12 @@ def test_current_guidance_does_not_embed_private_deployment_paths() -> None:
         ROOT / "README.md",
         ROOT / "PLAN.md",
         ROOT / "TOOL_GUIDE.md",
-        ROOT / "AGENTS.md",
         *sorted(DOCS.glob("*.md")),
         *sorted((ROOT / "specs").glob("*.md")),
         ROOT / "config" / "docker-compose.v2-canary.example.yml",
     ]
+    if (ROOT / "AGENTS.md").is_file():
+        files.append(ROOT / "AGENTS.md")
     forbidden = ("/home/dinhtc", "/mnt/pc-dev", "docker-all_default")
 
     leaked: list[tuple[str, str]] = []

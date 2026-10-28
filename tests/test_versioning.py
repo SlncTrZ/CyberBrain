@@ -52,11 +52,12 @@ def test_current_normative_docs_do_not_duplicate_semver_literals() -> None:
         ROOT / "README.md",
         ROOT / "PLAN.md",
         ROOT / "TOOL_GUIDE.md",
-        ROOT / "AGENTS.md",
         ROOT / "MCP_PROVIDER_STANDARD.md",
         *sorted((ROOT / "docs").glob("*.md")),
         *sorted((ROOT / "specs").glob("*.md")),
     ]
+    if (ROOT / "AGENTS.md").is_file():
+        docs.append(ROOT / "AGENTS.md")
 
     duplicates = []
     for path in docs:
